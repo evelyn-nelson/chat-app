@@ -1,4 +1,4 @@
-Temporary group chats for event.
+Temporary group chats for events.
 
 ## Get started
 
