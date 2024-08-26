@@ -90,7 +90,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       socketRef.current.close();
     }
     const wsURL = `ws://${baseURL}/joinRoom/${roomID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
-    // const wsURL = `ws://localhost:8080/ws/joinRoom/${roomID}?userID=${encodeURIComponent(uuid())}&username=${encodeURIComponent(user.username)}`;
     const socket = new WebSocket(wsURL);
     socketRef.current = socket;
 
