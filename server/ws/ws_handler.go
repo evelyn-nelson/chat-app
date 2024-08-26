@@ -34,7 +34,7 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id := fmt.Sprintf("%v", rand.IntN(200))
+	id := fmt.Sprintf("%v", rand.IntN(2000))
 	h.hub.Rooms[id] = &Room{
 		ID:      id,
 		Name:    req.Name,
