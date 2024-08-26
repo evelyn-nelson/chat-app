@@ -10,7 +10,6 @@ import {
   Keyboard,
 } from "react-native";
 import { Link, Stack, useNavigation } from "expo-router";
-import ParallaxScrollView from "@/components/demo/ParallaxScrollView";
 import UsernameInput from "@/components/settings/UsernameInput";
 import { useEffect, useRef, useState } from "react";
 import ChatBox from "@/components/ChatBox/ChatBox";
