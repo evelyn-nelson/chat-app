@@ -1,4 +1,4 @@
-import { Message, User } from "@/types/types";
+import { Message, Room, User } from "@/types/types";
 import React, {
   createContext,
   useCallback,
@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { View, Text, Button } from "react-native";
 
 interface WebSocketContextType {
   sendMessage: (msg: string) => void;
@@ -15,11 +14,18 @@ interface WebSocketContextType {
   messages: Message[];
   onMessage: (callback: (message: Message) => void) => void;
   removeMessageHandler: (callback: (message: Message) => void) => void;
+  createRoom: (name: string, user: User) => Promise<Room | undefined>;
+  joinRoom: (roomID: string, user: User) => void;
+  leaveRoom: () => void;
+  getRooms: () => Promise<Room[]>;
+  getUsers: (roomID: string) => Promise<User[]>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
-  undefined,
+  undefined
 );
+
+const baseURL = "ws://192.168.1.32:8080/ws";
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -31,12 +37,65 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     ((message: Message) => void)[]
   >([]);
 
-  useEffect(() => {
-    const socket = new WebSocket("ws://192.168.1.12:8080/room");
+  const isUser = (data: any): data is User => {
+    return typeof data.id === "string" && typeof data.username === "string";
+  };
+
+  const isUsersArray = (data: any): data is User[] => {
+    return Array.isArray(data) && data.every((item) => isUser(item));
+  };
+
+  const isRoom = (data: any): data is Room => {
+    return (
+      typeof data.id === "string" &&
+      typeof data.name === "string" &&
+      typeof data.admin.username === "string"
+    );
+  };
+
+  const isRoomArray = (data: any): data is Room[] => {
+    console.log(data);
+    return Array.isArray(data) && data.every((item) => isRoom(item));
+  };
+
+  const createRoom = async (name: string, user: User) => {
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+    const wsURL = `${baseURL}/createRoom`;
+    try {
+      const response = await fetch(wsURL, {
+        method: "POST",
+        body: JSON.stringify({
+          name: name,
+          user: user,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Response status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (!isRoom(data)) {
+        throw new Error("Invalid data format");
+      }
+      return data;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  };
+
+  const joinRoom = (roomID: string, user: User) => {
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+    const wsURL = `${baseURL}/${roomID}?userID=${Math.floor(Math.random() * 200)}&username=${encodeURIComponent(user.username)}`;
+    // const wsURL = `ws://localhost:8080/ws/joinRoom/${roomID}?userID=${encodeURIComponent(uuid())}&username=${encodeURIComponent(user.username)}`;
+    const socket = new WebSocket(wsURL);
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket connected to room:", roomID);
       setConnected(true);
     };
 
@@ -55,16 +114,53 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
     socket.onclose = () => {
       console.log("WebSocket closed");
+      setConnected(false);
     };
 
     socket.onerror = (error) => {
       console.log("WebSocket error: ", error);
     };
+  };
 
-    return () => {
-      socket.close();
-    };
-  }, [messageHandlers]);
+  const leaveRoom = () => {
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+  };
+
+  const getRooms = async (): Promise<Room[]> => {
+    try {
+      const response = await fetch(`${baseURL}/getRooms`);
+      if (!response.ok) {
+        throw new Error(`Response status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (!isRoomArray(data)) {
+        throw new Error("Invalid data format");
+      }
+      return data as Room[];
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  const getUsers = async (roomID: string) => {
+    try {
+      const response = await fetch(`${baseURL}/getClients/${roomID}`);
+      if (!response.ok) {
+        throw new Error(`Response status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (!isUsersArray(data)) {
+        throw new Error("Invalid data format");
+      }
+      return data as User[];
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
 
   const sendMessage = (msg: string) => {
     const socket = socketRef.current;
@@ -85,11 +181,20 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const removeMessageHandler = useCallback(
     (callback: (message: Message) => void) => {
       setMessageHandlers((prevHandlers) =>
-        prevHandlers.filter((handler) => handler !== callback),
+        prevHandlers.filter((handler) => handler !== callback)
       );
     },
-    [],
+    []
   );
+
+  useEffect(() => {
+    // Cleanup WebSocket on component unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
 
   return (
     <WebSocketContext.Provider
@@ -99,6 +204,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         messages,
         onMessage,
         removeMessageHandler,
+        createRoom,
+        joinRoom,
+        leaveRoom,
+        getRooms,
+        getUsers,
       }}
     >
       {children}

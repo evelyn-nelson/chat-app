@@ -7,7 +7,7 @@ import Animated, {
   useScrollViewOffset,
 } from "react-native-reanimated";
 
-import { ThemedView } from "@/components/ThemedView";
+import { ThemedView } from "@/components/demo/ThemedView";
 
 const HEADER_HEIGHT = 100;
 
@@ -32,14 +32,14 @@ export default function ParallaxScrollView({
           translateY: interpolate(
             scrollOffset.value,
             [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75],
+            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75]
           ),
         },
         {
           scale: interpolate(
             scrollOffset.value,
             [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [2, 1, 1],
+            [2, 1, 1]
           ),
         },
       ],

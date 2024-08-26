@@ -1,10 +1,16 @@
 type Message = {
-  msg: string,
-  user: User
+  msg: string;
+  user: User;
 };
 
 type User = {
   username: string;
 };
 
-export {Message, User}
+type Room = {
+  id: string;
+  name: string;
+  admin: User;
+};
+
+export { Message, User, Room };
