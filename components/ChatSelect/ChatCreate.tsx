@@ -10,7 +10,6 @@ export const ChatCreate = (props: { user: User }) => {
 
   return (
     <View>
-      <Text style={styles.header}>Create Room</Text>
       <TextInput
         style={styles.input}
         onChangeText={(event) => {
@@ -19,12 +18,10 @@ export const ChatCreate = (props: { user: User }) => {
         }}
         onSubmitEditing={() => {
           createRoom(roomName, user);
+          setRoomName("");
         }}
-        onKeyPress={(event) => {
-          if (event.nativeEvent.key === "Enter") {
-            createRoom(roomName, user);
-          }
-        }}
+        value={roomName}
+        placeholder="Create new chat room"
       />
     </View>
   );

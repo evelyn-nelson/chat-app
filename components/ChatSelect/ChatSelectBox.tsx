@@ -1,13 +1,20 @@
 import { Room, User } from "@/types/types";
-import { Button, View } from "react-native";
+import { Button, Pressable, View, Text } from "react-native";
 import { useWebSocket } from "../WebSocketContext";
+import { router } from "expo-router";
 
 export const ChatSelectBox = (props: { user: User; room: Room }) => {
   const { room, user } = props;
   const { joinRoom } = useWebSocket();
   return (
-    <>
-      <Button title={room.name} onPress={() => joinRoom(room.id, user)} />
-    </>
+    <View>
+      <Pressable
+        onPress={() =>
+          router.push({ pathname: "/rooms/[id]", params: { id: room.id } })
+        }
+      >
+        <Text>{room.name}</Text>
+      </Pressable>
+    </View>
   );
 };

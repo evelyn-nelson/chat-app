@@ -10,17 +10,19 @@ export const ChatSelect = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const user = { username: "Evelyn" };
 
+  const fetchRooms = async () => {
+    const data = await getRooms();
+    setRooms(data);
+  };
+
   useEffect(() => {
-    async function fetchRooms() {
-      const data = await getRooms();
-      setRooms(data);
-    }
     fetchRooms();
   }, []);
 
   return (
     <View style={styles.container}>
       <ChatCreate user={user} />
+      <Button onPress={fetchRooms} title={"Refresh"} />
       {rooms.map((room, index) => {
         return (
           <ChatSelectBox

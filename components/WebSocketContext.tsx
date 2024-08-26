@@ -25,7 +25,7 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(
   undefined
 );
 
-const baseURL = "ws://192.168.1.32:8080/ws";
+const baseURL = "192.168.1.32:8080/ws";
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -62,9 +62,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     if (socketRef.current) {
       socketRef.current.close();
     }
-    const wsURL = `${baseURL}/createRoom`;
+    const httpURL = `http://${baseURL}/createRoom`;
     try {
-      const response = await fetch(wsURL, {
+      const response = await fetch(httpURL, {
         method: "POST",
         body: JSON.stringify({
           name: name,
@@ -89,7 +89,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     if (socketRef.current) {
       socketRef.current.close();
     }
-    const wsURL = `${baseURL}/${roomID}?userID=${Math.floor(Math.random() * 200)}&username=${encodeURIComponent(user.username)}`;
+    const wsURL = `ws://${baseURL}/joinRoom/${roomID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
     // const wsURL = `ws://localhost:8080/ws/joinRoom/${roomID}?userID=${encodeURIComponent(uuid())}&username=${encodeURIComponent(user.username)}`;
     const socket = new WebSocket(wsURL);
     socketRef.current = socket;
@@ -130,7 +130,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getRooms = async (): Promise<Room[]> => {
     try {
-      const response = await fetch(`${baseURL}/getRooms`);
+      const response = await fetch(`http://${baseURL}/getRooms`);
       if (!response.ok) {
         throw new Error(`Response status: ${response.status}`);
       }
@@ -147,7 +147,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getUsers = async (roomID: string) => {
     try {
-      const response = await fetch(`${baseURL}/getClients/${roomID}`);
+      const response = await fetch(`http://${baseURL}/getClients/${roomID}`);
       if (!response.ok) {
         throw new Error(`Response status: ${response.status}`);
       }
