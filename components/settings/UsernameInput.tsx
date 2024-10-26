@@ -2,12 +2,11 @@ import { Dispatch, SetStateAction, useState } from "react";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { User } from "@/types/types";
 export default function UsernameInput(props: {
-  passValueToParent: Dispatch<SetStateAction<User>>;
+  passValueToParent: Dispatch<SetStateAction<User | undefined>>;
+  onSubmitAction: () => void;
 }) {
-  const [user, setUser] = useState({username: ""});
-  const passValueToParentHandler = (value: User) => {
-    props.passValueToParent(value);
-  };
+  const { passValueToParent, onSubmitAction } = props;
+  const [user, setUser] = useState<User>();
 
   return (
     <View>
@@ -18,14 +17,10 @@ export default function UsernameInput(props: {
           setUser({ username: event });
         }}
         onSubmitEditing={() => {
-          if (user.username) {
-            passValueToParentHandler(user);
+          if (user) {
+            passValueToParent(user);
           }
-        }}
-        onKeyPress={(event) => {
-          if (event.nativeEvent.key === "Enter") {
-            passValueToParentHandler(user);
-          }
+          onSubmitAction();
         }}
       />
     </View>

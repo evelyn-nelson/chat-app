@@ -1,48 +1,26 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Button,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Keyboard,
-} from "react-native";
-import { Link, Stack, useNavigation } from "expo-router";
-import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { ChatSelect } from "@/components/ChatSelect/ChatSelect";
 import UsernameInput from "@/components/settings/UsernameInput";
-import { useEffect, useRef, useState } from "react";
-import ChatBox from "@/components/ChatBox/ChatBox";
-import { User } from "@/types/types";
-import { WebSocketProvider } from "@/components/WebSocketContext";
+import { Link, router, Stack } from "expo-router";
+import { View, Text, StyleSheet } from "react-native";
+import { useGlobalState } from "@/components/context/GlobalStateContext";
 
-export default function Home() {
-  const [user, setUser] = useState<User>({ username: "" });
+export default function HomeScreen() {
+  const { setUser } = useGlobalState();
   return (
-    <WebSocketProvider>
-      <View style={styles.container}>
-        <Stack.Screen options={{ title: "Home" }} />
-        <UsernameInput passValueToParent={setUser} />
-        <View style={styles.chatBoxContainer}>
-          <ChatBox user={user} />
-        </View>
-      </View>
-    </WebSocketProvider>
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: "Home" }} />
+      <UsernameInput
+        passValueToParent={setUser}
+        onSubmitAction={() => router.push({ pathname: "/rooms" })}
+      />
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
-  headerImage: {
-    color: "#808080",
-    bottom: -5,
-    left: 0,
-    position: "absolute",
-  },
   container: {
     flex: 1,
-  },
-  chatBoxContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
   },
 });

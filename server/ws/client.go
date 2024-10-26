@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -57,7 +58,7 @@ func (c *Client) readMessage(hub *Hub) {
 			RoomID:  c.RoomID,
 			User:    c.User,
 		}
-
+		fmt.Println("broadcasting msg", msg)
 		hub.Broadcast <- msg
 	}
 }

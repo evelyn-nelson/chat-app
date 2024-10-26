@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { useState } from "react";
-import { useWebSocket } from "../WebSocketContext";
+import { useWebSocket } from "../context/WebSocketContext";
 import { Message, User } from "@/types/types";
 
 const MessageEntry = (props: { user: User }) => {
@@ -21,7 +21,11 @@ const MessageEntry = (props: { user: User }) => {
   const handleSubmit = () => {
     if (message.msg) {
       if (connected) {
-        sendMessage(`${JSON.stringify(message)}`);
+        try {
+          sendMessage(`${JSON.stringify(message)}`);
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
       }
       setMessage({ user: { username: props.user.username }, msg: "" });
     }
@@ -34,7 +38,9 @@ const MessageEntry = (props: { user: User }) => {
         onChangeText={(event) => {
           setMessage({ user: { username: props.user.username }, msg: event });
         }}
-        onSubmitEditing={handleSubmit}
+        onSubmitEditing={() => {
+          handleSubmit();
+        }}
         value={message.msg}
         blurOnSubmit={false}
       />

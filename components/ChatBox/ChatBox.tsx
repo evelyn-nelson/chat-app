@@ -12,7 +12,7 @@ import {
 import ChatBubble from "./ChatBubble";
 import { useEffect, useRef, useState } from "react";
 import MessageEntry from "./MessageEntry";
-import { WebSocketProvider, useWebSocket } from "../WebSocketContext";
+import { useWebSocket } from "../context/WebSocketContext";
 import { User, Message } from "@/types/types";
 
 export type BubbleProps = {
@@ -20,71 +20,78 @@ export type BubbleProps = {
   align: string;
 };
 
-export default function ChatBox(props: { user: User }) {
+export default function ChatBox(props: { user: User; roomID: string }) {
+  const { user, roomID } = props;
   const [bubbles, setBubbles] = useState<BubbleProps[]>([]);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { height: windowHeight } = useWindowDimensions();
-  const { onMessage, removeMessageHandler } = useWebSocket();
+  const { onMessage, removeMessageHandler, joinRoom, leaveRoom } =
+    useWebSocket();
   const messageHandlerRef = useRef<(message: Message) => void>();
 
   useEffect(() => {
-    console.log(onMessage)
-    console.log(removeMessageHandler)
-    console.log(props.user.username)
-    const handleNewMessage = (message: Message) => {
-      const align =
-        message.user.username === props.user.username ? "right" : "left";
-      setBubbles((prevBubbles) => [
-        ...prevBubbles,
-        {
-          message,
-          align: align,
-        },
-      ]);
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    const setupRoom = async () => {
+      try {
+        await joinRoom(roomID, user);
+        const handleNewMessage = (message: Message) => {
+          const align =
+            message.user.username === user.username ? "right" : "left";
+          setBubbles((prevBubbles) => [
+            ...prevBubbles,
+            {
+              message,
+              align: align,
+            },
+          ]);
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        };
+        messageHandlerRef.current = handleNewMessage;
+        onMessage(handleNewMessage);
+      } catch (error) {
+        console.error("Error joining room: ", error);
+      }
     };
 
-    messageHandlerRef.current = handleNewMessage;
-
-    onMessage(handleNewMessage);
+    setupRoom();
 
     return () => {
+      leaveRoom();
       if (messageHandlerRef.current) {
         removeMessageHandler(messageHandlerRef.current);
       }
     };
-  }, [onMessage, removeMessageHandler, props.user.username]);
+  }, []);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       "keyboardDidShow",
       () => {
-        if (props.user.username) {
+        if (user.username) {
           setKeyboardHeight(360);
           setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({ animated: false });
           }, 100);
         }
-      },
+      }
     );
 
     const keyboardDidHideListener = Keyboard.addListener(
       "keyboardDidHide",
       () => {
-        if (props.user.username) {
+        if (user.username) {
           setKeyboardHeight(0);
         }
-      },
+      }
     );
 
     return () => {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, [props.user.username]);
+  }, [user.username]);
 
   return (
     <View style={[styles.chatBox, { height: windowHeight }]}>
@@ -107,14 +114,14 @@ export default function ChatBox(props: { user: User }) {
           })}
         </ScrollView>
       </View>
-      {!!props.user.username && (
+      {!!user.username && (
         <View
           style={[
             styles.messageEntryContainer,
             { paddingBottom: 25 + keyboardHeight },
           ]}
         >
-          <MessageEntry user={props.user} />
+          <MessageEntry user={user} />
         </View>
       )}
     </View>

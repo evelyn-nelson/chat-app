@@ -1,7 +1,12 @@
 package ws
 
 import (
+	"cmp"
+	"fmt"
+	"math/rand/v2"
 	"net/http"
+	"slices"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -16,9 +21,14 @@ func NewHandler(h *Hub) *Handler {
 }
 
 type CreateRoomRequest struct {
-	ID   string `json:"id"`
 	Name string `json:"name"`
 	User User   `json:"user"`
+}
+
+type CreateRoomResponse struct {
+	Name  string `json:"name"`
+	Admin User   `json:"admin"`
+	ID    string `json:"id"`
 }
 
 func (h *Handler) CreateRoom(c *gin.Context) {
@@ -27,15 +37,21 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	h.hub.Rooms[req.ID] = &Room{
-		ID:      req.ID,
+	id := fmt.Sprintf("%v", rand.IntN(2000))
+	h.hub.Rooms[id] = &Room{
+		ID:      id,
 		Name:    req.Name,
 		Admin:   req.User,
 		Clients: make(map[string]*Client),
 	}
 
-	c.JSON(http.StatusOK, req)
+	res := CreateRoomResponse{
+		Admin: req.User,
+		Name:  req.Name,
+		ID:    id,
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 var upgrader = websocket.Upgrader{
@@ -53,7 +69,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	}
 
 	roomID := c.Param("roomID")
-	clientID := c.Query("userId")
+	clientID := c.Query("userID")
 	username := c.Query("username")
 
 	user := &User{
@@ -67,15 +83,72 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		Message: make(chan *Message, 10),
 		User:    *user,
 	}
-	m := &Message{
-		Content: "A new user has joined the room",
-		RoomID:  roomID,
-		User:    *user,
-	}
 
 	// join new user and
 	h.hub.Register <- cl
-	h.hub.Broadcast <- m
+
+	go cl.writeMessage()
+	cl.readMessage(h.hub)
+}
+
+type CreateAndJoinRoomRequest struct {
+	Name     string `json:"name"`
+	ClientID string `json:"userID"`
+	User     User   `json:"user"`
+}
+
+type CreateAndJoinRoomResponse struct {
+	Room     RoomRes `json:"room"`
+	ClientID string  `json:"userID"`
+	User     User    `json:"user"`
+}
+
+func (h *Handler) CreateAndJoinRoom(c *gin.Context) {
+	var req CreateAndJoinRoomRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	id := fmt.Sprintf("%v", rand.IntN(2000))
+	h.hub.Rooms[id] = &Room{
+		ID:      id,
+		Name:    req.Name,
+		Admin:   req.User,
+		Clients: make(map[string]*Client),
+	}
+
+	room := RoomRes{
+		Admin: req.User,
+		Name:  req.Name,
+		ID:    id,
+	}
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+
+	user := &User{
+		Username: req.User.Username,
+	}
+
+	cl := &Client{
+		Conn:    conn,
+		RoomID:  room.ID,
+		ID:      req.ClientID,
+		Message: make(chan *Message, 10),
+		User:    *user,
+	}
+
+	res := CreateAndJoinRoomResponse{
+		Room:     room,
+		ClientID: req.ClientID,
+		User:     req.User,
+	}
+
+	h.hub.Register <- cl
+
+	c.JSON(http.StatusOK, res)
 
 	go cl.writeMessage()
 	cl.readMessage(h.hub)
@@ -83,8 +156,21 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 }
 
 type RoomRes struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Admin User   `json:"admin"`
+}
+
+func RoomResCompare(a RoomRes, b RoomRes) int {
+	aInt, errA := strconv.Atoi(a.ID)
+	if errA != nil {
+		return 0
+	}
+	bInt, errB := strconv.Atoi(b.ID)
+	if errB != nil {
+		return 0
+	}
+	return cmp.Compare(aInt, bInt)
 }
 
 func (h *Handler) GetRooms(c *gin.Context) {
@@ -92,11 +178,12 @@ func (h *Handler) GetRooms(c *gin.Context) {
 
 	for _, r := range h.hub.Rooms {
 		rooms = append(rooms, RoomRes{
-			ID:   r.ID,
-			Name: r.Name,
+			ID:    r.ID,
+			Name:  r.Name,
+			Admin: r.Admin,
 		})
 	}
-
+	slices.SortFunc(rooms, RoomResCompare)
 	c.JSON(http.StatusOK, rooms)
 }
 
@@ -105,15 +192,26 @@ type ClientRes struct {
 	User User   `json:"user"`
 }
 
+func ClientResCompare(a ClientRes, b RoomRes) int {
+	aInt, errA := strconv.Atoi(a.ID)
+	if errA != nil {
+		return 0
+	}
+	bInt, errB := strconv.Atoi(b.ID)
+	if errB != nil {
+		return 0
+	}
+	return cmp.Compare(aInt, bInt)
+}
+
 func (h *Handler) GetClients(c *gin.Context) {
-	var clients []ClientRes
+	clients := make([]ClientRes, 0)
 	roomID := c.Param("roomID")
 
 	if _, ok := h.hub.Rooms[roomID]; !ok {
-		clients = make([]ClientRes, 0)
 		c.JSON(http.StatusOK, clients)
+		return
 	}
-
 	for _, c := range h.hub.Rooms[roomID].Clients {
 		clients = append(clients, ClientRes{
 			ID:   c.ID,
