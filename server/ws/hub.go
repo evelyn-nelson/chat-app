@@ -1,5 +1,7 @@
 package ws
 
+import "fmt"
+
 type Room struct {
 	ID      string             `json:"id"`
 	Name    string             `json:"name"`
@@ -37,19 +39,12 @@ func (h *Hub) Run() {
 			if _, ok := h.Rooms[cl.RoomID]; ok {
 				r := h.Rooms[cl.RoomID]
 				if _, ok := r.Clients[cl.ID]; ok {
-					if len(r.Clients) != 0 {
-						h.Broadcast <- &Message{
-							Content: "User left the chat",
-							RoomID:  r.ID,
-							User:    cl.User,
-						}
-					}
-
 					delete(r.Clients, cl.ID)
 					close(cl.Message)
 				}
 			}
 		case m := <-h.Broadcast:
+			fmt.Println("received message", m)
 			if _, ok := h.Rooms[m.RoomID]; ok {
 				for _, cl := range h.Rooms[m.RoomID].Clients {
 					cl.Message <- m

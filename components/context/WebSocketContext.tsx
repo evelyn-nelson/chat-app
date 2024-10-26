@@ -15,7 +15,7 @@ interface WebSocketContextType {
   onMessage: (callback: (message: Message) => void) => void;
   removeMessageHandler: (callback: (message: Message) => void) => void;
   createRoom: (name: string, user: User) => Promise<Room | undefined>;
-  joinRoom: (roomID: string, user: User) => void;
+  joinRoom: (roomID: string, user: User) => Promise<void>;
   leaveRoom: () => void;
   getRooms: () => Promise<Room[]>;
   getUsers: (roomID: string) => Promise<User[]>;
@@ -33,9 +33,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [messageHandlers, setMessageHandlers] = useState<
-    ((message: Message) => void)[]
-  >([]);
+  const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
 
   const isUser = (data: any): data is User => {
     return typeof data.id === "string" && typeof data.username === "string";
@@ -54,7 +52,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const isRoomArray = (data: any): data is Room[] => {
-    console.log(data);
     return Array.isArray(data) && data.every((item) => isRoom(item));
   };
 
@@ -85,40 +82,49 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const joinRoom = (roomID: string, user: User) => {
-    if (socketRef.current) {
-      socketRef.current.close();
-    }
-    const wsURL = `ws://${baseURL}/joinRoom/${roomID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
-    const socket = new WebSocket(wsURL);
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      console.log("WebSocket connected to room:", roomID);
-      setConnected(true);
-    };
-
-    socket.onmessage = (event) => {
-      let parsedMessage: Message;
-      try {
-        parsedMessage = JSON.parse(event.data);
-        setMessages((prevMessages) => [...prevMessages, parsedMessage]);
-      } catch (error) {
-        parsedMessage = { user: { username: "Anonymous" }, msg: event.data };
-        console.error("Error parsing JSON: ", error);
-        setMessages((prevMessages) => [...prevMessages, parsedMessage]);
+  const joinRoom = (roomID: string, user: User): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (socketRef.current) {
+        socketRef.current.close();
       }
-      messageHandlers.forEach((handler) => handler(parsedMessage));
-    };
+      const wsURL = `ws://${baseURL}/joinRoom/${roomID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
+      const socket = new WebSocket(wsURL);
+      socketRef.current = socket;
 
-    socket.onclose = () => {
-      console.log("WebSocket closed");
-      setConnected(false);
-    };
+      socket.onopen = () => {
+        console.log("WebSocket connected to room:", roomID);
+        setConnected(true);
+        resolve();
+      };
 
-    socket.onerror = (error) => {
-      console.log("WebSocket error: ", error);
-    };
+      socket.onmessage = (event) => {
+        try {
+          const content = JSON.parse(event.data).content;
+          const parsedMessage = JSON.parse(content);
+          setMessages((prevMessages) => [...prevMessages, parsedMessage]);
+          const currentHandlers = messageHandlersRef.current;
+          currentHandlers.forEach((handler, index) => {
+            try {
+              handler(parsedMessage);
+            } catch (handlerError) {
+              console.error(`Error in handler ${index}:`, handlerError);
+            }
+          });
+        } catch (error) {
+          console.error("Error in onmessage:", error);
+        }
+      };
+
+      socket.onclose = () => {
+        console.log("WebSocket closed");
+        setConnected(false);
+      };
+
+      socket.onerror = (error) => {
+        console.log("WebSocket error: ", error);
+        reject();
+      };
+    });
   };
 
   const leaveRoom = () => {
@@ -164,30 +170,33 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const sendMessage = (msg: string) => {
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(msg);
+      try {
+        socket.send(msg);
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
     } else {
-      console.error("Socket is not open.");
+      console.error("WebSocket is not initialized.");
     }
   };
 
-  const onMessage = useCallback((callback: (message: Message) => void) => {
-    setMessageHandlers((prevHandlers) => {
-      if (prevHandlers.includes(callback)) return prevHandlers; // Avoid duplicate handlers
-      return [...prevHandlers, callback];
-    });
+  const onMessage = useCallback((handler: (message: Message) => void) => {
+    if (messageHandlersRef.current.includes(handler)) {
+      return;
+    }
+    messageHandlersRef.current = [...messageHandlersRef.current, handler];
   }, []);
 
   const removeMessageHandler = useCallback(
-    (callback: (message: Message) => void) => {
-      setMessageHandlers((prevHandlers) =>
-        prevHandlers.filter((handler) => handler !== callback)
+    (handler: (message: Message) => void) => {
+      messageHandlersRef.current = messageHandlersRef.current.filter(
+        (h) => h !== handler
       );
     },
     []
   );
 
   useEffect(() => {
-    // Cleanup WebSocket on component unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.close();

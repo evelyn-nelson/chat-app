@@ -27,6 +27,7 @@ func InitRouter(wsHandler *ws.Handler) {
 
 	r.POST("/ws/createRoom", wsHandler.CreateRoom)
 	r.GET("/ws/joinRoom/:roomID", wsHandler.JoinRoom)
+	r.POST("/ws/createAndJoinRoom", wsHandler.CreateAndJoinRoom)
 	r.GET("/ws/getRooms", wsHandler.GetRooms)
 	r.GET("/ws/getClients/:roomID", wsHandler.GetClients)
 }

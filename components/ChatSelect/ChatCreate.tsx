@@ -1,7 +1,8 @@
 import { Room, User } from "@/types/types";
 import { Dispatch, SetStateAction, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import { useWebSocket } from "../WebSocketContext";
+import { useWebSocket } from "../context/WebSocketContext";
+import { router } from "expo-router";
 
 export const ChatCreate = (props: { user: User }) => {
   const [roomName, setRoomName] = useState<string>("");
@@ -14,11 +15,13 @@ export const ChatCreate = (props: { user: User }) => {
         style={styles.input}
         onChangeText={(event) => {
           setRoomName(event);
-          console.log(roomName);
         }}
-        onSubmitEditing={() => {
-          createRoom(roomName, user);
+        onSubmitEditing={async () => {
+          const room = await createRoom(roomName, user);
           setRoomName("");
+          if (room) {
+            router.push({ pathname: "/room/[id]", params: { id: room.id } });
+          }
         }}
         value={roomName}
         placeholder="Create new chat room"
