@@ -25,7 +25,7 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(
   undefined
 );
 
-const baseURL = "192.168.1.35:8080/ws";
+const baseURL = "localhost:8080/ws";
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

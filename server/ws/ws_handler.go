@@ -1,23 +1,45 @@
 package ws
 
 import (
+	"chat-app-server/db"
 	"cmp"
+	"context"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5"
 )
 
 type Handler struct {
-	hub *Hub
+	hub  *Hub
+	db   *db.Queries
+	ctx  context.Context
+	conn *pgx.Conn
 }
 
 func NewHandler(h *Hub) *Handler {
-	return &Handler{hub: h}
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DB_URL"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
+	db := db.New(conn)
+	return &Handler{hub: h, db: db, ctx: ctx, conn: conn}
+}
+
+func (h *Handler) Close() {
+	if h.conn != nil {
+		h.conn.Close(h.ctx)
+	}
 }
 
 type CreateRoomRequest struct {
@@ -174,6 +196,16 @@ func RoomResCompare(a RoomRes, b RoomRes) int {
 }
 
 func (h *Handler) GetRooms(c *gin.Context) {
+	fmt.Println("here")
+	users, err := h.db.GetAllUsers(h.ctx)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving users: %v\n", err)
+	}
+
+	for i := 0; i < len(users); i++ {
+		fmt.Println(users[i].Username)
+	}
 	rooms := make([]RoomRes, 0)
 
 	for _, r := range h.hub.Rooms {

@@ -47,6 +47,15 @@ services:
       # ]
     depends_on:
       - db
+  sqlc:
+    image: sqlc/sqlc
+    volumes:
+      - ./db:/db
+      - ./server:/server
+    working_dir: /server
+    command: ["generate"]
+    depends_on:
+      - db
 volumes:
   db:
     driver: local
