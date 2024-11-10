@@ -8,8 +8,8 @@ export default function RootLayout() {
       <WebSocketProvider>
         <Stack>
           <Stack.Screen name="index" />
-          <Stack.Screen name="rooms" />
-          <Stack.Screen name="room/[id]" />
+          <Stack.Screen name="groups" />
+          <Stack.Screen name="group/[id]" />
         </Stack>
       </WebSocketProvider>
     </GlobalStateProvider>

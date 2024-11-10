@@ -1,4 +1,4 @@
-import { Room, User } from "@/types/types";
+import { Group, User } from "@/types/types";
 import React, {
   createContext,
   Dispatch,
@@ -11,8 +11,8 @@ import React, {
 interface GlobalStateContextType {
   user: User | undefined;
   setUser: Dispatch<SetStateAction<User | undefined>>;
-  rooms: Room[];
-  setRooms: Dispatch<SetStateAction<Room[]>>;
+  groups: Group[];
+  setGroups: Dispatch<SetStateAction<Group[]>>;
 }
 
 const GlobalStateContext = createContext<GlobalStateContextType | undefined>(
@@ -22,10 +22,10 @@ const GlobalStateContext = createContext<GlobalStateContextType | undefined>(
 export const GlobalStateProvider = (props: { children: React.ReactNode }) => {
   const { children } = props;
   const [user, setUser] = useState<User>();
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
 
   return (
-    <GlobalStateContext.Provider value={{ user, setUser, rooms, setRooms }}>
+    <GlobalStateContext.Provider value={{ user, setUser, groups, setGroups }}>
       {children}
     </GlobalStateContext.Provider>
   );

@@ -11,7 +11,7 @@ export default function HomeScreen() {
       <Stack.Screen options={{ title: "Home" }} />
       <UsernameInput
         passValueToParent={setUser}
-        onSubmitAction={() => router.push({ pathname: "/rooms" })}
+        onSubmitAction={() => router.push({ pathname: "/groups" })}
       />
     </View>
   );

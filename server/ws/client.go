@@ -11,13 +11,13 @@ type Client struct {
 	Conn    *websocket.Conn
 	Message chan *Message
 	ID      string `json:"id"`
-	RoomID  string `json:"roomID"`
+	GroupID string `json:"groupID"`
 	User    User   `json:"user"`
 }
 
 type Message struct {
 	Content string `json:"content"`
-	RoomID  string `json:"roomID"`
+	GroupID string `json:"groupID"`
 	User    User   `json:"user"`
 }
 
@@ -55,7 +55,7 @@ func (c *Client) readMessage(hub *Hub) {
 
 		msg := &Message{
 			Content: string(m),
-			RoomID:  c.RoomID,
+			GroupID: c.GroupID,
 			User:    c.User,
 		}
 		fmt.Println("broadcasting msg", msg)

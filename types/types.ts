@@ -7,10 +7,10 @@ type User = {
   username: string;
 };
 
-type Room = {
+type Group = {
   id: string;
   name: string;
   admin: User;
 };
 
-export { Message, User, Room };
+export { Message, User, Group };

@@ -15,6 +15,15 @@ type Group struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type Message struct {
+	ID        int32
+	Content   string
+	UserID    pgtype.Int4
+	GroupID   pgtype.Int4
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type User struct {
 	ID        int32
 	Username  string

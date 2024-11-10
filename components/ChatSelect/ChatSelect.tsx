@@ -2,38 +2,38 @@ import { View, Text, StyleSheet, Button } from "react-native";
 import { ChatSelectBox } from "./ChatSelectBox";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useEffect, useState } from "react";
-import { Room } from "@/types/types";
+import { Group } from "@/types/types";
 import { ChatCreate } from "./ChatCreate";
 import { useGlobalState } from "../context/GlobalStateContext";
 import { router } from "expo-router";
 
 export const ChatSelect = () => {
-  const { getRooms } = useWebSocket();
-  const { user, rooms, setRooms } = useGlobalState();
+  const { getGroups } = useWebSocket();
+  const { user, groups, setGroups } = useGlobalState();
 
-  const fetchRooms = async () => {
-    const data = await getRooms();
-    setRooms(data);
+  const fetchGroups = async () => {
+    const data = await getGroups();
+    setGroups(data);
   };
 
   useEffect(() => {
-    setTimeout(fetchRooms, 2000);
+    setTimeout(fetchGroups, 2000);
   });
   useEffect(() => {
-    fetchRooms();
+    fetchGroups();
   }, []);
   return (
     <View style={styles.container}>
       {user ? (
         <View>
           <ChatCreate user={user} />
-          <Button onPress={fetchRooms} title={"Refresh"} />
-          {rooms.map((room, index) => {
+          <Button onPress={fetchGroups} title={"Refresh"} />
+          {groups.map((group, index) => {
             return (
               <ChatSelectBox
                 key={index}
                 user={user}
-                room={{ name: room.name, id: room.id, admin: room.admin }}
+                group={{ name: group.name, id: group.id, admin: group.admin }}
               />
             );
           })}

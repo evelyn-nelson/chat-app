@@ -1,4 +1,4 @@
-import { Message, Room, User } from "@/types/types";
+import { Message, Group, User } from "@/types/types";
 import React, {
   createContext,
   useCallback,
@@ -14,11 +14,11 @@ interface WebSocketContextType {
   messages: Message[];
   onMessage: (callback: (message: Message) => void) => void;
   removeMessageHandler: (callback: (message: Message) => void) => void;
-  createRoom: (name: string, user: User) => Promise<Room | undefined>;
-  joinRoom: (roomID: string, user: User) => Promise<void>;
-  leaveRoom: () => void;
-  getRooms: () => Promise<Room[]>;
-  getUsers: (roomID: string) => Promise<User[]>;
+  createGroup: (name: string, user: User) => Promise<Group | undefined>;
+  joinGroup: (groupID: string, user: User) => Promise<void>;
+  leaveGroup: () => void;
+  getGroups: () => Promise<Group[]>;
+  getUsers: (groupID: string) => Promise<User[]>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -43,7 +43,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     return Array.isArray(data) && data.every((item) => isUser(item));
   };
 
-  const isRoom = (data: any): data is Room => {
+  const isGroup = (data: any): data is Group => {
     return (
       typeof data.id === "string" &&
       typeof data.name === "string" &&
@@ -51,15 +51,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
-  const isRoomArray = (data: any): data is Room[] => {
-    return Array.isArray(data) && data.every((item) => isRoom(item));
+  const isGroupArray = (data: any): data is Group[] => {
+    return Array.isArray(data) && data.every((item) => isGroup(item));
   };
 
-  const createRoom = async (name: string, user: User) => {
+  const createGroup = async (name: string, user: User) => {
     if (socketRef.current) {
       socketRef.current.close();
     }
-    const httpURL = `http://${baseURL}/createRoom`;
+    const httpURL = `http://${baseURL}/createGroup`;
     try {
       const response = await fetch(httpURL, {
         method: "POST",
@@ -72,7 +72,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(`Response status: ${response.status}`);
       }
       const data = await response.json();
-      if (!isRoom(data)) {
+      if (!isGroup(data)) {
         throw new Error("Invalid data format");
       }
       return data;
@@ -82,17 +82,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const joinRoom = (roomID: string, user: User): Promise<void> => {
+  const joinGroup = (groupID: string, user: User): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (socketRef.current) {
         socketRef.current.close();
       }
-      const wsURL = `ws://${baseURL}/joinRoom/${roomID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
+      const wsURL = `ws://${baseURL}/joinGroup/${groupID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
       const socket = new WebSocket(wsURL);
       socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log("WebSocket connected to room:", roomID);
+        console.log("WebSocket connected to group:", groupID);
         setConnected(true);
         resolve();
       };
@@ -127,32 +127,32 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const leaveRoom = () => {
+  const leaveGroup = () => {
     if (socketRef.current) {
       socketRef.current.close();
     }
   };
 
-  const getRooms = async (): Promise<Room[]> => {
+  const getGroups = async (): Promise<Group[]> => {
     try {
-      const response = await fetch(`http://${baseURL}/getRooms`);
+      const response = await fetch(`http://${baseURL}/getGroups`);
       if (!response.ok) {
         throw new Error(`Response status: ${response.status}`);
       }
       const data = await response.json();
-      if (!isRoomArray(data)) {
+      if (!isGroupArray(data)) {
         throw new Error("Invalid data format");
       }
-      return data as Room[];
+      return data as Group[];
     } catch (error) {
       console.error(error);
       return [];
     }
   };
 
-  const getUsers = async (roomID: string) => {
+  const getUsers = async (groupID: string) => {
     try {
-      const response = await fetch(`http://${baseURL}/getClients/${roomID}`);
+      const response = await fetch(`http://${baseURL}/getClients/${groupID}`);
       if (!response.ok) {
         throw new Error(`Response status: ${response.status}`);
       }
@@ -212,10 +212,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         messages,
         onMessage,
         removeMessageHandler,
-        createRoom,
-        joinRoom,
-        leaveRoom,
-        getRooms,
+        createGroup,
+        joinGroup,
+        leaveGroup,
+        getGroups,
         getUsers,
       }}
     >

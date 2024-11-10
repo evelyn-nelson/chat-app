@@ -25,11 +25,11 @@ func InitRouter(wsHandler *ws.Handler) {
 		MaxAge: 12 * time.Hour,
 	}))
 
-	r.POST("/ws/createRoom", wsHandler.CreateRoom)
-	r.GET("/ws/joinRoom/:roomID", wsHandler.JoinRoom)
-	r.POST("/ws/createAndJoinRoom", wsHandler.CreateAndJoinRoom)
-	r.GET("/ws/getRooms", wsHandler.GetRooms)
-	r.GET("/ws/getClients/:roomID", wsHandler.GetClients)
+	r.POST("/ws/createGroup", wsHandler.CreateGroup)
+	r.GET("/ws/joinGroup/:groupID", wsHandler.JoinGroup)
+	r.POST("/ws/createAndJoinGroup", wsHandler.CreateAndJoinGroup)
+	r.GET("/ws/getGroups", wsHandler.GetGroups)
+	r.GET("/ws/getClients/:groupID", wsHandler.GetClients)
 }
 
 func Start(addr string) error {

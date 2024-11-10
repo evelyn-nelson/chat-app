@@ -42,32 +42,32 @@ func (h *Handler) Close() {
 	}
 }
 
-type CreateRoomRequest struct {
+type CreateGroupRequest struct {
 	Name string `json:"name"`
 	User User   `json:"user"`
 }
 
-type CreateRoomResponse struct {
+type CreateGroupResponse struct {
 	Name  string `json:"name"`
 	Admin User   `json:"admin"`
 	ID    string `json:"id"`
 }
 
-func (h *Handler) CreateRoom(c *gin.Context) {
-	var req CreateRoomRequest
+func (h *Handler) CreateGroup(c *gin.Context) {
+	var req CreateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	id := fmt.Sprintf("%v", rand.IntN(2000))
-	h.hub.Rooms[id] = &Room{
+	h.hub.Groups[id] = &Group{
 		ID:      id,
 		Name:    req.Name,
 		Admin:   req.User,
 		Clients: make(map[string]*Client),
 	}
 
-	res := CreateRoomResponse{
+	res := CreateGroupResponse{
 		Admin: req.User,
 		Name:  req.Name,
 		ID:    id,
@@ -84,13 +84,13 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (h *Handler) JoinRoom(c *gin.Context) {
+func (h *Handler) JoinGroup(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
-	roomID := c.Param("roomID")
+	groupID := c.Param("groupID")
 	clientID := c.Query("userID")
 	username := c.Query("username")
 
@@ -100,7 +100,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 
 	cl := &Client{
 		Conn:    conn,
-		RoomID:  roomID,
+		GroupID: groupID,
 		ID:      clientID,
 		Message: make(chan *Message, 10),
 		User:    *user,
@@ -113,33 +113,33 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	cl.readMessage(h.hub)
 }
 
-type CreateAndJoinRoomRequest struct {
+type CreateAndJoinGroupRequest struct {
 	Name     string `json:"name"`
 	ClientID string `json:"userID"`
 	User     User   `json:"user"`
 }
 
-type CreateAndJoinRoomResponse struct {
-	Room     RoomRes `json:"room"`
-	ClientID string  `json:"userID"`
-	User     User    `json:"user"`
+type CreateAndJoinGroupResponse struct {
+	Group    GroupRes `json:"group"`
+	ClientID string   `json:"userID"`
+	User     User     `json:"user"`
 }
 
-func (h *Handler) CreateAndJoinRoom(c *gin.Context) {
-	var req CreateAndJoinRoomRequest
+func (h *Handler) CreateAndJoinGroup(c *gin.Context) {
+	var req CreateAndJoinGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	id := fmt.Sprintf("%v", rand.IntN(2000))
-	h.hub.Rooms[id] = &Room{
+	h.hub.Groups[id] = &Group{
 		ID:      id,
 		Name:    req.Name,
 		Admin:   req.User,
 		Clients: make(map[string]*Client),
 	}
 
-	room := RoomRes{
+	group := GroupRes{
 		Admin: req.User,
 		Name:  req.Name,
 		ID:    id,
@@ -156,14 +156,14 @@ func (h *Handler) CreateAndJoinRoom(c *gin.Context) {
 
 	cl := &Client{
 		Conn:    conn,
-		RoomID:  room.ID,
+		GroupID: group.ID,
 		ID:      req.ClientID,
 		Message: make(chan *Message, 10),
 		User:    *user,
 	}
 
-	res := CreateAndJoinRoomResponse{
-		Room:     room,
+	res := CreateAndJoinGroupResponse{
+		Group:    group,
 		ClientID: req.ClientID,
 		User:     req.User,
 	}
@@ -177,13 +177,13 @@ func (h *Handler) CreateAndJoinRoom(c *gin.Context) {
 
 }
 
-type RoomRes struct {
+type GroupRes struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Admin User   `json:"admin"`
 }
 
-func RoomResCompare(a RoomRes, b RoomRes) int {
+func GroupResCompare(a Group, b Group) int {
 	aInt, errA := strconv.Atoi(a.ID)
 	if errA != nil {
 		return 0
@@ -195,28 +195,28 @@ func RoomResCompare(a RoomRes, b RoomRes) int {
 	return cmp.Compare(aInt, bInt)
 }
 
-func (h *Handler) GetRooms(c *gin.Context) {
+func (h *Handler) GetGroups(c *gin.Context) {
 	fmt.Println("here")
-	users, err := h.db.GetAllUsers(h.ctx)
+	ExistingGroups, err := h.db.GetAllGroups(h.ctx)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving users: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
 	}
 
-	for i := 0; i < len(users); i++ {
-		fmt.Println(users[i].Username)
+	for i := 0; i < len(ExistingGroups); i++ {
+		fmt.Println(ExistingGroups[i].Name)
 	}
-	rooms := make([]RoomRes, 0)
+	groups := make([]GroupRes, 0)
 
-	for _, r := range h.hub.Rooms {
-		rooms = append(rooms, RoomRes{
+	for _, r := range h.hub.Groups {
+		groups = append(groups, GroupRes{
 			ID:    r.ID,
 			Name:  r.Name,
 			Admin: r.Admin,
 		})
 	}
-	slices.SortFunc(rooms, RoomResCompare)
-	c.JSON(http.StatusOK, rooms)
+	slices.SortFunc(groups, GroupResCompare)
+	c.JSON(http.StatusOK, groups)
 }
 
 type ClientRes struct {
@@ -224,7 +224,7 @@ type ClientRes struct {
 	User User   `json:"user"`
 }
 
-func ClientResCompare(a ClientRes, b RoomRes) int {
+func ClientResCompare(a ClientRes, b GroupRes) int {
 	aInt, errA := strconv.Atoi(a.ID)
 	if errA != nil {
 		return 0
@@ -238,13 +238,13 @@ func ClientResCompare(a ClientRes, b RoomRes) int {
 
 func (h *Handler) GetClients(c *gin.Context) {
 	clients := make([]ClientRes, 0)
-	roomID := c.Param("roomID")
+	groupID := c.Param("groupID")
 
-	if _, ok := h.hub.Rooms[roomID]; !ok {
+	if _, ok := h.hub.Groups[groupID]; !ok {
 		c.JSON(http.StatusOK, clients)
 		return
 	}
-	for _, c := range h.hub.Rooms[roomID].Clients {
+	for _, c := range h.hub.Groups[groupID].Clients {
 		clients = append(clients, ClientRes{
 			ID:   c.ID,
 			User: c.User,
