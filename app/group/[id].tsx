@@ -7,8 +7,9 @@ const GroupPage = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, groups } = useGlobalState();
   const getGroup = () => {
+    console.log(groups)
     for (let i = 0; i < groups.length; i++) {
-      if (groups[i].id === id) {
+      if (groups[i].id.toString() === id) {
         return groups[i];
       }
     }
@@ -21,7 +22,6 @@ const GroupPage = () => {
       </View>
     );
   }
-
   return (
     <View style={styles.chatBoxContainer}>
       <Stack.Screen options={{ title: group?.name ?? "Loading..." }} />

@@ -5,6 +5,7 @@ sql:
     queries: "../db/queries"
     gen:
       go:
+        emit_json_tags: true
         package: "db"
         out: "db"
         sql_package: "pgx/v5"

@@ -1,27 +1,38 @@
 import { View, Text, StyleSheet, Button } from "react-native";
 import { ChatSelectBox } from "./ChatSelectBox";
 import { useWebSocket } from "../context/WebSocketContext";
-import { useEffect, useState } from "react";
-import { Group } from "@/types/types";
+import { useEffect, useRef, useState } from "react";
 import { ChatCreate } from "./ChatCreate";
 import { useGlobalState } from "../context/GlobalStateContext";
-import { router } from "expo-router";
 
 export const ChatSelect = () => {
   const { getGroups } = useWebSocket();
   const { user, groups, setGroups } = useGlobalState();
 
+  const isFetching = useRef(false);
+
   const fetchGroups = async () => {
-    const data = await getGroups();
-    setGroups(data);
+    if (isFetching.current) return;
+    isFetching.current = true;
+
+    try {
+      const data = await getGroups();
+      setGroups(data);
+    } catch (error) {
+      console.error("Failed to fetch groups:", error);
+    } finally {
+      isFetching.current = false;
+    }
   };
 
   useEffect(() => {
-    setTimeout(fetchGroups, 2000);
-  });
-  useEffect(() => {
     fetchGroups();
+
+    const intervalId = setInterval(fetchGroups, 5000);
+
+    return () => clearInterval(intervalId);
   }, []);
+
   return (
     <View style={styles.container}>
       {user ? (
@@ -32,8 +43,7 @@ export const ChatSelect = () => {
             return (
               <ChatSelectBox
                 key={index}
-                user={user}
-                group={{ name: group.name, id: group.id, admin: group.admin }}
+                group={{ name: group.name, id: group.id }}
               />
             );
           })}

@@ -29,7 +29,7 @@ func InitRouter(wsHandler *ws.Handler) {
 	r.GET("/ws/joinGroup/:groupID", wsHandler.JoinGroup)
 	r.POST("/ws/createAndJoinGroup", wsHandler.CreateAndJoinGroup)
 	r.GET("/ws/getGroups", wsHandler.GetGroups)
-	r.GET("/ws/getClients/:groupID", wsHandler.GetClients)
+	r.GET("/ws/getUsersInGroup/:groupID", wsHandler.GetUsersInGroup)
 }
 
 func Start(addr string) error {

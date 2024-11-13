@@ -9,33 +9,33 @@ import (
 )
 
 type Group struct {
-	ID        int32
-	Name      string
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 type Message struct {
-	ID        int32
-	Content   string
-	UserID    pgtype.Int4
-	GroupID   pgtype.Int4
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	Content   string           `json:"content"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 type User struct {
-	ID        int32
-	Username  string
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 type UserGroup struct {
-	ID        int32
-	UserID    pgtype.Int4
-	GroupID   pgtype.Int4
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	Admin     bool
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	Admin     bool             `json:"admin"`
 }

@@ -36,7 +36,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
 
   const isUser = (data: any): data is User => {
-    return typeof data.id === "string" && typeof data.username === "string";
+    return typeof data.id === "number" && typeof data.username === "string";
   };
 
   const isUsersArray = (data: any): data is User[] => {
@@ -44,11 +44,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const isGroup = (data: any): data is Group => {
-    return (
-      typeof data.id === "string" &&
-      typeof data.name === "string" &&
-      typeof data.admin.username === "string"
-    );
+    return typeof data.id === "number" && typeof data.name === "string";
   };
 
   const isGroupArray = (data: any): data is Group[] => {
@@ -65,7 +61,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         method: "POST",
         body: JSON.stringify({
           name: name,
-          user: user,
+          username: user.username,
         }),
       });
       if (!response.ok) {
@@ -87,7 +83,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       if (socketRef.current) {
         socketRef.current.close();
       }
-      const wsURL = `ws://${baseURL}/joinGroup/${groupID}?userID=${Math.floor(Math.random() * 2000)}&username=${encodeURIComponent(user.username)}`;
+      const wsURL = `ws://${baseURL}/joinGroup/${groupID}?userID=${1}&username=${encodeURIComponent(user.username)}`;
       const socket = new WebSocket(wsURL);
       socketRef.current = socket;
 
@@ -129,7 +125,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const leaveGroup = () => {
     if (socketRef.current) {
-      socketRef.current.close();
+      socketRef.current.close(1001);
     }
   };
 
@@ -152,7 +148,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getUsers = async (groupID: string) => {
     try {
-      const response = await fetch(`http://${baseURL}/getClients/${groupID}`);
+      const response = await fetch(
+        `http://${baseURL}/getUsersInGroup/${groupID}`
+      );
       if (!response.ok) {
         throw new Error(`Response status: ${response.status}`);
       }

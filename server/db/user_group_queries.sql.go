@@ -16,12 +16,12 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetAllUserGroupsRow struct {
-	ID        int32
-	UserID    pgtype.Int4
-	GroupID   pgtype.Int4
-	Admin     bool
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetAllUserGroups(ctx context.Context) ([]GetAllUserGroupsRow, error) {
@@ -56,12 +56,12 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetAllUserGroupsForGroupRow struct {
-	ID        int32
-	UserID    pgtype.Int4
-	GroupID   pgtype.Int4
-	Admin     bool
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetAllUserGroupsForGroup(ctx context.Context, groupID pgtype.Int4) ([]GetAllUserGroupsForGroupRow, error) {
@@ -96,12 +96,12 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetAllUserGroupsForUserRow struct {
-	ID        int32
-	UserID    pgtype.Int4
-	GroupID   pgtype.Int4
-	Admin     bool
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetAllUserGroupsForUser(ctx context.Context, userID pgtype.Int4) ([]GetAllUserGroupsForUserRow, error) {
@@ -131,22 +131,54 @@ func (q *Queries) GetAllUserGroupsForUser(ctx context.Context, userID pgtype.Int
 	return items, nil
 }
 
-const getUserGroupById = `-- name: GetUserGroupById :one
+const getUserGroupByGroupIDAndUserID = `-- name: GetUserGroupByGroupIDAndUserID :one
+SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE user_id = $1 AND group_id = $2
+`
+
+type GetUserGroupByGroupIDAndUserIDParams struct {
+	UserID  pgtype.Int4 `json:"user_id"`
+	GroupID pgtype.Int4 `json:"group_id"`
+}
+
+type GetUserGroupByGroupIDAndUserIDRow struct {
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserGroupByGroupIDAndUserID(ctx context.Context, arg GetUserGroupByGroupIDAndUserIDParams) (GetUserGroupByGroupIDAndUserIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserGroupByGroupIDAndUserID, arg.UserID, arg.GroupID)
+	var i GetUserGroupByGroupIDAndUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.GroupID,
+		&i.Admin,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserGroupByID = `-- name: GetUserGroupByID :one
 SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE id = $1
 `
 
-type GetUserGroupByIdRow struct {
-	ID        int32
-	UserID    pgtype.Int4
-	GroupID   pgtype.Int4
-	Admin     bool
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+type GetUserGroupByIDRow struct {
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUserGroupById(ctx context.Context, id int32) (GetUserGroupByIdRow, error) {
-	row := q.db.QueryRow(ctx, getUserGroupById, id)
-	var i GetUserGroupByIdRow
+func (q *Queries) GetUserGroupByID(ctx context.Context, id int32) (GetUserGroupByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserGroupByID, id)
+	var i GetUserGroupByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -163,9 +195,9 @@ INSERT INTO user_groups ("user_id", "group_id", "admin") VALUES ($1, $2, $3) RET
 `
 
 type InsertUserGroupParams struct {
-	UserID  pgtype.Int4
-	GroupID pgtype.Int4
-	Admin   bool
+	UserID  pgtype.Int4 `json:"user_id"`
+	GroupID pgtype.Int4 `json:"group_id"`
+	Admin   bool        `json:"admin"`
 }
 
 func (q *Queries) InsertUserGroup(ctx context.Context, arg InsertUserGroupParams) (UserGroup, error) {

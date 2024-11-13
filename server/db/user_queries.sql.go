@@ -41,7 +41,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getAllUsersInGroup = `-- name: GetAllUsersInGroup :many
-SELECT users.id AS user_id, users.username, groups.id AS group_id, groups.name, user_groups.admin, user_groups.created_at
+SELECT users.id AS user_id, users.username, groups.id AS group_id, groups.name, user_groups.admin, user_groups.created_at AS joined_at
 FROM users 
 JOIN user_groups ON user_groups.user_id = users.id 
 JOIN groups ON groups.id = user_groups.group_id
@@ -49,12 +49,12 @@ WHERE groups.id = $1
 `
 
 type GetAllUsersInGroupRow struct {
-	UserID    int32
-	Username  string
-	GroupID   int32
-	Name      string
-	Admin     bool
-	CreatedAt pgtype.Timestamp
+	UserID   int32            `json:"user_id"`
+	Username string           `json:"username"`
+	GroupID  int32            `json:"group_id"`
+	Name     string           `json:"name"`
+	Admin    bool             `json:"admin"`
+	JoinedAt pgtype.Timestamp `json:"joined_at"`
 }
 
 func (q *Queries) GetAllUsersInGroup(ctx context.Context, id int32) ([]GetAllUsersInGroupRow, error) {
@@ -72,7 +72,7 @@ func (q *Queries) GetAllUsersInGroup(ctx context.Context, id int32) ([]GetAllUse
 			&i.GroupID,
 			&i.Name,
 			&i.Admin,
-			&i.CreatedAt,
+			&i.JoinedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -90,6 +90,22 @@ SELECT "id", "username", "created_at", "updated_at" FROM users WHERE id = $1
 
 func (q *Queries) GetUserById(ctx context.Context, id int32) (User, error) {
 	row := q.db.QueryRow(ctx, getUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT "id", "username", "created_at", "updated_at" FROM users WHERE username = $1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,

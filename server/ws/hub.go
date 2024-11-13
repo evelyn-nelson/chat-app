@@ -6,7 +6,6 @@ type Group struct {
 	ID      string             `json:"id"`
 	Name    string             `json:"name"`
 	Clients map[string]*Client `json:"clients"`
-	Admin   User               `json:"admin"`
 }
 
 type Hub struct {
@@ -31,20 +30,19 @@ func (h *Hub) Run() {
 		case cl := <-h.Register:
 			if _, ok := h.Groups[cl.GroupID]; ok {
 				r := h.Groups[cl.GroupID]
-				if _, ok := r.Clients[cl.ID]; !ok {
-					r.Clients[cl.ID] = cl
+				if _, ok := r.Clients[fmt.Sprintf("%v", cl.User.ID)]; !ok {
+					r.Clients[fmt.Sprintf("%v", cl.User.ID)] = cl
 				}
 			}
 		case cl := <-h.Unregister:
 			if _, ok := h.Groups[cl.GroupID]; ok {
 				r := h.Groups[cl.GroupID]
-				if _, ok := r.Clients[cl.ID]; ok {
-					delete(r.Clients, cl.ID)
+				if _, ok := r.Clients[fmt.Sprintf("%v", cl.User.ID)]; ok {
+					delete(r.Clients, fmt.Sprintf("%v", cl.User.ID))
 					close(cl.Message)
 				}
 			}
 		case m := <-h.Broadcast:
-			fmt.Println("received message", m)
 			if _, ok := h.Groups[m.GroupID]; ok {
 				for _, cl := range h.Groups[m.GroupID].Clients {
 					cl.Message <- m

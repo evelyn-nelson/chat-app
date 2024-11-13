@@ -10,7 +10,6 @@ type User = {
 type Group = {
   id: string;
   name: string;
-  admin: User;
 };
 
 export { Message, User, Group };
