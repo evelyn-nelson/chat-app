@@ -1,0 +1,61 @@
+version: "3.8"
+services:
+  go-server:
+    build:
+      context: server
+      dockerfile: Dockerfile
+    volumes:
+      - ./server:/app
+    ports:
+      - "8080:8080"
+    env_file:
+      - ".env"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./db/migrations:/db/migrations
+    command:
+      [
+        "-path",
+        "/db/migrations",
+        "-database",
+        "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/postgres?sslmode=disable",
+        "up",
+      ]
+      # if migrating down
+      # command:
+      # [
+      #   "-path",
+      #   "/db/migrations",
+      #   "-database",
+      #   "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/postgres?sslmode=disable",
+      #   "down",
+      #   "1"
+      # ]
+    depends_on:
+      - db
+  sqlc:
+    image: sqlc/sqlc
+    volumes:
+      - ./db:/db
+      - ./server:/server
+    working_dir: /server
+    command: ["generate"]
+    depends_on:
+      - db
+volumes:
+  db:
+    driver: local

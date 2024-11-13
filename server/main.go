@@ -8,8 +8,9 @@ import (
 func main() {
 	hub := ws.NewHub()
 	wsHandler := ws.NewHandler(hub)
+	defer wsHandler.Close()
 	go hub.Run()
-	
+
 	router.InitRouter(wsHandler)
 	router.Start(":8080")
 }

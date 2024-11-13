@@ -1,54 +1,96 @@
 package ws
 
 import (
-	"cmp"
+	"chat-app-server/db"
+	"context"
+	"database/sql"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
-	"slices"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Handler struct {
-	hub *Hub
+	hub  *Hub
+	db   *db.Queries
+	ctx  context.Context
+	conn *pgx.Conn
 }
 
 func NewHandler(h *Hub) *Handler {
-	return &Handler{hub: h}
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DB_URL"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
+	db := db.New(conn)
+	return &Handler{hub: h, db: db, ctx: ctx, conn: conn}
 }
 
-type CreateRoomRequest struct {
+func (h *Handler) Close() {
+	if h.conn != nil {
+		h.conn.Close(h.ctx)
+	}
+}
+
+type CreateGroupRequest struct {
 	Name string `json:"name"`
-	User User   `json:"user"`
+	// UserID string `json:"userID"`
+	Username string `json:"username"`
 }
 
-type CreateRoomResponse struct {
-	Name  string `json:"name"`
-	Admin User   `json:"admin"`
-	ID    string `json:"id"`
+type CreateGroupResponse struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
 }
 
-func (h *Handler) CreateRoom(c *gin.Context) {
-	var req CreateRoomRequest
+func (h *Handler) CreateGroup(c *gin.Context) {
+	var req CreateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id := fmt.Sprintf("%v", rand.IntN(2000))
-	h.hub.Rooms[id] = &Room{
-		ID:      id,
+	group, err := h.db.InsertGroup(h.ctx, req.Name)
+	groupID := fmt.Sprintf("%v", group.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.db.GetUserByUsername(h.ctx, req.Username)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		fmt.Println("No user found with that ID")
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = h.db.InsertUserGroup(h.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: group.ID, Valid: true}, Admin: true})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.hub.Groups[groupID] = &Group{
+		ID:      groupID,
 		Name:    req.Name,
-		Admin:   req.User,
 		Clients: make(map[string]*Client),
 	}
 
-	res := CreateRoomResponse{
-		Admin: req.User,
-		Name:  req.Name,
-		ID:    id,
+	res := CreateGroupResponse{
+		Name: req.Name,
+		ID:   groupID,
 	}
 
 	c.JSON(http.StatusOK, res)
@@ -62,28 +104,71 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (h *Handler) JoinRoom(c *gin.Context) {
+func (h *Handler) JoinGroup(c *gin.Context) {
+	groupID := c.Param("groupID")
+	ID, err := strconv.Atoi(groupID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	int32GroupID := int32(ID)
+
+	username := c.Query("username")
+
+	user, err := h.db.GetUserByUsername(h.ctx, username)
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	_, err = h.db.GetUserGroupByGroupIDAndUserID(h.ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: int32GroupID, Valid: true}})
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			_, err = h.db.InsertUserGroup(h.ctx, db.InsertUserGroupParams{
+				UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+				GroupID: pgtype.Int4{Int32: int32GroupID, Valid: true},
+			})
+			if err != nil {
+				fmt.Println("InsertUserGroup error: ", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	group, err := h.db.GetGroupById(h.ctx, int32GroupID)
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
-	roomID := c.Param("roomID")
-	clientID := c.Query("userID")
-	username := c.Query("username")
-
-	user := &User{
-		Username: username,
-	}
-
 	cl := &Client{
 		Conn:    conn,
-		RoomID:  roomID,
-		ID:      clientID,
 		Message: make(chan *Message, 10),
-		User:    *user,
+		GroupID: groupID,
+		User:    user,
 	}
-
+	h.InitializeGroup(groupID, group.Name)
 	// join new user and
 	h.hub.Register <- cl
 
@@ -91,59 +176,75 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 	cl.readMessage(h.hub)
 }
 
-type CreateAndJoinRoomRequest struct {
-	Name     string `json:"name"`
-	ClientID string `json:"userID"`
-	User     User   `json:"user"`
+func (h *Handler) InitializeGroup(groupID string, name string) {
+	if _, ok := h.hub.Groups[groupID]; !ok {
+		h.hub.Groups[groupID] = &Group{
+			ID:      groupID,
+			Name:    name,
+			Clients: make(map[string]*Client),
+		}
+	}
 }
 
-type CreateAndJoinRoomResponse struct {
-	Room     RoomRes `json:"room"`
-	ClientID string  `json:"userID"`
-	User     User    `json:"user"`
-}
-
-func (h *Handler) CreateAndJoinRoom(c *gin.Context) {
-	var req CreateAndJoinRoomRequest
+func (h *Handler) CreateAndJoinGroup(c *gin.Context) {
+	var req CreateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id := fmt.Sprintf("%v", rand.IntN(2000))
-	h.hub.Rooms[id] = &Room{
-		ID:      id,
-		Name:    req.Name,
-		Admin:   req.User,
+
+	user, err := h.db.GetUserByUsername(h.ctx, req.Username)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		fmt.Println("No user found with that ID")
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	group, err := h.db.InsertGroup(h.ctx, req.Name)
+	groupID := fmt.Sprintf("%v", group.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = h.db.InsertUserGroup(h.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: group.ID, Valid: true}, Admin: true})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.hub.Groups[groupID] = &Group{
+		ID:      groupID,
+		Name:    group.Name,
 		Clients: make(map[string]*Client),
 	}
 
-	room := RoomRes{
-		Admin: req.User,
-		Name:  req.Name,
-		ID:    id,
+	h.hub.Groups[groupID] = &Group{
+		ID:      groupID,
+		Name:    group.Name,
+		Clients: make(map[string]*Client),
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	}
-
-	user := &User{
-		Username: req.User.Username,
+		return
 	}
 
 	cl := &Client{
 		Conn:    conn,
-		RoomID:  room.ID,
-		ID:      req.ClientID,
+		GroupID: groupID,
 		Message: make(chan *Message, 10),
-		User:    *user,
+		User:    user,
 	}
 
-	res := CreateAndJoinRoomResponse{
-		Room:     room,
-		ClientID: req.ClientID,
-		User:     req.User,
+	res := CreateGroupResponse{
+		Name: group.Name,
+		ID:   groupID,
 	}
 
 	h.hub.Register <- cl
@@ -155,69 +256,31 @@ func (h *Handler) CreateAndJoinRoom(c *gin.Context) {
 
 }
 
-type RoomRes struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Admin User   `json:"admin"`
-}
+func (h *Handler) GetGroups(c *gin.Context) {
+	groups, err := h.db.GetAllGroups(h.ctx)
 
-func RoomResCompare(a RoomRes, b RoomRes) int {
-	aInt, errA := strconv.Atoi(a.ID)
-	if errA != nil {
-		return 0
-	}
-	bInt, errB := strconv.Atoi(b.ID)
-	if errB != nil {
-		return 0
-	}
-	return cmp.Compare(aInt, bInt)
-}
-
-func (h *Handler) GetRooms(c *gin.Context) {
-	rooms := make([]RoomRes, 0)
-
-	for _, r := range h.hub.Rooms {
-		rooms = append(rooms, RoomRes{
-			ID:    r.ID,
-			Name:  r.Name,
-			Admin: r.Admin,
-		})
-	}
-	slices.SortFunc(rooms, RoomResCompare)
-	c.JSON(http.StatusOK, rooms)
-}
-
-type ClientRes struct {
-	ID   string `json:"id"`
-	User User   `json:"user"`
-}
-
-func ClientResCompare(a ClientRes, b RoomRes) int {
-	aInt, errA := strconv.Atoi(a.ID)
-	if errA != nil {
-		return 0
-	}
-	bInt, errB := strconv.Atoi(b.ID)
-	if errB != nil {
-		return 0
-	}
-	return cmp.Compare(aInt, bInt)
-}
-
-func (h *Handler) GetClients(c *gin.Context) {
-	clients := make([]ClientRes, 0)
-	roomID := c.Param("roomID")
-
-	if _, ok := h.hub.Rooms[roomID]; !ok {
-		c.JSON(http.StatusOK, clients)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
 		return
 	}
-	for _, c := range h.hub.Rooms[roomID].Clients {
-		clients = append(clients, ClientRes{
-			ID:   c.ID,
-			User: c.User,
-		})
+
+	c.JSON(http.StatusOK, groups)
+}
+
+func (h *Handler) GetUsersInGroup(c *gin.Context) {
+	ID, err := strconv.Atoi(c.Param("groupID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	groupID := int32(ID)
+
+	users, err := h.db.GetAllUsersInGroup(h.ctx, groupID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	c.JSON(http.StatusOK, clients)
+	c.JSON(http.StatusOK, users)
 }

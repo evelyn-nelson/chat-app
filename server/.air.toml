@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+watch_dir = "."
+
+[color]
+  main = "yellow"
+  watcher = "cyan"
+  runner = "green"
+  
+[build]
+  bin = "tmp/main"
+  cmd = "go build -o tmp/main main.go" 
+  include_ext = ["go"]
+  exclude_dir = ["tmp"]
+
+[run]
+  cmd = "./tmp/main"  

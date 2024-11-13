@@ -20,20 +20,20 @@ export type BubbleProps = {
   align: string;
 };
 
-export default function ChatBox(props: { user: User; roomID: string }) {
-  const { user, roomID } = props;
+export default function ChatBox(props: { user: User; groupID: string }) {
+  const { user, groupID } = props;
   const [bubbles, setBubbles] = useState<BubbleProps[]>([]);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { height: windowHeight } = useWindowDimensions();
-  const { onMessage, removeMessageHandler, joinRoom, leaveRoom } =
+  const { onMessage, removeMessageHandler, joinGroup, leaveGroup } =
     useWebSocket();
   const messageHandlerRef = useRef<(message: Message) => void>();
 
   useEffect(() => {
-    const setupRoom = async () => {
+    const setupGroup = async () => {
       try {
-        await joinRoom(roomID, user);
+        await joinGroup(groupID, user);
         const handleNewMessage = (message: Message) => {
           const align =
             message.user.username === user.username ? "right" : "left";
@@ -51,14 +51,14 @@ export default function ChatBox(props: { user: User; roomID: string }) {
         messageHandlerRef.current = handleNewMessage;
         onMessage(handleNewMessage);
       } catch (error) {
-        console.error("Error joining room: ", error);
+        console.error("Error joining group: ", error);
       }
     };
 
-    setupRoom();
+    setupGroup();
 
     return () => {
-      leaveRoom();
+      leaveGroup();
       if (messageHandlerRef.current) {
         removeMessageHandler(messageHandlerRef.current);
       }

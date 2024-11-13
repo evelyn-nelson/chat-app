@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"chat-app-server/db"
 	"fmt"
 	"log"
 
@@ -10,19 +11,14 @@ import (
 type Client struct {
 	Conn    *websocket.Conn
 	Message chan *Message
-	ID      string `json:"id"`
-	RoomID  string `json:"roomID"`
-	User    User   `json:"user"`
+	GroupID string  `json:"groupID"`
+	User    db.User `json:"user"`
 }
 
 type Message struct {
-	Content string `json:"content"`
-	RoomID  string `json:"roomID"`
-	User    User   `json:"user"`
-}
-
-type User struct {
-	Username string `json:"username"`
+	Content string  `json:"content"`
+	GroupID string  `json:"groupID"`
+	User    db.User `json:"user"`
 }
 
 func (c *Client) writeMessage() {
@@ -34,6 +30,8 @@ func (c *Client) writeMessage() {
 		if !ok {
 			return
 		}
+		fmt.Println("@@@")
+		fmt.Println(msg)
 		c.Conn.WriteJSON(msg)
 	}
 }
@@ -55,10 +53,9 @@ func (c *Client) readMessage(hub *Hub) {
 
 		msg := &Message{
 			Content: string(m),
-			RoomID:  c.RoomID,
+			GroupID: c.GroupID,
 			User:    c.User,
 		}
-		fmt.Println("broadcasting msg", msg)
 		hub.Broadcast <- msg
 	}
 }

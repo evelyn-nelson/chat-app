@@ -1,12 +1,12 @@
-import { Room, User } from "@/types/types";
+import { Group, User } from "@/types/types";
 import { Dispatch, SetStateAction, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useWebSocket } from "../context/WebSocketContext";
 import { router } from "expo-router";
 
 export const ChatCreate = (props: { user: User }) => {
-  const [roomName, setRoomName] = useState<string>("");
-  const { createRoom } = useWebSocket();
+  const [groupName, setGroupName] = useState<string>("");
+  const { createGroup } = useWebSocket();
   const { user } = props;
 
   return (
@@ -14,17 +14,17 @@ export const ChatCreate = (props: { user: User }) => {
       <TextInput
         style={styles.input}
         onChangeText={(event) => {
-          setRoomName(event);
+          setGroupName(event);
         }}
         onSubmitEditing={async () => {
-          const room = await createRoom(roomName, user);
-          setRoomName("");
-          if (room) {
-            router.push({ pathname: "/room/[id]", params: { id: room.id } });
+          const group = await createGroup(groupName, user);
+          setGroupName("");
+          if (group) {
+            router.push({ pathname: "/group/[id]", params: { id: group.id } });
           }
         }}
-        value={roomName}
-        placeholder="Create new chat room"
+        value={groupName}
+        placeholder="Create new chat group"
       />
     </View>
   );

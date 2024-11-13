@@ -3,17 +3,18 @@ import { useGlobalState } from "@/components/context/GlobalStateContext";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
-const RoomPage = () => {
+const GroupPage = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, rooms } = useGlobalState();
-  const getRoom = () => {
-    for (let i = 0; i < rooms.length; i++) {
-      if (rooms[i].id === id) {
-        return rooms[i];
+  const { user, groups } = useGlobalState();
+  const getGroup = () => {
+    console.log(groups)
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].id.toString() === id) {
+        return groups[i];
       }
     }
   };
-  const room = getRoom();
+  const group = getGroup();
   if (!user) {
     return (
       <View style={styles.chatBoxContainer}>
@@ -21,16 +22,15 @@ const RoomPage = () => {
       </View>
     );
   }
-
   return (
     <View style={styles.chatBoxContainer}>
-      <Stack.Screen options={{ title: room?.name ?? "Loading..." }} />
-      {user && <ChatBox user={user} roomID={id} />}
+      <Stack.Screen options={{ title: group?.name ?? "Loading..." }} />
+      {user && <ChatBox user={user} groupID={id} />}
     </View>
   );
 };
 
-export default RoomPage;
+export default GroupPage;
 
 const styles = StyleSheet.create({
   chatBoxContainer: {
