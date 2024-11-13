@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     height: "auto",
     width: 150,
     borderWidth: 2,
-    borderRadius: 25,
+    borderRadius: 20,
     overflow: "hidden",
   },
   chatBubbleLeft: {
@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
     textAlign: "left",
     marginTop: "auto",
     marginBottom: "auto",
+    marginLeft: 5,
     padding: 6,
     maxWidth: 140,
     flexWrap: "wrap",
