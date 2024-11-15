@@ -36,14 +36,13 @@ services:
         "up",
       ]
       # if migrating down
-      # command:
       # [
       #   "-path",
       #   "/db/migrations",
       #   "-database",
       #   "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/postgres?sslmode=disable",
       #   "down",
-      #   "1"
+      #   "1",
       # ]
     depends_on:
       - db

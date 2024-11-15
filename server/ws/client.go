@@ -11,14 +11,14 @@ import (
 type Client struct {
 	Conn    *websocket.Conn
 	Message chan *Message
-	GroupID string  `json:"groupID"`
-	User    db.User `json:"user"`
+	GroupID string            `json:"groupID"`
+	User    db.GetUserByIdRow `json:"user"`
 }
 
 type Message struct {
-	Content string  `json:"content"`
-	GroupID string  `json:"groupID"`
-	User    db.User `json:"user"`
+	Content string            `json:"content"`
+	GroupID string            `json:"groupID"`
+	User    db.GetUserByIdRow `json:"user"`
 }
 
 func (c *Client) writeMessage() {
@@ -45,7 +45,7 @@ func (c *Client) readMessage(hub *Hub) {
 	for {
 		_, m, err := c.Conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
 			break

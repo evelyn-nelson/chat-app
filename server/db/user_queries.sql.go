@@ -12,21 +12,30 @@ import (
 )
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT "id", "username", "created_at", "updated_at" FROM users
+SELECT "id", "username", "email", "created_at", "updated_at" FROM users
 `
 
-func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
+type GetAllUsersRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 	rows, err := q.db.Query(ctx, getAllUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	var items []GetAllUsersRow
 	for rows.Next() {
-		var i User
+		var i GetAllUsersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Username,
+			&i.Email,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -84,16 +93,92 @@ func (q *Queries) GetAllUsersInGroup(ctx context.Context, id int32) ([]GetAllUse
 	return items, nil
 }
 
-const getUserById = `-- name: GetUserById :one
-SELECT "id", "username", "created_at", "updated_at" FROM users WHERE id = $1
+const getAllUsersInternal = `-- name: GetAllUsersInternal :many
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users
 `
 
-func (q *Queries) GetUserById(ctx context.Context, id int32) (User, error) {
+type GetAllUsersInternalRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	Password  pgtype.Text      `json:"password"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetAllUsersInternal(ctx context.Context) ([]GetAllUsersInternalRow, error) {
+	rows, err := q.db.Query(ctx, getAllUsersInternal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllUsersInternalRow
+	for rows.Next() {
+		var i GetAllUsersInternalRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.Password,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserById = `-- name: GetUserById :one
+SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE id = $1
+`
+
+type GetUserByIdRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserById(ctx context.Context, id int32) (GetUserByIdRow, error) {
 	row := q.db.QueryRow(ctx, getUserById, id)
-	var i User
+	var i GetUserByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByIdInternal = `-- name: GetUserByIdInternal :one
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE id = $1
+`
+
+type GetUserByIdInternalRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	Password  pgtype.Text      `json:"password"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByIdInternal(ctx context.Context, id int32) (GetUserByIdInternalRow, error) {
+	row := q.db.QueryRow(ctx, getUserByIdInternal, id)
+	var i GetUserByIdInternalRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -101,15 +186,51 @@ func (q *Queries) GetUserById(ctx context.Context, id int32) (User, error) {
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT "id", "username", "created_at", "updated_at" FROM users WHERE username = $1
+SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE username = $1
 `
 
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+type GetUserByUsernameRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error) {
 	row := q.db.QueryRow(ctx, getUserByUsername, username)
-	var i User
+	var i GetUserByUsernameRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByUsernameInternal = `-- name: GetUserByUsernameInternal :one
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE username = $1
+`
+
+type GetUserByUsernameInternalRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	Password  pgtype.Text      `json:"password"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByUsernameInternal(ctx context.Context, username string) (GetUserByUsernameInternalRow, error) {
+	row := q.db.QueryRow(ctx, getUserByUsernameInternal, username)
+	var i GetUserByUsernameInternalRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -117,15 +238,58 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const insertUser = `-- name: InsertUser :one
-INSERT INTO users (username) VALUES ($1) RETURNING id, username, created_at, updated_at
+INSERT INTO users (username, email) VALUES ($1, $2) RETURNING id, username, created_at, updated_at, email, password
 `
 
-func (q *Queries) InsertUser(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRow(ctx, insertUser, username)
+type InsertUserParams struct {
+	Username string      `json:"username"`
+	Email    pgtype.Text `json:"email"`
+}
+
+func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, insertUser, arg.Username, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.Password,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users 
+SET
+    "username" = coalesce($1, "username"),
+    "email" = coalesce($2, "email")
+WHERE id = $3
+RETURNING "id", "username", "email", "created_at", "updated_at"
+`
+
+type UpdateUserParams struct {
+	Username pgtype.Text `json:"username"`
+	Email    pgtype.Text `json:"email"`
+	ID       int32       `json:"id"`
+}
+
+type UpdateUserRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
+	row := q.db.QueryRow(ctx, updateUser, arg.Username, arg.Email, arg.ID)
+	var i UpdateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

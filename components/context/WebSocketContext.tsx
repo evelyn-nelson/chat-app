@@ -125,7 +125,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const leaveGroup = () => {
     if (socketRef.current) {
-      socketRef.current.close(1001);
+      socketRef.current.close();
     }
   };
 

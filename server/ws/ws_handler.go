@@ -22,34 +22,8 @@ type Handler struct {
 	conn *pgx.Conn
 }
 
-func NewHandler(h *Hub) *Handler {
-	ctx := context.Background()
-
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DB_URL"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
-	}
-
-	db := db.New(conn)
+func NewHandler(h *Hub, db *db.Queries, ctx context.Context, conn *pgx.Conn) *Handler {
 	return &Handler{hub: h, db: db, ctx: ctx, conn: conn}
-}
-
-func (h *Handler) Close() {
-	if h.conn != nil {
-		h.conn.Close(h.ctx)
-	}
-}
-
-type CreateGroupRequest struct {
-	Name string `json:"name"`
-	// UserID string `json:"userID"`
-	Username string `json:"username"`
-}
-
-type CreateGroupResponse struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
 }
 
 func (h *Handler) CreateGroup(c *gin.Context) {
@@ -82,11 +56,7 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		return
 	}
 
-	h.hub.Groups[groupID] = &Group{
-		ID:      groupID,
-		Name:    req.Name,
-		Clients: make(map[string]*Client),
-	}
+	h.InitializeGroup(groupID, group.Name)
 
 	res := CreateGroupResponse{
 		Name: req.Name,
@@ -166,7 +136,7 @@ func (h *Handler) JoinGroup(c *gin.Context) {
 		Conn:    conn,
 		Message: make(chan *Message, 10),
 		GroupID: groupID,
-		User:    user,
+		User:    db.GetUserByIdRow(user),
 	}
 	h.InitializeGroup(groupID, group.Name)
 	// join new user and
@@ -217,17 +187,7 @@ func (h *Handler) CreateAndJoinGroup(c *gin.Context) {
 		return
 	}
 
-	h.hub.Groups[groupID] = &Group{
-		ID:      groupID,
-		Name:    group.Name,
-		Clients: make(map[string]*Client),
-	}
-
-	h.hub.Groups[groupID] = &Group{
-		ID:      groupID,
-		Name:    group.Name,
-		Clients: make(map[string]*Client),
-	}
+	h.InitializeGroup(groupID, group.Name)
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -239,7 +199,7 @@ func (h *Handler) CreateAndJoinGroup(c *gin.Context) {
 		Conn:    conn,
 		GroupID: groupID,
 		Message: make(chan *Message, 10),
-		User:    user,
+		User:    db.GetUserByIdRow(user),
 	}
 
 	res := CreateGroupResponse{

@@ -1,6 +1,7 @@
 package router
 
 import (
+	"chat-app-server/server"
 	"chat-app-server/ws"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 
 var r *gin.Engine
 
-func InitRouter(wsHandler *ws.Handler) {
+func InitRouter(wsHandler *ws.Handler, api *server.API) {
 	r = gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -24,6 +25,10 @@ func InitRouter(wsHandler *ws.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
+	r.GET("/api/users", api.GetUsers)
+	r.GET("/api/users/:userID", api.GetUser)
+	r.POST("/api/users", api.CreateUser)
+	r.PUT("/api/users/:userID", api.UpdateUser)
 
 	r.POST("/ws/createGroup", wsHandler.CreateGroup)
 	r.GET("/ws/joinGroup/:groupID", wsHandler.JoinGroup)
