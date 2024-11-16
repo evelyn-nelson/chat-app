@@ -6,110 +6,109 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (api *API) CreateUser(c *gin.Context) {
-	var req CreateUserRequest
+func (api *API) CreateGroup(c *gin.Context) {
+	var req CreateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user, err := api.db.InsertUser(api.ctx, db.InsertUserParams{Username: req.Username, Email: pgtype.Text{String: req.Email, Valid: true}})
+	group, err := api.db.InsertGroup(api.ctx, req.Name)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	res := &CreateUserResponse{
-		User: user,
+	res := &CreateGroupResponse{
+		Group: group,
 	}
 
 	c.JSON(http.StatusOK, res)
 }
 
-func (api *API) GetUsers(c *gin.Context) {
-	users, err := api.db.GetAllUsers(api.ctx)
+func (api *API) GetGroups(c *gin.Context) {
+	groups, err := api.db.GetAllGroups(api.ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	res := &GetUsersResponse{
-		Users: users,
+	res := &GetGroupsResponse{
+		Groups: groups,
 	}
 
 	c.JSON(http.StatusOK, res)
 }
 
-func (api *API) GetUser(c *gin.Context) {
-	ID, err := strconv.Atoi(c.Param("userID"))
+func (api *API) GetGroup(c *gin.Context) {
+	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	userID := int32(ID)
+	GroupID := int32(ID)
 
-	user, err := api.db.GetUserById(api.ctx, userID)
+	group, err := api.db.GetGroupById(api.ctx, GroupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	res := &GetUserResponse{
-		User: user,
+	res := &GetGroupResponse{
+		Group: group,
 	}
 
 	c.JSON(http.StatusOK, res)
 }
 
-func (api *API) UpdateUser(c *gin.Context) {
-	ID, err := strconv.Atoi(c.Param("userID"))
+func (api *API) UpdateGroup(c *gin.Context) {
+	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	userID := int32(ID)
+	GroupID := int32(ID)
 
-	var req UpdateUserRequest
+	var req UpdateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user, err := api.db.UpdateUser(api.ctx, db.UpdateUserParams{Username: req.Username, Email: req.Email, ID: userID})
+	group, err := api.db.UpdateGroup(api.ctx, db.UpdateGroupParams{Name: req.Name, ID: GroupID})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	res := &UpdateUserResponse{
-		User: user,
+	res := &UpdateGroupResponse{
+		Group: group,
 	}
 
 	c.JSON(http.StatusOK, res)
 }
 
-func (api *API) DeleteUser(c *gin.Context) {
-	ID, err := strconv.Atoi(c.Param("userID"))
+func (api *API) DeleteGroup(c *gin.Context) {
+	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	userID := int32(ID)
+	GroupID := int32(ID)
 
-	user, err := api.db.DeleteUser(api.ctx, userID)
+	group, err := api.db.DeleteGroup(api.ctx, GroupID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	res := &DeleteUserResponse{
-		User: user,
+	res := &DeleteGroupResponse{
+		Group: group,
 	}
 
 	c.JSON(http.StatusOK, res)

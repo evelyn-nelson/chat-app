@@ -15,3 +15,14 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 
 -- name: InsertUserGroup :one
 INSERT INTO user_groups ("user_id", "group_id", "admin") VALUES ($1, $2, $3) RETURNING *;
+
+-- name: UpdateUserGroup :one
+UPDATE user_groups
+SET
+    "admin" = $3
+WHERE user_id = $1 AND group_id = $2
+RETURNING "id", "user_id", "group_id", "admin", "created_at", "updated_at";
+
+-- name: DeleteUserGroup :one
+DELETE FROM user_groups
+WHERE user_id = $1 AND group_id = $2 RETURNING "id", "user_id", "group_id", "admin", "created_at", "updated_at";

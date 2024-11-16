@@ -9,6 +9,23 @@ import (
 	"context"
 )
 
+const deleteGroup = `-- name: DeleteGroup :one
+DELETE FROM groups
+WHERE id = $1 RETURNING "id", "name", "created_at", "updated_at"
+`
+
+func (q *Queries) DeleteGroup(ctx context.Context, id int32) (Group, error) {
+	row := q.db.QueryRow(ctx, deleteGroup, id)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllGroups = `-- name: GetAllGroups :many
 SELECT "id", "name", "created_at", "updated_at" FROM groups
 `
@@ -60,6 +77,31 @@ INSERT INTO groups ("name") VALUES ($1) RETURNING id, name, created_at, updated_
 
 func (q *Queries) InsertGroup(ctx context.Context, name string) (Group, error) {
 	row := q.db.QueryRow(ctx, insertGroup, name)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateGroup = `-- name: UpdateGroup :one
+UPDATE groups
+SET
+    "name" = $2
+WHERE id = $1
+RETURNING "id", "name", "created_at", "updated_at"
+`
+
+type UpdateGroupParams struct {
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group, error) {
+	row := q.db.QueryRow(ctx, updateGroup, arg.ID, arg.Name)
 	var i Group
 	err := row.Scan(
 		&i.ID,
