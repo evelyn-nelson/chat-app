@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteUser = `-- name: DeleteUser :one
+DELETE FROM users
+WHERE id = $1 RETURNING "id", "username", "email", "created_at", "updated_at"
+`
+
+type DeleteUserRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) DeleteUser(ctx context.Context, id int32) (DeleteUserRow, error) {
+	row := q.db.QueryRow(ctx, deleteUser, id)
+	var i DeleteUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllUsers = `-- name: GetAllUsers :many
 SELECT "id", "username", "email", "created_at", "updated_at" FROM users
 `
@@ -238,7 +264,7 @@ func (q *Queries) GetUserByUsernameInternal(ctx context.Context, username string
 }
 
 const insertUser = `-- name: InsertUser :one
-INSERT INTO users (username, email) VALUES ($1, $2) RETURNING id, username, created_at, updated_at, email, password
+INSERT INTO users (username, email) VALUES ($1, $2) RETURNING "id", "username", "email", "created_at", "updated_at"
 `
 
 type InsertUserParams struct {
@@ -246,16 +272,23 @@ type InsertUserParams struct {
 	Email    pgtype.Text `json:"email"`
 }
 
-func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
+type InsertUserRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (InsertUserRow, error) {
 	row := q.db.QueryRow(ctx, insertUser, arg.Username, arg.Email)
-	var i User
+	var i InsertUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Email,
-		&i.Password,
 	)
 	return i, err
 }

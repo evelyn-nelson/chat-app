@@ -24,7 +24,7 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE username = $1;
 
 -- name: InsertUser :one
-INSERT INTO users (username, email) VALUES ($1, $2) RETURNING *;
+INSERT INTO users (username, email) VALUES ($1, $2) RETURNING "id", "username", "email", "created_at", "updated_at";
 
 -- name: UpdateUser :one
 UPDATE users 
@@ -33,3 +33,7 @@ SET
     "email" = coalesce(sqlc.narg('email'), "email")
 WHERE id = sqlc.arg('id')
 RETURNING "id", "username", "email", "created_at", "updated_at";
+
+-- name: DeleteUser :one
+DELETE FROM users
+WHERE id = $1 RETURNING "id", "username", "email", "created_at", "updated_at";

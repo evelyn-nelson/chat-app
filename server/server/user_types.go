@@ -12,7 +12,7 @@ type CreateUserRequest struct {
 }
 
 type CreateUserResponse struct {
-	User db.User `json:"user"`
+	User db.InsertUserRow `json:"user"`
 }
 
 type GetUsersResponse struct {
@@ -30,4 +30,8 @@ type UpdateUserRequest struct {
 
 type UpdateUserResponse struct {
 	User db.UpdateUserRow `json:"user"`
+}
+
+type DeleteUserResponse struct {
+	User db.DeleteUserRow `json:"user"`
 }
