@@ -159,6 +159,33 @@ func (q *Queries) GetAllUsersInternal(ctx context.Context) ([]GetAllUsersInterna
 	return items, nil
 }
 
+const getUserByEmailInternal = `-- name: GetUserByEmailInternal :one
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE email = $1
+`
+
+type GetUserByEmailInternalRow struct {
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Email     pgtype.Text      `json:"email"`
+	Password  pgtype.Text      `json:"password"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByEmailInternal(ctx context.Context, email pgtype.Text) (GetUserByEmailInternalRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmailInternal, email)
+	var i GetUserByEmailInternalRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserById = `-- name: GetUserById :one
 SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE id = $1
 `
@@ -230,33 +257,6 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 		&i.ID,
 		&i.Username,
 		&i.Email,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getUserByUsernameInternal = `-- name: GetUserByUsernameInternal :one
-SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE username = $1
-`
-
-type GetUserByUsernameInternalRow struct {
-	ID        int32            `json:"id"`
-	Username  string           `json:"username"`
-	Email     pgtype.Text      `json:"email"`
-	Password  pgtype.Text      `json:"password"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-}
-
-func (q *Queries) GetUserByUsernameInternal(ctx context.Context, username string) (GetUserByUsernameInternalRow, error) {
-	row := q.db.QueryRow(ctx, getUserByUsernameInternal, username)
-	var i GetUserByUsernameInternalRow
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.Email,
-		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

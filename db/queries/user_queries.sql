@@ -20,8 +20,8 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 -- name: GetUserByIdInternal :one
 SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE id = $1;
 
--- name: GetUserByUsernameInternal :one
-SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE username = $1;
+-- name: GetUserByEmailInternal :one
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE email = $1;
 
 -- name: InsertUser :one
 INSERT INTO users (username, email) VALUES ($1, $2) RETURNING "id", "username", "email", "created_at", "updated_at";

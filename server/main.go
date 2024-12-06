@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chat-app-server/auth"
 	"chat-app-server/db"
 	"chat-app-server/router"
 	"chat-app-server/server"
@@ -22,6 +23,8 @@ func main() {
 	}
 	db := db.New(conn)
 
+	authHandler := auth.NewAuthHandler(db, ctx, conn)
+
 	hub := ws.NewHub()
 	wsHandler := ws.NewHandler(hub, db, ctx, conn)
 	go hub.Run()
@@ -30,6 +33,6 @@ func main() {
 
 	defer conn.Close(ctx)
 
-	router.InitRouter(wsHandler, api)
+	router.InitRouter(authHandler, wsHandler, api)
 	router.Start(":8080")
 }
