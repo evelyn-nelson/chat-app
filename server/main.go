@@ -25,9 +25,9 @@ func main() {
 
 	authHandler := auth.NewAuthHandler(db, ctx, conn)
 
-	hub := ws.NewHub()
+	hub := ws.NewHub(db, ctx, conn)
 	wsHandler := ws.NewHandler(hub, db, ctx, conn)
-	go hub.Run()
+	go hub.Run(db, ctx)
 
 	api := server.NewAPI(db, ctx, conn)
 

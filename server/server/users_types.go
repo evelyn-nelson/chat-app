@@ -6,15 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CreateUserRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-}
-
-type CreateUserResponse struct {
-	User db.InsertUserRow `json:"user"`
-}
-
 type GetUsersResponse struct {
 	Users []db.GetAllUsersRow `json:"users"`
 }

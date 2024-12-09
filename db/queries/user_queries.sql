@@ -7,12 +7,21 @@ SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE id
 -- name: GetUserByUsername :one
 SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE username = $1;
 
+-- name: GetUserByEmail :one
+SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE email = $1;
+
 -- name: GetAllUsersInGroup :many
 SELECT users.id AS user_id, users.username, groups.id AS group_id, groups.name, user_groups.admin, user_groups.created_at AS joined_at
 FROM users 
 JOIN user_groups ON user_groups.user_id = users.id 
 JOIN groups ON groups.id = user_groups.group_id
 WHERE groups.id = $1;
+
+-- name: GetUsersByEmails :many
+SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY(sqlc.arg('emails')::string[]);
+
+-- name: GetUsersByIDs :many
+SELECT id, username, email, created_at, updated_at FROM users WHERE id = ANY(sqlc.arg('ids')::int[]);
 
 -- name: GetAllUsersInternal :many
 SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users;
@@ -24,7 +33,7 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE email = $1;
 
 -- name: InsertUser :one
-INSERT INTO users (username, email) VALUES ($1, $2) RETURNING "id", "username", "email", "created_at", "updated_at";
+INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING "id", "username", "email", "created_at", "updated_at";
 
 -- name: UpdateUser :one
 UPDATE users 

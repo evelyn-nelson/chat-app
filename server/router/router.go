@@ -27,6 +27,11 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 		MaxAge: 12 * time.Hour,
 	}))
 
+	// auth routes group
+	authRoutes := r.Group("/auth/")
+	authRoutes.POST("/signup", authHandler.Signup)
+	authRoutes.POST("/login", authHandler.Login)
+
 	// CRUD routes group
 	apiRoutes := r.Group("/api/")
 	apiRoutes.Use(auth.JWTAuthMiddleware())
@@ -34,7 +39,6 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	// User CRUD routes
 	apiRoutes.GET("/users", api.GetUsers)
 	apiRoutes.GET("/users/:userID", api.GetUser)
-	apiRoutes.POST("/users", api.CreateUser)
 	apiRoutes.PUT("/users/:userID", api.UpdateUser)
 	apiRoutes.DELETE("/users/:userID", api.DeleteUser)
 
@@ -56,9 +60,10 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	wsRoutes := r.Group("/ws/")
 	wsRoutes.Use(auth.JWTAuthMiddleware())
 
+	wsRoutes.POST("/initialize", wsHandler.EstablishConnection)
 	wsRoutes.POST("/createGroup", wsHandler.CreateGroup)
-	wsRoutes.GET("/joinGroup/:groupID", wsHandler.JoinGroup)
-	wsRoutes.POST("/createAndJoinGroup", wsHandler.CreateAndJoinGroup)
+	wsRoutes.POST("/inviteUserToGroup", wsHandler.InviteUsersToGroup)
+	wsRoutes.POST("/removeUserFromGroup", wsHandler.RemoveUserFromGroup)
 	wsRoutes.GET("/getGroups", wsHandler.GetGroups)
 	wsRoutes.GET("/getUsersInGroup/:groupID", wsHandler.GetUsersInGroup)
 }

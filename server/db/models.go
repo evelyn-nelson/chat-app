@@ -29,7 +29,7 @@ type User struct {
 	Username  string           `json:"username"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-	Email     pgtype.Text      `json:"email"`
+	Email     string           `json:"email"`
 	Password  pgtype.Text      `json:"password"`
 }
 

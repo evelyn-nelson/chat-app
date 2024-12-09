@@ -224,7 +224,11 @@ func (q *Queries) GetUserGroupByID(ctx context.Context, id int32) (GetUserGroupB
 }
 
 const insertUserGroup = `-- name: InsertUserGroup :one
-INSERT INTO user_groups ("user_id", "group_id", "admin") VALUES ($1, $2, $3) RETURNING id, user_id, group_id, created_at, updated_at, admin
+INSERT INTO user_groups 
+    ("user_id", "group_id", "admin") 
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, group_id) DO NOTHING
+RETURNING id, user_id, group_id, created_at, updated_at, admin
 `
 
 type InsertUserGroupParams struct {

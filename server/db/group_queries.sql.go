@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteGroup = `-- name: DeleteGroup :one
@@ -69,6 +71,47 @@ func (q *Queries) GetGroupById(ctx context.Context, id int32) (Group, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getGroupsForUser = `-- name: GetGroupsForUser :many
+SELECT groups.id, groups.name, groups.created_at, ug.admin, groups.updated_at FROM groups
+JOIN user_groups ug ON ug.group_id = groups.id
+JOIN users u ON u.id = ug.user_id
+WHERE u.id = $1
+`
+
+type GetGroupsForUserRow struct {
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	Admin     bool             `json:"admin"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsForUserRow, error) {
+	rows, err := q.db.Query(ctx, getGroupsForUser, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetGroupsForUserRow
+	for rows.Next() {
+		var i GetGroupsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.Admin,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const insertGroup = `-- name: InsertGroup :one

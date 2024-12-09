@@ -2,11 +2,18 @@ package ws
 
 type CreateGroupRequest struct {
 	Name string `json:"name"`
-	// UserID string `json:"userID"`
-	Username string `json:"username"`
 }
 
-type CreateGroupResponse struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
+type JoinGroupRequest struct {
+	ID int32 `json:"id"`
+}
+
+type InviteUsersToGroupRequest struct {
+	GroupID int32    `json:"group_id"`
+	Emails  []string `json:"emails"`
+}
+
+type RemoveUserFromGroupRequest struct {
+	GroupID int32  `json:"group_id"`
+	Email   string `json:"email"`
 }

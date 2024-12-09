@@ -6,29 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgtype"
 )
-
-func (api *API) CreateUser(c *gin.Context) {
-	var req CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	user, err := api.db.InsertUser(api.ctx, db.InsertUserParams{Username: req.Username, Email: pgtype.Text{String: req.Email, Valid: true}})
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	res := &CreateUserResponse{
-		User: user,
-	}
-
-	c.JSON(http.StatusOK, res)
-}
 
 func (api *API) GetUsers(c *gin.Context) {
 	users, err := api.db.GetAllUsers(api.ctx)

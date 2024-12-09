@@ -14,7 +14,11 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE user_id = $1 AND group_id = $2;
 
 -- name: InsertUserGroup :one
-INSERT INTO user_groups ("user_id", "group_id", "admin") VALUES ($1, $2, $3) RETURNING *;
+INSERT INTO user_groups 
+    ("user_id", "group_id", "admin") 
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, group_id) DO NOTHING
+RETURNING *;
 
 -- name: UpdateUserGroup :one
 UPDATE user_groups
