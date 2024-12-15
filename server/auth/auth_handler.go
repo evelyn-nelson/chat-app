@@ -3,6 +3,7 @@ package auth
 import (
 	"chat-app-server/db"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -42,13 +43,6 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
-	// emailCheck, err := h.db.GetUserByEmailInternal(h.ctx, req.Email)
-	// if err == sql.ErrNoRows {
-	// } else if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	// 	return
-	// }
-
 	user, err := h.db.InsertUser(h.ctx, db.InsertUserParams{Username: req.Username, Email: req.Email, Password: pgtype.Text{String: string(hash), Valid: true}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Signup failed"})
@@ -71,6 +65,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
+	fmt.Println("here 0")
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
@@ -81,6 +76,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed"})
 		return
 	}
+	fmt.Println("here 1")
 
 	pwd := []byte(user.Password.String)
 	err = bcrypt.CompareHashAndPassword(pwd, []byte(req.Password))
@@ -88,6 +84,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed"})
 		return
 	}
+	fmt.Println("here 2")
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userID": user.ID,

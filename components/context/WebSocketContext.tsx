@@ -1,4 +1,4 @@
-import { Message, Group, User } from "@/types/types";
+import { Message, Group, User, UserGroup } from "@/types/types";
 import React, {
   createContext,
   useCallback,
@@ -7,6 +7,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import http from "../../util/custom-axios";
+import { get } from "@/util/custom-store";
 
 interface WebSocketContextType {
   sendMessage: (msg: string) => void;
@@ -14,18 +16,21 @@ interface WebSocketContextType {
   messages: Message[];
   onMessage: (callback: (message: Message) => void) => void;
   removeMessageHandler: (callback: (message: Message) => void) => void;
-  createGroup: (name: string, user: User) => Promise<Group | undefined>;
-  joinGroup: (groupID: string, user: User) => Promise<void>;
-  leaveGroup: () => void;
+  establishConnection: () => Promise<void>;
+  disconnect: () => void;
+  createGroup: (name: string) => Promise<Group | undefined>;
+  inviteUsersToGroup: (emails: string[], group_id: number) => void;
+  removeUserFromGroup: (email: string, group_id: number) => void;
+  leaveGroup: (group_id: number) => void;
   getGroups: () => Promise<Group[]>;
-  getUsers: (groupID: string) => Promise<User[]>;
+  // getUsers: () => Promise<User[]>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
   undefined
 );
 
-const baseURL = "localhost:8080/ws";
+const baseURL = `${process.env.EXPO_PUBLIC_HOST}/ws`;
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -51,52 +56,51 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     return Array.isArray(data) && data.every((item) => isGroup(item));
   };
 
-  const createGroup = async (name: string, user: User) => {
+  const createGroup = async (name: string): Promise<Group | undefined> => {
     if (socketRef.current) {
       socketRef.current.close();
     }
     const httpURL = `http://${baseURL}/createGroup`;
-    try {
-      const response = await fetch(httpURL, {
-        method: "POST",
-        body: JSON.stringify({
-          name: name,
-          username: user.username,
-        }),
+
+    const group = http
+      .post(httpURL, {
+        name: name,
+      })
+      .then((response) => {
+        const { data } = response;
+        return data;
+      })
+      .catch((error) => {
+        console.error("error: ", error);
+        return;
       });
-      if (!response.ok) {
-        throw new Error(`Response status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (!isGroup(data)) {
-        throw new Error("Invalid data format");
-      }
-      return data;
-    } catch (error) {
-      console.error(error);
-      return;
-    }
+
+    return group;
   };
 
-  const joinGroup = (groupID: string, user: User): Promise<void> => {
-    return new Promise((resolve, reject) => {
+  const establishConnection = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+      const token = await get("jwt");
       if (socketRef.current) {
         socketRef.current.close();
       }
-      const wsURL = `ws://${baseURL}/joinGroup/${groupID}?userID=${1}&username=${encodeURIComponent(user.username)}`;
+
+      const wsURL = `ws://${baseURL}/establishConnection/${token}`;
+
       const socket = new WebSocket(wsURL);
       socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log("WebSocket connected to group:", groupID);
+        console.log("WebSocket connected");
         setConnected(true);
         resolve();
       };
 
       socket.onmessage = (event) => {
+        console.log("event", event);
         try {
-          const content = JSON.parse(event.data).content;
-          const parsedMessage = JSON.parse(content);
+          const parsedMessage = JSON.parse(event.data);
+          console.log(parsedMessage);
           setMessages((prevMessages) => [...prevMessages, parsedMessage]);
           const currentHandlers = messageHandlersRef.current;
           currentHandlers.forEach((handler, index) => {
@@ -111,8 +115,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       };
 
-      socket.onclose = () => {
-        console.log("WebSocket closed");
+      socket.onclose = (event) => {
+        console.log("WebSocket closed", event);
         setConnected(false);
       };
 
@@ -123,47 +127,55 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const leaveGroup = () => {
+  const leaveGroup = async (group_id: number) => {
+    http.post(`http://${baseURL}/leaveGroup/${group_id}`).catch((error) => {
+      console.error(error);
+    });
+  };
+
+  const disconnect = () => {
     if (socketRef.current) {
       socketRef.current.close();
     }
   };
 
-  const getGroups = async (): Promise<Group[]> => {
-    try {
-      const response = await fetch(`http://${baseURL}/getGroups`);
-      if (!response.ok) {
-        throw new Error(`Response status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (!isGroupArray(data)) {
-        throw new Error("Invalid data format");
-      }
-      return data as Group[];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
+  const inviteUsersToGroup = async (emails: string[], group_id: number) => {
+    http
+      .post(`http://${baseURL}/inviteUsersToGroup`, {
+        group_id: group_id,
+        emails: emails,
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
 
-  const getUsers = async (groupID: string) => {
-    try {
-      const response = await fetch(
-        `http://${baseURL}/getUsersInGroup/${groupID}`
-      );
-      if (!response.ok) {
-        throw new Error(`Response status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (!isUsersArray(data)) {
-        throw new Error("Invalid data format");
-      }
-      return data as User[];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
+  const removeUserFromGroup = async (email: string, group_id: number) => {
+    http
+      .post(`http://${baseURL}/removeUserToGroup`, {
+        group_id: group_id,
+        email: email,
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
+
+  const getGroups = async (): Promise<Group[]> => {
+    const groups = http
+      .get(`http://${baseURL}/getGroups`)
+      .then((response) => {
+        const { data } = response;
+        return data;
+      })
+      .catch((error) => {
+        console.error(error);
+        return [];
+      });
+    return groups;
+  };
+
+  const getUsers = async () => {};
 
   const sendMessage = (msg: string) => {
     const socket = socketRef.current;
@@ -210,11 +222,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         messages,
         onMessage,
         removeMessageHandler,
+        establishConnection,
+        disconnect,
         createGroup,
-        joinGroup,
         leaveGroup,
+        inviteUsersToGroup,
+        removeUserFromGroup,
         getGroups,
-        getUsers,
+        // getUsers,
       }}
     >
       {children}

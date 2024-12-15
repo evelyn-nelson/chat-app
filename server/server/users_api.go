@@ -2,6 +2,7 @@ package server
 
 import (
 	"chat-app-server/db"
+	"chat-app-server/util"
 	"net/http"
 	"strconv"
 
@@ -41,6 +42,18 @@ func (api *API) GetUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, res)
+}
+
+func (api *API) WhoAmI(c *gin.Context) {
+	user, err := util.GetUser(c, api.db, api.ctx)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+
 }
 
 func (api *API) UpdateUser(c *gin.Context) {

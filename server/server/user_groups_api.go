@@ -2,7 +2,6 @@ package server
 
 import (
 	"chat-app-server/db"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -59,8 +58,6 @@ func (api *API) GetUserGroup(c *gin.Context) {
 		return
 	}
 	groupID32 := int32(groupID)
-	fmt.Println("userID", userID32)
-	fmt.Println("groupID", groupID32)
 	user_group, err := api.db.GetUserGroupByGroupIDAndUserID(api.ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

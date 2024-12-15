@@ -17,8 +17,8 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:8081", "http://192.168.1.12:8081", "http://192.168.1.32:8081"},
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Content-Type"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
@@ -37,6 +37,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	apiRoutes.Use(auth.JWTAuthMiddleware())
 
 	// User CRUD routes
+	apiRoutes.GET("/users/whoami", api.WhoAmI)
 	apiRoutes.GET("/users", api.GetUsers)
 	apiRoutes.GET("/users/:userID", api.GetUser)
 	apiRoutes.PUT("/users/:userID", api.UpdateUser)
@@ -60,12 +61,14 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	wsRoutes := r.Group("/ws/")
 	wsRoutes.Use(auth.JWTAuthMiddleware())
 
-	wsRoutes.POST("/initialize", wsHandler.EstablishConnection)
 	wsRoutes.POST("/createGroup", wsHandler.CreateGroup)
-	wsRoutes.POST("/inviteUserToGroup", wsHandler.InviteUsersToGroup)
+	wsRoutes.POST("/inviteUsersToGroup", wsHandler.InviteUsersToGroup)
 	wsRoutes.POST("/removeUserFromGroup", wsHandler.RemoveUserFromGroup)
 	wsRoutes.GET("/getGroups", wsHandler.GetGroups)
 	wsRoutes.GET("/getUsersInGroup/:groupID", wsHandler.GetUsersInGroup)
+	wsRoutes.POST("/leaveGroup/:groupID", wsHandler.LeaveGroup)
+
+	r.GET("/ws/establishConnection/:token", auth.WebsocketSubprotocolAuthMiddleware(), wsHandler.EstablishConnection)
 }
 
 func Start(addr string) error {

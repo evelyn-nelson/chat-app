@@ -14,39 +14,42 @@ import { useEffect, useRef, useState } from "react";
 import MessageEntry from "./MessageEntry";
 import { useWebSocket } from "../context/WebSocketContext";
 import { User, Message } from "@/types/types";
+import { useGlobalState } from "../context/GlobalStateContext";
 
 export type BubbleProps = {
   message: Message;
   align: string;
 };
 
-export default function ChatBox(props: { user: User; groupID: string }) {
-  const { user, groupID } = props;
+export default function ChatBox(props: { group_id: number }) {
+  const { group_id } = props;
+  const { user } = useGlobalState();
   const [bubbles, setBubbles] = useState<BubbleProps[]>([]);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { height: windowHeight } = useWindowDimensions();
-  const { onMessage, removeMessageHandler, joinGroup, leaveGroup } =
-    useWebSocket();
+  const { onMessage, removeMessageHandler } = useWebSocket();
   const messageHandlerRef = useRef<(message: Message) => void>();
 
   useEffect(() => {
     const setupGroup = async () => {
       try {
-        await joinGroup(groupID, user);
+        console.log("here");
         const handleNewMessage = (message: Message) => {
-          const align =
-            message.user.username === user.username ? "right" : "left";
-          setBubbles((prevBubbles) => [
-            ...prevBubbles,
-            {
-              message,
-              align: align,
-            },
-          ]);
-          setTimeout(() => {
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-          }, 100);
+          console.log("message", message);
+          if (message.group_id === group_id) {
+            const align = message.user.id === user?.id ? "right" : "left";
+            setBubbles((prevBubbles) => [
+              ...prevBubbles,
+              {
+                message,
+                align: align,
+              },
+            ]);
+            setTimeout(() => {
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+          }
         };
         messageHandlerRef.current = handleNewMessage;
         onMessage(handleNewMessage);
@@ -54,11 +57,10 @@ export default function ChatBox(props: { user: User; groupID: string }) {
         console.error("Error joining group: ", error);
       }
     };
-
+    console.log(messageHandlerRef);
     setupGroup();
 
     return () => {
-      leaveGroup();
       if (messageHandlerRef.current) {
         removeMessageHandler(messageHandlerRef.current);
       }
@@ -69,7 +71,7 @@ export default function ChatBox(props: { user: User; groupID: string }) {
     const keyboardDidShowListener = Keyboard.addListener(
       "keyboardDidShow",
       () => {
-        if (user.username) {
+        if (user?.username) {
           setKeyboardHeight(360);
           setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({ animated: false });
@@ -81,7 +83,7 @@ export default function ChatBox(props: { user: User; groupID: string }) {
     const keyboardDidHideListener = Keyboard.addListener(
       "keyboardDidHide",
       () => {
-        if (user.username) {
+        if (user?.username) {
           setKeyboardHeight(0);
         }
       }
@@ -91,7 +93,7 @@ export default function ChatBox(props: { user: User; groupID: string }) {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, [user.username]);
+  }, [user?.username]);
 
   return (
     <View style={[styles.chatBox, { height: windowHeight }]}>
@@ -107,21 +109,21 @@ export default function ChatBox(props: { user: User; groupID: string }) {
               <ChatBubble
                 key={index}
                 username={bubble.message.user.username}
-                message={bubble.message.msg}
+                message={bubble.message.content}
                 align={bubble.align}
               />
             );
           })}
         </ScrollView>
       </View>
-      {!!user.username && (
+      {!!user?.username && (
         <View
           style={[
             styles.messageEntryContainer,
             { paddingBottom: 25 + keyboardHeight },
           ]}
         >
-          <MessageEntry user={user} />
+          <MessageEntry group_id={group_id} />
         </View>
       )}
     </View>

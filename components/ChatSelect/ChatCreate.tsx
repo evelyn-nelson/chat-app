@@ -17,7 +17,7 @@ export const ChatCreate = (props: { user: User }) => {
           setGroupName(event);
         }}
         onSubmitEditing={async () => {
-          const group = await createGroup(groupName, user);
+          const group = await createGroup(groupName);
           setGroupName("");
           if (group) {
             router.push({ pathname: "/group/[id]", params: { id: group.id } });

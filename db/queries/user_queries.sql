@@ -18,7 +18,7 @@ JOIN groups ON groups.id = user_groups.group_id
 WHERE groups.id = $1;
 
 -- name: GetUsersByEmails :many
-SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY(sqlc.arg('emails')::string[]);
+SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY(sqlc.arg('emails')::text[]);
 
 -- name: GetUsersByIDs :many
 SELECT id, username, email, created_at, updated_at FROM users WHERE id = ANY(sqlc.arg('ids')::int[]);
@@ -46,3 +46,4 @@ RETURNING "id", "username", "email", "created_at", "updated_at";
 -- name: DeleteUser :one
 DELETE FROM users
 WHERE id = $1 RETURNING "id", "username", "email", "created_at", "updated_at";
+

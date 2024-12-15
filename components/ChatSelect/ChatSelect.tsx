@@ -43,7 +43,9 @@ export const ChatSelect = () => {
             return (
               <ChatSelectBox
                 key={index}
-                group={{ name: group.name, id: group.id }}
+                group={{
+                  ...group,
+                }}
               />
             );
           })}

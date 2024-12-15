@@ -163,7 +163,7 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 		return
 	}
 
-	user_group, err := h.db.DeleteUserGroup(h.ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true}})
+	user_group, err := h.db.DeleteUserGroup(h.ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: userToKick.ID, Valid: true}, GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true}})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -293,19 +293,23 @@ func (h *Handler) InitializeGroup(groupID int32, name string) {
 
 func (h *Handler) GetGroups(c *gin.Context) {
 	user, err := util.GetUser(c, h.db, h.ctx)
-
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
-
 	groups, err := h.db.GetGroupsForUser(h.ctx, user.ID)
-
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
-		return
+		if err.Error() == "no rows in result set" {
+			groups = make([]db.GetGroupsForUserRow, 0)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
 	}
-
+	if len(groups) == 0 {
+		groups = make([]db.GetGroupsForUserRow, 0)
+	}
 	c.JSON(http.StatusOK, groups)
 }
 
@@ -325,4 +329,71 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+func (h Handler) LeaveGroup(c *gin.Context) {
+	user, err := util.GetUser(c, h.db, h.ctx)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	ID, err := strconv.Atoi(c.Param("groupID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	groupID := int32(ID)
+
+	user_group, err := h.db.DeleteUserGroup(h.ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: groupID, Valid: true}})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if client, ok := h.hub.Clients[user.ID]; ok {
+		h.hub.RemoveClientFromGroup(client, groupID)
+		client.RemoveGroup(groupID)
+	}
+
+	remaining_ug, err := h.db.GetAllUserGroupsForGroup(h.ctx, pgtype.Int4{Int32: groupID, Valid: true})
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			_, err2 := h.db.DeleteGroup(h.ctx, groupID)
+			if err2 != nil {
+				c.JSON(http.StatusInternalServerError, err2)
+				return
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if len(remaining_ug) == 0 {
+		_, err := h.db.DeleteGroup(h.ctx, groupID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if user_group.Admin {
+		any_admin := false
+		for _, ug := range remaining_ug {
+			if ug.Admin {
+				any_admin = true
+			}
+		}
+		if !any_admin {
+			_, err = h.db.UpdateUserGroup(h.ctx, db.UpdateUserGroupParams{UserID: remaining_ug[0].UserID, GroupID: remaining_ug[0].GroupID, Admin: true})
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err)
+				return
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, user_group)
 }

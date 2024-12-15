@@ -9,17 +9,21 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { useWebSocket } from "../context/WebSocketContext";
-import { Message, User } from "@/types/types";
+import { Message, RawMessage, User } from "@/types/types";
+import { useGlobalState } from "../context/GlobalStateContext";
 
-const MessageEntry = (props: { user: User }) => {
-  const [message, setMessage] = useState<Message>({
-    user: props.user,
-    msg: "",
+const MessageEntry = (props: { group_id: number }) => {
+  const { group_id } = props;
+  const { user } = useGlobalState();
+  const [message, setMessage] = useState<RawMessage>({
+    sender_id: user?.id ?? 0,
+    content: "",
+    group_id: group_id,
   });
   const { sendMessage, connected } = useWebSocket();
 
   const handleSubmit = () => {
-    if (message.msg) {
+    if (message.content && user) {
       if (connected) {
         try {
           sendMessage(`${JSON.stringify(message)}`);
@@ -27,7 +31,7 @@ const MessageEntry = (props: { user: User }) => {
           console.error("Error sending message:", error);
         }
       }
-      setMessage({ user: { username: props.user.username }, msg: "" });
+      setMessage({ sender_id: user?.id, content: "", group_id: group_id });
     }
   };
 
@@ -36,12 +40,18 @@ const MessageEntry = (props: { user: User }) => {
       <TextInput
         style={styles.input}
         onChangeText={(event) => {
-          setMessage({ user: { username: props.user.username }, msg: event });
+          if (user) {
+            setMessage({
+              sender_id: user?.id,
+              content: event,
+              group_id: group_id,
+            });
+          }
         }}
         onSubmitEditing={() => {
           handleSubmit();
         }}
-        value={message.msg}
+        value={message.content}
         blurOnSubmit={false}
       />
     </View>

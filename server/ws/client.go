@@ -3,6 +3,7 @@ package ws
 import (
 	"chat-app-server/db"
 	"context"
+	"fmt"
 	"log"
 	"sync"
 
@@ -71,6 +72,7 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries, ctx context.Context)
 	for {
 		var rawMessage RawMessage
 		err := c.Conn.ReadJSON(&rawMessage)
+		fmt.Println("msg", rawMessage)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
 				log.Printf("WebSocket error: %v", err)

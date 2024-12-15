@@ -85,7 +85,7 @@ func (q *Queries) GetAllUserGroups(ctx context.Context) ([]GetAllUserGroupsRow, 
 }
 
 const getAllUserGroupsForGroup = `-- name: GetAllUserGroupsForGroup :many
-SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE group_id = $1
+SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE group_id = $1 ORDER BY created_at ASC
 `
 
 type GetAllUserGroupsForGroupRow struct {

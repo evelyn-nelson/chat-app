@@ -289,7 +289,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 }
 
 const getUsersByEmails = `-- name: GetUsersByEmails :many
-SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY($1::string[])
+SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY($1::text[])
 `
 
 type GetUsersByEmailsRow struct {

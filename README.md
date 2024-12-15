@@ -31,3 +31,8 @@ this is set up to work with docker but you should probably install golang migrat
 `brew install golang-migrate`
 
 To create a new migration, run migrate create -ext sql -dir db/migrations -seq {name_of_migration}
+
+To access the db directly, run
+`docker exec -it chat-app-db-1 bash`
+`psql -U postgres`
+`\c postgres`
