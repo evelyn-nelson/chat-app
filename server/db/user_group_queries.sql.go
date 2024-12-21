@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteUserGroup = `-- name: DeleteUserGroup :one
+DELETE FROM user_groups
+WHERE user_id = $1 AND group_id = $2 RETURNING "id", "user_id", "group_id", "admin", "created_at", "updated_at"
+`
+
+type DeleteUserGroupParams struct {
+	UserID  pgtype.Int4 `json:"user_id"`
+	GroupID pgtype.Int4 `json:"group_id"`
+}
+
+type DeleteUserGroupRow struct {
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) DeleteUserGroup(ctx context.Context, arg DeleteUserGroupParams) (DeleteUserGroupRow, error) {
+	row := q.db.QueryRow(ctx, deleteUserGroup, arg.UserID, arg.GroupID)
+	var i DeleteUserGroupRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.GroupID,
+		&i.Admin,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllUserGroups = `-- name: GetAllUserGroups :many
 SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups
 `
@@ -52,7 +85,7 @@ func (q *Queries) GetAllUserGroups(ctx context.Context) ([]GetAllUserGroupsRow, 
 }
 
 const getAllUserGroupsForGroup = `-- name: GetAllUserGroupsForGroup :many
-SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE group_id = $1
+SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM user_groups WHERE group_id = $1 ORDER BY created_at ASC
 `
 
 type GetAllUserGroupsForGroupRow struct {
@@ -191,7 +224,11 @@ func (q *Queries) GetUserGroupByID(ctx context.Context, id int32) (GetUserGroupB
 }
 
 const insertUserGroup = `-- name: InsertUserGroup :one
-INSERT INTO user_groups ("user_id", "group_id", "admin") VALUES ($1, $2, $3) RETURNING id, user_id, group_id, created_at, updated_at, admin
+INSERT INTO user_groups 
+    ("user_id", "group_id", "admin") 
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, group_id) DO NOTHING
+RETURNING id, user_id, group_id, created_at, updated_at, admin
 `
 
 type InsertUserGroupParams struct {
@@ -210,6 +247,43 @@ func (q *Queries) InsertUserGroup(ctx context.Context, arg InsertUserGroupParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Admin,
+	)
+	return i, err
+}
+
+const updateUserGroup = `-- name: UpdateUserGroup :one
+UPDATE user_groups
+SET
+    "admin" = $3
+WHERE user_id = $1 AND group_id = $2
+RETURNING "id", "user_id", "group_id", "admin", "created_at", "updated_at"
+`
+
+type UpdateUserGroupParams struct {
+	UserID  pgtype.Int4 `json:"user_id"`
+	GroupID pgtype.Int4 `json:"group_id"`
+	Admin   bool        `json:"admin"`
+}
+
+type UpdateUserGroupRow struct {
+	ID        int32            `json:"id"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	Admin     bool             `json:"admin"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserGroup(ctx context.Context, arg UpdateUserGroupParams) (UpdateUserGroupRow, error) {
+	row := q.db.QueryRow(ctx, updateUserGroup, arg.UserID, arg.GroupID, arg.Admin)
+	var i UpdateUserGroupRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.GroupID,
+		&i.Admin,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

@@ -1,0 +1,41 @@
+import { useGlobalState } from "@/components/context/GlobalStateContext";
+import { Stack, useLocalSearchParams } from "expo-router";
+
+type GroupParams = {
+  id: string;
+};
+
+export default function GroupLayout() {
+  const { groups } = useGlobalState();
+
+  const getGroup = (id: string) => {
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].id.toString() === id) {
+        return groups[i];
+      }
+    }
+    console.log(groups);
+  };
+
+  return (
+    <Stack>
+      <Stack.Screen
+        name="index"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="[id]"
+        options={({ route }) => {
+          const { id } = route.params as GroupParams;
+          const group = getGroup(id);
+          return {
+            title: group?.name ?? `Loading...`,
+            headerShown: true,
+          };
+        }}
+      />
+    </Stack>
+  );
+}
