@@ -1,1 +1,1 @@
-ALTER TABLE users DROP CONSTRAINT unique_email;
+DROP INDEX IF EXISTS unique_email_idx;

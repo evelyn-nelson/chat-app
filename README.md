@@ -1,10 +1,11 @@
 Temporary group chats for events.
 
-## Get started
+## Expo app
 
 1. Install dependencies
 
    ```bash
+   cd expo
    npm install
    ```
 

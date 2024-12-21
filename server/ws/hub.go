@@ -8,8 +8,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Group struct {
@@ -28,7 +28,7 @@ type Hub struct {
 	mutex      sync.RWMutex
 }
 
-func NewHub(db *db.Queries, ctx context.Context, conn *pgx.Conn) *Hub {
+func NewHub(db *db.Queries, ctx context.Context, conn *pgxpool.Pool) *Hub {
 	groups, err := db.GetAllGroups(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize ws hub: %v\n", err)

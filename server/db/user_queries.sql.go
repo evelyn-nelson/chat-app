@@ -159,6 +159,50 @@ func (q *Queries) GetAllUsersInternal(ctx context.Context) ([]GetAllUsersInterna
 	return items, nil
 }
 
+const getRelevantUsers = `-- name: GetRelevantUsers :many
+WITH s AS (
+    SELECT g.id FROM groups g
+    JOIN user_groups ug ON ug.group_id = g.id
+    WHERE ug.user_id = $1
+)
+SELECT u.id, u.username, u.created_at, jsonb_object_agg(ug.group_id, ug.admin)::text AS group_admin_map FROM users u 
+JOIN user_groups ug ON ug.user_id = u.id
+JOIN s ON s.id = group_id
+GROUP BY u.id
+`
+
+type GetRelevantUsersRow struct {
+	ID            int32            `json:"id"`
+	Username      string           `json:"username"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	GroupAdminMap string           `json:"group_admin_map"`
+}
+
+func (q *Queries) GetRelevantUsers(ctx context.Context, userID pgtype.Int4) ([]GetRelevantUsersRow, error) {
+	rows, err := q.db.Query(ctx, getRelevantUsers, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRelevantUsersRow
+	for rows.Next() {
+		var i GetRelevantUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.CreatedAt,
+			&i.GroupAdminMap,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE email = $1
 `

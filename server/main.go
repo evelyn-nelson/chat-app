@@ -10,28 +10,28 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
 	ctx := context.Background()
 
-	conn, err := pgx.Connect(ctx, os.Getenv("DB_URL"))
+	connPool, err := pgxpool.New(ctx, os.Getenv("DB_URL"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
-	db := db.New(conn)
+	db := db.New(connPool)
 
-	authHandler := auth.NewAuthHandler(db, ctx, conn)
+	authHandler := auth.NewAuthHandler(db, ctx, connPool)
 
-	hub := ws.NewHub(db, ctx, conn)
-	wsHandler := ws.NewHandler(hub, db, ctx, conn)
+	hub := ws.NewHub(db, ctx, connPool)
+	wsHandler := ws.NewHandler(hub, db, ctx, connPool)
 	go hub.Run(db, ctx)
 
-	api := server.NewAPI(db, ctx, conn)
+	api := server.NewAPI(db, ctx, connPool)
 
-	defer conn.Close(ctx)
+	defer connPool.Close()
 
 	router.InitRouter(authHandler, wsHandler, api)
 	router.Start(":8080")

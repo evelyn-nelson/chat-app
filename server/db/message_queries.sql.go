@@ -79,6 +79,46 @@ func (q *Queries) GetMessageById(ctx context.Context, id int32) (Message, error)
 	return i, err
 }
 
+const getRelevantMessages = `-- name: GetRelevantMessages :many
+SELECT m.id, m.content, m.user_id, m.group_id, m.created_at
+FROM messages m
+JOIN user_groups ug ON ug.group_id = m.group_id AND ug.user_id = $1
+`
+
+type GetRelevantMessagesRow struct {
+	ID        int32            `json:"id"`
+	Content   string           `json:"content"`
+	UserID    pgtype.Int4      `json:"user_id"`
+	GroupID   pgtype.Int4      `json:"group_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetRelevantMessages(ctx context.Context, userID pgtype.Int4) ([]GetRelevantMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getRelevantMessages, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRelevantMessagesRow
+	for rows.Next() {
+		var i GetRelevantMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.UserID,
+			&i.GroupID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertMessage = `-- name: InsertMessage :one
 INSERT INTO messages ("user_id", "group_id", "content") VALUES ($1,$2,$3) RETURNING id, content, user_id, group_id, created_at, updated_at
 `

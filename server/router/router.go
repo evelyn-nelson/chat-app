@@ -16,7 +16,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	r = gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8081", "http://192.168.1.12:8081", "http://192.168.1.32:8081"},
+		AllowOrigins:     []string{"http://localhost:8081", "http://192.168.1.12:8081", "http://192.168.1.32:8081", "http://192.168.1.42:8080", "http://192.168.1.8:8000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -67,6 +67,8 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	wsRoutes.GET("/getGroups", wsHandler.GetGroups)
 	wsRoutes.GET("/getUsersInGroup/:groupID", wsHandler.GetUsersInGroup)
 	wsRoutes.POST("/leaveGroup/:groupID", wsHandler.LeaveGroup)
+	wsRoutes.GET("/relevantUsers", wsHandler.GetRelevantUsers)
+	wsRoutes.GET("/relevantMessages", wsHandler.GetRelevantMessages)
 
 	r.GET("/ws/establishConnection/:token", auth.WebsocketSubprotocolAuthMiddleware(), wsHandler.EstablishConnection)
 }

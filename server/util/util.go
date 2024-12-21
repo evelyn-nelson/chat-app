@@ -21,6 +21,7 @@ func GetUser(c *gin.Context, queries *db.Queries, ctx context.Context) (db.GetUs
 		fmt.Println("ID", ID)
 		user, err := queries.GetUserById(ctx, ID.(int32))
 		if err != nil {
+			fmt.Println(err.Error())
 			return db.GetUserByIdRow{}, errors.New("user not found")
 		}
 		return user, nil

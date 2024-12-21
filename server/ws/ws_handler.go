@@ -11,18 +11,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Handler struct {
 	hub  *Hub
 	db   *db.Queries
 	ctx  context.Context
-	conn *pgx.Conn
+	conn *pgxpool.Pool
 }
 
-func NewHandler(h *Hub, db *db.Queries, ctx context.Context, conn *pgx.Conn) *Handler {
+func NewHandler(h *Hub, db *db.Queries, ctx context.Context, conn *pgxpool.Pool) *Handler {
 	return &Handler{hub: h, db: db, ctx: ctx, conn: conn}
 }
 
@@ -294,7 +294,7 @@ func (h *Handler) InitializeGroup(groupID int32, name string) {
 func (h *Handler) GetGroups(c *gin.Context) {
 	user, err := util.GetUser(c, h.db, h.ctx)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 	groups, err := h.db.GetGroupsForUser(h.ctx, user.ID)
@@ -331,11 +331,11 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-func (h Handler) LeaveGroup(c *gin.Context) {
+func (h *Handler) LeaveGroup(c *gin.Context) {
 	user, err := util.GetUser(c, h.db, h.ctx)
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err})
 		return
 	}
 
@@ -396,4 +396,50 @@ func (h Handler) LeaveGroup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user_group)
+}
+
+func (h *Handler) GetRelevantUsers(c *gin.Context) {
+	user, err := util.GetUser(c, h.db, h.ctx)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	users, err := h.db.GetRelevantUsers(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			users = make([]db.GetRelevantUsersRow, 0)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error retrieving users: %v\n", err)
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+func (h *Handler) GetRelevantMessages(c *gin.Context) {
+	user, err := util.GetUser(c, h.db, h.ctx)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	messages, err := h.db.GetRelevantMessages(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			messages = make([]db.GetRelevantMessagesRow, 0)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error retrieving messages: %v\n", err)
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, messages)
 }

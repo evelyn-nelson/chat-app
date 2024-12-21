@@ -8,7 +8,7 @@ SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE id
 SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE username = $1;
 
 -- name: GetUserByEmail :one
-SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE email = $1;
+SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE LOWER(email) = LOWER($1);
 
 -- name: GetAllUsersInGroup :many
 SELECT users.id AS user_id, users.username, groups.id AS group_id, groups.name, user_groups.admin, user_groups.created_at AS joined_at
@@ -30,7 +30,7 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE id = $1;
 
 -- name: GetUserByEmailInternal :one
-SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE email = $1;
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE LOWER(email) = LOWER($1);
 
 -- name: InsertUser :one
 INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING "id", "username", "email", "created_at", "updated_at";
@@ -47,3 +47,13 @@ RETURNING "id", "username", "email", "created_at", "updated_at";
 DELETE FROM users
 WHERE id = $1 RETURNING "id", "username", "email", "created_at", "updated_at";
 
+-- name: GetRelevantUsers :many
+WITH s AS (
+    SELECT g.id FROM groups g
+    JOIN user_groups ug ON ug.group_id = g.id
+    WHERE ug.user_id = $1
+)
+SELECT u.id, u.username, u.created_at, jsonb_object_agg(ug.group_id, ug.admin)::text AS group_admin_map FROM users u 
+JOIN user_groups ug ON ug.user_id = u.id
+JOIN s ON s.id = group_id
+GROUP BY u.id;

@@ -17,3 +17,5 @@ type RemoveUserFromGroupRequest struct {
 	GroupID int32  `json:"group_id"`
 	Email   string `json:"email"`
 }
+
+type GroupAdminMap map[int32]bool

@@ -10,18 +10,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
 	db   *db.Queries
 	ctx  context.Context
-	conn *pgx.Conn
+	conn *pgxpool.Pool
 }
 
-func NewAuthHandler(db *db.Queries, ctx context.Context, conn *pgx.Conn) *AuthHandler {
+func NewAuthHandler(db *db.Queries, ctx context.Context, conn *pgxpool.Pool) *AuthHandler {
 	return &AuthHandler{
 		db:   db,
 		ctx:  ctx,
@@ -81,7 +81,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	pwd := []byte(user.Password.String)
 	err = bcrypt.CompareHashAndPassword(pwd, []byte(req.Password))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed"})
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Incorrect password"})
 		return
 	}
 	fmt.Println("here 2")
