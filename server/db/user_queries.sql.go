@@ -204,7 +204,7 @@ func (q *Queries) GetRelevantUsers(ctx context.Context, userID pgtype.Int4) ([]G
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE email = $1
+SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE LOWER(email) = LOWER($1)
 `
 
 type GetUserByEmailRow struct {
@@ -215,8 +215,8 @@ type GetUserByEmailRow struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, lower)
 	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
@@ -229,7 +229,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 }
 
 const getUserByEmailInternal = `-- name: GetUserByEmailInternal :one
-SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE email = $1
+SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users WHERE LOWER(email) = LOWER($1)
 `
 
 type GetUserByEmailInternalRow struct {
@@ -241,8 +241,8 @@ type GetUserByEmailInternalRow struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUserByEmailInternal(ctx context.Context, email string) (GetUserByEmailInternalRow, error) {
-	row := q.db.QueryRow(ctx, getUserByEmailInternal, email)
+func (q *Queries) GetUserByEmailInternal(ctx context.Context, lower string) (GetUserByEmailInternalRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmailInternal, lower)
 	var i GetUserByEmailInternalRow
 	err := row.Scan(
 		&i.ID,
