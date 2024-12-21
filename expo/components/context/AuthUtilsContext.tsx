@@ -44,7 +44,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
         })
         .catch((error) => {
           if (error.message != "canceled") {
-            console.error(error);
+            console.error("whoami error:", error);
           }
         });
       console.log("loggedInUser", loggedInUser);
