@@ -136,40 +136,6 @@ export default function ChatBox(props: { group_id: number }) {
     scrollToBottom(false);
   }, []);
 
-  //   return (
-  //     <View style={[styles.chatBox, { height: windowHeight }]}>
-  //       <View
-  //         style={[styles.scrollContainer, { paddingBottom: 75 + keyboardHeight }]}
-  //       >
-  //         <ScrollView
-  //           contentContainerStyle={styles.scrollViewContent}
-  //           ref={scrollViewRef}
-  //         >
-  //           {bubbles.map((bubble, index) => {
-  //             return (
-  //               <ChatBubble
-  //                 key={index}
-  //                 username={bubble.message.user.username}
-  //                 message={bubble.message.content}
-  //                 align={bubble.align}
-  //               />
-  //             );
-  //           })}
-  //         </ScrollView>
-  //       </View>
-  //       {!!user?.username && (
-  //         <View
-  //           style={[
-  //             styles.messageEntryContainer,
-  //             { paddingBottom: 25 + keyboardHeight },
-  //           ]}
-  //         >
-  //           <MessageEntry group_id={group_id} />
-  //         </View>
-  //       )}
-  //     </View>
-  //   );
-  // }
   return (
     <KeyboardAvoidingView
       style={[styles.container, { height: windowHeight }]}
