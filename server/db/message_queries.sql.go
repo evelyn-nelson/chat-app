@@ -80,15 +80,17 @@ func (q *Queries) GetMessageById(ctx context.Context, id int32) (Message, error)
 }
 
 const getRelevantMessages = `-- name: GetRelevantMessages :many
-SELECT m.id, m.content, m.user_id, m.group_id, m.created_at
+SELECT m.id, m.content, m.user_id, u.username, m.group_id, m.created_at
 FROM messages m
 JOIN user_groups ug ON ug.group_id = m.group_id AND ug.user_id = $1
+JOIN users u ON u.id = ug.user_id
 `
 
 type GetRelevantMessagesRow struct {
 	ID        int32            `json:"id"`
 	Content   string           `json:"content"`
 	UserID    pgtype.Int4      `json:"user_id"`
+	Username  string           `json:"username"`
 	GroupID   pgtype.Int4      `json:"group_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
@@ -106,6 +108,7 @@ func (q *Queries) GetRelevantMessages(ctx context.Context, userID pgtype.Int4) (
 			&i.ID,
 			&i.Content,
 			&i.UserID,
+			&i.Username,
 			&i.GroupID,
 			&i.CreatedAt,
 		); err != nil {

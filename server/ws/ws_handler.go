@@ -429,16 +429,28 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 		return
 	}
 
-	messages, err := h.db.GetRelevantMessages(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+	dbMessages, err := h.db.GetRelevantMessages(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
 
 	if err != nil {
 		if err.Error() == "no rows in result set" {
-			messages = make([]db.GetRelevantMessagesRow, 0)
+			dbMessages = make([]db.GetRelevantMessagesRow, 0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error retrieving messages: %v\n", err)
 			c.JSON(http.StatusInternalServerError, err)
 			return
 		}
+	}
+
+	messages := make([]Message, 0)
+	for _, message := range dbMessages {
+		messages = append(messages, Message{
+			ID:      message.ID,
+			Content: message.Content,
+			GroupID: message.GroupID.Int32,
+			User: MessageUser{ID: message.UserID.Int32,
+				Username: message.Username},
+			Timestamp: message.CreatedAt,
+		})
 	}
 
 	c.JSON(http.StatusOK, messages)
