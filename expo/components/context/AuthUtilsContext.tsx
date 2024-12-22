@@ -10,7 +10,7 @@ import React, {
   useReducer,
   useState,
 } from "react";
-import { useGlobalState } from "./GlobalStateContext";
+import { useGlobalStore } from "./GlobalStoreContext";
 import { useWebSocket } from "./WebSocketContext";
 import { router } from "expo-router";
 
@@ -27,7 +27,7 @@ const AuthUtilsContext = createContext<AuthUtilsContextType | undefined>(
 
 export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   const { establishConnection, disconnect } = useWebSocket();
-  const { user, setUser } = useGlobalState();
+  const { user, setUser } = useGlobalStore();
   const { children } = props;
 
   const whoami = async (forceRefresh?: boolean): Promise<User | undefined> => {

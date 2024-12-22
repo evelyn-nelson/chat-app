@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import MessageEntry from "./MessageEntry";
 import { useWebSocket } from "../context/WebSocketContext";
 import { User, Message } from "@/types/types";
-import { useGlobalState } from "../context/GlobalStateContext";
+import { useGlobalStore } from "../context/GlobalStoreContext";
 
 export type BubbleProps = {
   message: Message;
@@ -23,7 +23,7 @@ export type BubbleProps = {
 
 export default function ChatBox(props: { group_id: number }) {
   const { group_id } = props;
-  const { user } = useGlobalState();
+  const { user } = useGlobalStore();
   const [bubbles, setBubbles] = useState<BubbleProps[]>([]);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);

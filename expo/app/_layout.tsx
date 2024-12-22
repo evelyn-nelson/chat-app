@@ -1,11 +1,11 @@
 import { WebSocketProvider } from "@/components/context/WebSocketContext";
-import { GlobalStateProvider } from "@/components/context/GlobalStateContext";
+import { GlobalStoreProvider } from "@/components/context/GlobalStoreContext";
 import { Stack, Tabs } from "expo-router";
 import { AuthUtilsProvider } from "@/components/context/AuthUtilsContext";
 
 export default function RootLayout() {
   return (
-    <GlobalStateProvider>
+    <GlobalStoreProvider>
       <WebSocketProvider>
         <AuthUtilsProvider>
           <Stack>
@@ -14,6 +14,6 @@ export default function RootLayout() {
           </Stack>
         </AuthUtilsProvider>
       </WebSocketProvider>
-    </GlobalStateProvider>
+    </GlobalStoreProvider>
   );
 }

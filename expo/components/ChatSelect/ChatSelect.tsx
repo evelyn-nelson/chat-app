@@ -3,11 +3,11 @@ import { ChatSelectBox } from "./ChatSelectBox";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useEffect, useRef, useState } from "react";
 import { ChatCreate } from "./ChatCreate";
-import { useGlobalState } from "../context/GlobalStateContext";
+import { useGlobalStore } from "../context/GlobalStoreContext";
 
 export const ChatSelect = () => {
   const { getGroups } = useWebSocket();
-  const { user, groups, setGroups } = useGlobalState();
+  const { user, groups, setGroups } = useGlobalStore();
 
   const isFetching = useRef(false);
 

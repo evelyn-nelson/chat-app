@@ -85,31 +85,6 @@ func (h *Hub) Run(db *db.Queries, ctx context.Context) {
 		}
 
 	}
-	// for {
-	// 	select {
-	// 	case cl := <-h.Register:
-	// 		if _, ok := h.Groups[cl.GroupID]; ok {
-	// 			r := h.Groups[cl.GroupID]
-	// 			if _, ok := r.Clients[fmt.Sprintf("%v", cl.User.ID)]; !ok {
-	// 				r.Clients[fmt.Sprintf("%v", cl.User.ID)] = cl
-	// 			}
-	// 		}
-	// 	case cl := <-h.Unregister:
-	// 		if _, ok := h.Groups[cl.GroupID]; ok {
-	// 			r := h.Groups[cl.GroupID]
-	// 			if _, ok := r.Clients[fmt.Sprintf("%v", cl.User.ID)]; ok {
-	// 				delete(r.Clients, fmt.Sprintf("%v", cl.User.ID))
-	// 				close(cl.Message)
-	// 			}
-	// 		}
-	// 	case m := <-h.Broadcast:
-	// 		if _, ok := h.Groups[m.GroupID]; ok {
-	// 			for _, cl := range h.Groups[m.GroupID].Clients {
-	// 				cl.Message <- m
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
 
 func (h *Hub) broadcastMessage(message *Message, queries *db.Queries, ctx context.Context) {
@@ -136,6 +111,7 @@ func (h *Hub) broadcastMessage(message *Message, queries *db.Queries, ctx contex
 
 	// Update message ID from database
 	message.ID = savedMessage.ID
+	message.Timestamp = savedMessage.CreatedAt
 
 	// Broadcast to connected clients in the group
 	h.mutex.RLock()

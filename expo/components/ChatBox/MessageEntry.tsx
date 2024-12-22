@@ -2,11 +2,11 @@ import { StyleSheet, TextInput, View } from "react-native";
 import { useState } from "react";
 import { useWebSocket } from "../context/WebSocketContext";
 import { Message, RawMessage, User } from "@/types/types";
-import { useGlobalState } from "../context/GlobalStateContext";
+import { useGlobalStore } from "../context/GlobalStoreContext";
 
 const MessageEntry = (props: { group_id: number }) => {
   const { group_id } = props;
-  const { user } = useGlobalState();
+  const { user } = useGlobalStore();
   const [message, setMessage] = useState<RawMessage>({
     sender_id: user?.id ?? 0,
     content: "",
