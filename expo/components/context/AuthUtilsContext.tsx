@@ -13,6 +13,7 @@ import React, {
 import { useGlobalStore } from "./GlobalStoreContext";
 import { useWebSocket } from "./WebSocketContext";
 import { router } from "expo-router";
+import { useMessageStore } from "./MessageStoreContext";
 
 interface AuthUtilsContextType {
   whoami: (forceRefresh?: boolean) => Promise<User | undefined>;
@@ -27,6 +28,8 @@ const AuthUtilsContext = createContext<AuthUtilsContextType | undefined>(
 
 export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   const { establishConnection, disconnect } = useWebSocket();
+  const { loadHistoricalMessages } = useMessageStore();
+
   const { user, setUser } = useGlobalStore();
   const { children } = props;
 
@@ -67,6 +70,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
       await save("jwt", data.token);
       await establishConnection();
       await whoami(true);
+      await loadHistoricalMessages();
     } catch (error) {
       console.error("error signing in", error);
     }
@@ -93,6 +97,8 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
         const { data } = response;
         await save("jwt", data.token);
         await establishConnection();
+        await whoami(true);
+        await loadHistoricalMessages();
       })
       .catch((error) => {
         console.error("error signing up", error);
@@ -100,9 +106,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthUtilsContext.Provider
-      value={{ whoami: whoami, login: login, logout: logout, signup: signup }}
-    >
+    <AuthUtilsContext.Provider value={{ whoami, login, logout, signup }}>
       {children}
     </AuthUtilsContext.Provider>
   );

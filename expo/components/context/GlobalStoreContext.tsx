@@ -3,17 +3,42 @@ import React, {
   createContext,
   Dispatch,
   SetStateAction,
+  useCallback,
   useContext,
+  useMemo,
   useReducer,
   useState,
 } from "react";
 
-interface GlobalStoreContextType {
+type Action =
+  | { type: "SET_USER"; payload: User | undefined }
+  | { type: "SET_GROUPS"; payload: Group[] };
+
+interface State {
   user: User | undefined;
-  setUser: Dispatch<SetStateAction<User | undefined>>;
   groups: Group[];
-  setGroups: Dispatch<SetStateAction<Group[]>>;
 }
+
+interface GlobalStoreContextType extends State {
+  setUser: (user: User | undefined) => void;
+  setGroups: (groups: Group[]) => void;
+}
+
+const initialState: State = {
+  user: undefined,
+  groups: [],
+};
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "SET_USER":
+      return { ...state, user: action.payload };
+    case "SET_GROUPS":
+      return { ...state, groups: action.payload };
+    default:
+      return state;
+  }
+};
 
 const GlobalStoreContext = createContext<GlobalStoreContextType | undefined>(
   undefined
@@ -21,12 +46,27 @@ const GlobalStoreContext = createContext<GlobalStoreContextType | undefined>(
 
 export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
   const { children } = props;
-  const [user, setUser] = useState<User>();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  const setUser = useCallback((user: User | undefined) => {
+    dispatch({ type: "SET_USER", payload: user });
+  }, []);
+
+  const setGroups = useCallback((groups: Group[]) => {
+    dispatch({ type: "SET_GROUPS", payload: groups });
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      ...state,
+      setUser,
+      setGroups,
+    }),
+    [state, setUser, setGroups]
+  );
 
   return (
-    <GlobalStoreContext.Provider value={{ user, setUser, groups, setGroups }}>
+    <GlobalStoreContext.Provider value={value}>
       {children}
     </GlobalStoreContext.Provider>
   );

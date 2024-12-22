@@ -13,7 +13,6 @@ import { get } from "@/util/custom-store";
 interface WebSocketContextType {
   sendMessage: (msg: string) => void;
   connected: boolean;
-  messages: Message[];
   onMessage: (callback: (message: Message) => void) => void;
   removeMessageHandler: (callback: (message: Message) => void) => void;
   establishConnection: () => Promise<void>;
@@ -37,24 +36,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
   const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
-
-  const isUser = (data: any): data is User => {
-    return typeof data.id === "number" && typeof data.username === "string";
-  };
-
-  const isUsersArray = (data: any): data is User[] => {
-    return Array.isArray(data) && data.every((item) => isUser(item));
-  };
-
-  const isGroup = (data: any): data is Group => {
-    return typeof data.id === "number" && typeof data.name === "string";
-  };
-
-  const isGroupArray = (data: any): data is Group[] => {
-    return Array.isArray(data) && data.every((item) => isGroup(item));
-  };
 
   const createGroup = async (name: string): Promise<Group | undefined> => {
     if (socketRef.current) {
@@ -100,8 +82,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("event", event);
         try {
           const parsedMessage = JSON.parse(event.data);
-          console.log(parsedMessage);
-          setMessages((prevMessages) => [...prevMessages, parsedMessage]);
           const currentHandlers = messageHandlersRef.current;
           currentHandlers.forEach((handler, index) => {
             try {
@@ -194,10 +174,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const onMessage = useCallback((handler: (message: Message) => void) => {
-    if (messageHandlersRef.current.includes(handler)) {
-      return;
+    if (!messageHandlersRef.current.includes(handler)) {
+      messageHandlersRef.current = [...messageHandlersRef.current, handler];
     }
-    messageHandlersRef.current = [...messageHandlersRef.current, handler];
   }, []);
 
   const removeMessageHandler = useCallback(
@@ -222,7 +201,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{
         sendMessage,
         connected,
-        messages,
         onMessage,
         removeMessageHandler,
         establishConnection,
