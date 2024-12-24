@@ -28,7 +28,7 @@ export const ChatSelect = () => {
   useEffect(() => {
     fetchGroups();
 
-    const intervalId = setInterval(fetchGroups, 5000);
+    const intervalId = setInterval(fetchGroups, 20000);
 
     return () => clearInterval(intervalId);
   }, []);

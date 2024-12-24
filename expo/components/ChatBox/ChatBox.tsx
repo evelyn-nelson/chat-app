@@ -40,6 +40,8 @@ export default function ChatBox(props: { group_id: number }) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNewMessages, setHasNewMessages] = useState(false);
+
+  const [contentHeight, setContentHeight] = useState(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const bubbles = useMemo(
@@ -51,10 +53,17 @@ export default function ChatBox(props: { group_id: number }) {
     [groupMessages, user?.id]
   );
 
+  const onContentSizeChange = (width: number, height: number) => {
+    if (contentHeight === 0) {
+      // This is the initial content load
+      setContentHeight(height);
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+    }
+  };
+
   useEffect(() => {
     if (groupMessages.length > lastMessageRef.current) {
       if (isNearBottom) {
-        console.log("here");
         scrollToBottom(true);
       } else {
         setHasNewMessages(true);
@@ -132,10 +141,6 @@ export default function ChatBox(props: { group_id: number }) {
     };
   }, []);
 
-  useEffect(() => {
-    scrollToBottom(false);
-  }, []);
-
   return (
     <KeyboardAvoidingView
       style={[styles.container, { height: windowHeight }]}
@@ -157,6 +162,7 @@ export default function ChatBox(props: { group_id: number }) {
             ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            onContentSizeChange={onContentSizeChange}
           >
             {bubbles.map((bubble, index) => (
               <ChatBubble
@@ -235,12 +241,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
   },
-  loadingContainer: {
-    position: "absolute",
-    top: 10,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 1,
+  hidden: {
+    opacity: 0,
   },
 });
