@@ -11,6 +11,7 @@ import { useWebSocket } from "./WebSocketContext";
 import http from "@/util/custom-axios";
 import { useGlobalStore } from "./GlobalStoreContext";
 import { CanceledError } from "axios";
+import { Store } from "../../store/Store";
 
 type MessageAction =
   | { type: "ADD_MESSAGE"; payload: Message }
@@ -125,6 +126,13 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const [state, dispatch] = useReducer(messageReducer, initialState);
   const { onMessage, removeMessageHandler } = useWebSocket();
   const { user } = useGlobalStore();
+  const store = useMemo(() => new Store(), []);
+
+  useEffect(() => {
+    return () => {
+      store.close();
+    };
+  }, [store]);
 
   const loadHistoricalMessages = useCallback(async () => {
     dispatch({ type: "SET_LOADING", payload: true });
@@ -132,12 +140,21 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await http.get(
         `http://${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
       );
+
+      console.log("response", response.data);
+      await store.clearMessages();
+      await store.saveMessages(response.data);
       dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: response.data });
       dispatch({ type: "SET_ERROR", payload: null });
     } catch (error) {
       if (!(error instanceof CanceledError)) {
-        console.error("Failed to load historical messages:", error);
-        dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
+        try {
+          const messages = await store.loadMessages();
+          dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: messages });
+        } catch (storeError) {
+          console.error("Failed to load historical messages:", storeError);
+          dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
+        }
       }
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
@@ -149,8 +166,10 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   useEffect(() => {
-    const handleMessage = (message: Message) => {
+    const handleMessage = async (message: Message) => {
       dispatch({ type: "ADD_MESSAGE", payload: message });
+      const currentMessages = state.messages[message.group_id] || [];
+      await store.saveMessages([...currentMessages, message]);
     };
 
     onMessage(handleMessage);
@@ -159,6 +178,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getMessagesForGroup = useCallback(
     (groupId: number) => {
+      console.log(state);
       return state.messages[groupId] || [];
     },
     [state.messages]
