@@ -34,7 +34,6 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   const { children } = props;
 
   const whoami = async (forceRefresh?: boolean): Promise<User | undefined> => {
-    console.log("existing user", user);
     if (!user || forceRefresh) {
       const loggedInUser = await http
         .get(`http://${process.env.EXPO_PUBLIC_HOST}/api/users/whoami`)

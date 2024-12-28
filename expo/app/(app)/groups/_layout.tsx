@@ -14,7 +14,6 @@ export default function GroupLayout() {
         return groups[i];
       }
     }
-    console.log(groups);
   };
 
   return (

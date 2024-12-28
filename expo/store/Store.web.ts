@@ -25,7 +25,6 @@ export class Store implements IStore {
   }
 
   async saveGroups(groups: Group[]): Promise<void> {
-    console.log(groups);
     localStorage.setItem("groups", JSON.stringify(groups));
   }
 

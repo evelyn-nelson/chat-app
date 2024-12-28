@@ -2,7 +2,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Button,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -14,8 +13,7 @@ import {
 import ChatBubble from "./ChatBubble";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MessageEntry from "./MessageEntry";
-import { useWebSocket } from "../context/WebSocketContext";
-import { User, Message } from "@/types/types";
+import { Message } from "@/types/types";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
 
@@ -130,9 +128,7 @@ export default function ChatBox(props: { group_id: number }) {
     const keyboardWillHideListener = Keyboard.addListener(
       keyboardWillHide,
       () => {
-        if (user?.username) {
-          setKeyboardHeight(0);
-        }
+        setKeyboardHeight(0);
       }
     );
     return () => {
