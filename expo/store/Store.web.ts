@@ -1,5 +1,5 @@
 import type { IStore } from "./types";
-import type { Message } from "@/types/types";
+import type { Group, Message } from "@/types/types";
 
 export class Store implements IStore {
   async saveMessages(messages: Message[]): Promise<void> {
@@ -22,6 +22,20 @@ export class Store implements IStore {
 
   async clearMessages(): Promise<void> {
     localStorage.removeItem("messages");
+  }
+
+  async saveGroups(groups: Group[]): Promise<void> {
+    console.log(groups);
+    localStorage.setItem("groups", JSON.stringify(groups));
+  }
+
+  async loadGroups(): Promise<Group[]> {
+    const stored = localStorage.getItem("groups");
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  async clearGroups(): Promise<void> {
+    localStorage.removeItem("groups");
   }
 
   async close(): Promise<void> {

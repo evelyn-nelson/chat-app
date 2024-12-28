@@ -1,7 +1,7 @@
 import { Group, User } from "@/types/types";
 import http from "@/util/custom-axios";
 import { save, clear } from "@/util/custom-store";
-import axios from "axios";
+import axios, { CanceledError } from "axios";
 import React, {
   createContext,
   Dispatch,
@@ -46,7 +46,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           return data;
         })
         .catch((error) => {
-          if (error.message != "canceled") {
+          if (!(error instanceof CanceledError)) {
             console.error("whoami error:", error);
           }
         });

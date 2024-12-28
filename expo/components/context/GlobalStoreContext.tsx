@@ -1,3 +1,4 @@
+import { Store } from "@/store/Store";
 import { Group, Message, User } from "@/types/types";
 import React, {
   createContext,
@@ -5,6 +6,7 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   useState,
@@ -20,6 +22,7 @@ interface State {
 }
 
 interface GlobalStoreContextType extends State {
+  store: Store;
   setUser: (user: User | undefined) => void;
   setGroups: (groups: Group[]) => void;
 }
@@ -48,6 +51,14 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
   const { children } = props;
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  const store = useMemo(() => new Store(), []);
+
+  useEffect(() => {
+    return () => {
+      store.close();
+    };
+  }, [store]);
+
   const setUser = useCallback((user: User | undefined) => {
     dispatch({ type: "SET_USER", payload: user });
   }, []);
@@ -61,8 +72,9 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
       ...state,
       setUser,
       setGroups,
+      store,
     }),
-    [state, setUser, setGroups]
+    [state, setUser, setGroups, store]
   );
 
   return (

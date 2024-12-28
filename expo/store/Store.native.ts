@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 
-import type { IStore, MessageRow } from "./types";
-import { Message } from "@/types/types";
+import type { GroupRow, IStore, MessageRow } from "./types";
+import { Group, Message } from "@/types/types";
 
 export class Store implements IStore {
   private db: SQLite.SQLiteDatabase | null;
@@ -109,6 +109,44 @@ export class Store implements IStore {
     if (!this.db) throw new Error("Database not initialized");
 
     await this.db.runAsync("DELETE FROM messages");
+  }
+
+  async saveGroups(groups: Group[]): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO groups (id, name, admin, created_at, updated_at) 
+         VALUES ${groups.map(() => "(?, ?, ?, ?, ?)").join(", ")}`,
+      groups.flatMap((group) => [
+        group.id,
+        group.name,
+        group.admin,
+        group.created_at,
+        group.updated_at,
+      ])
+    );
+  }
+
+  async loadGroups(): Promise<Group[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    const result = await this.db.getAllAsync<GroupRow>(`
+        SELECT * FROM groups;`);
+    return (
+      result?.map((row) => {
+        return {
+          id: row.id,
+          name: row.name,
+          admin: row.admin,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        };
+      }) ?? []
+    );
+  }
+
+  async clearGroups(): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    await this.db.runAsync("DELETE FROM groups");
   }
 
   async close(): Promise<void> {

@@ -11,7 +11,6 @@ import { useWebSocket } from "./WebSocketContext";
 import http from "@/util/custom-axios";
 import { useGlobalStore } from "./GlobalStoreContext";
 import { CanceledError } from "axios";
-import { Store } from "../../store/Store";
 
 type MessageAction =
   | { type: "ADD_MESSAGE"; payload: Message }
@@ -19,37 +18,23 @@ type MessageAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null };
 
-// Future actions for persistence
-//   | { type: "MARK_MESSAGES_PERSISTED"; payload: { messageIds: string[] } }
-//   | {
-//       type: "SET_MESSAGE_STATUS";
-//       payload: { messageId: string; status: MessageStatus };
-//     };
-
 interface MessageState {
-  messages: Record<number, Message[]>; // Grouped by group_id
+  messages: Record<number, Message[]>;
   loading: boolean;
   error: string | null;
 }
-
-type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
 interface MessageStoreContextType {
   getMessagesForGroup: (groupId: number) => Message[];
   loading: boolean;
   error: string | null;
   loadHistoricalMessages: () => Promise<void>;
-  // Future persistence methods
-  //   persistMessages: (messages: Message[]) => Promise<void>;
-  //   loadPersistedMessages: () => Promise<void>;
 }
 
 const initialState: MessageState = {
   messages: {},
   loading: false,
   error: null,
-  //   persistedMessageIds: new Set(),
-  //   messageStatus: {},
 };
 
 const messageReducer = (
@@ -91,26 +76,6 @@ const messageReducer = (
     case "SET_ERROR":
       return { ...state, error: action.payload };
 
-    // Future persistence-related reducers
-    // case 'MARK_MESSAGES_PERSISTED': {
-    //   const newPersistedIds = new Set([...state.persistedMessageIds]);
-    //   action.payload.messageIds.forEach(id => newPersistedIds.add(id));
-    //   return {
-    //     ...state,
-    //     persistedMessageIds: newPersistedIds
-    //   };
-    // }
-
-    // case 'SET_MESSAGE_STATUS': {
-    //   return {
-    //     ...state,
-    //     messageStatus: {
-    //       ...state.messageStatus,
-    //       [action.payload.messageId]: action.payload.status
-    //     }
-    //   };
-    // }
-
     default:
       return state;
   }
@@ -125,14 +90,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [state, dispatch] = useReducer(messageReducer, initialState);
   const { onMessage, removeMessageHandler } = useWebSocket();
-  const { user } = useGlobalStore();
-  const store = useMemo(() => new Store(), []);
-
-  useEffect(() => {
-    return () => {
-      store.close();
-    };
-  }, [store]);
+  const { store } = useGlobalStore();
 
   const loadHistoricalMessages = useCallback(async () => {
     dispatch({ type: "SET_LOADING", payload: true });
@@ -183,13 +141,6 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [state.messages]
   );
-
-  // Future persistence methods
-  //   const persistMessages = useCallback(async (messages: Message[]) => {
-  //   }, []);
-
-  //   const loadPersistedMessages = useCallback(async () => {
-  //   }, []);
 
   const value = useMemo(
     () => ({
