@@ -98,7 +98,6 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await http.get(
         `http://${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
       );
-      console.log(response.data)
       await store.clearMessages();
       await store.saveMessages(response.data);
       dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: response.data });

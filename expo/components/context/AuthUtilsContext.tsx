@@ -49,7 +49,6 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
             console.error("whoami error:", error);
           }
         });
-      console.log("loggedInUser", loggedInUser);
       return loggedInUser;
     }
     return user;

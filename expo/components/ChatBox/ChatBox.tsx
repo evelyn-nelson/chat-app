@@ -53,7 +53,6 @@ export default function ChatBox(props: { group_id: number }) {
 
   const onContentSizeChange = (width: number, height: number) => {
     if (contentHeight === 0) {
-      // This is the initial content load
       setContentHeight(height);
       scrollViewRef.current?.scrollToEnd({ animated: false });
     }
