@@ -1,11 +1,11 @@
 import ChatBox from "@/components/ChatBox/ChatBox";
-import { useGlobalState } from "@/components/context/GlobalStateContext";
+import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { Redirect, router, Stack, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 const GroupPage = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, groups } = useGlobalState();
+  const { user, groups } = useGlobalStore();
   if (!user) {
     return <Redirect href={"/signin"} />;
   }

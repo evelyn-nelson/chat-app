@@ -41,7 +41,8 @@
     "react-native-screens": "~4.1.0",
     "react-native-web": "~0.19.10",
     "uuid": "^10.0.0",
-    "websocket": "^1.0.35"
+    "websocket": "^1.0.35",
+    "expo-sqlite": "~15.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

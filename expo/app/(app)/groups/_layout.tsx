@@ -1,4 +1,4 @@
-import { useGlobalState } from "@/components/context/GlobalStateContext";
+import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { Stack, useLocalSearchParams } from "expo-router";
 
 type GroupParams = {
@@ -6,7 +6,7 @@ type GroupParams = {
 };
 
 export default function GroupLayout() {
-  const { groups } = useGlobalState();
+  const { groups } = useGlobalStore();
 
   const getGroup = (id: string) => {
     for (let i = 0; i < groups.length; i++) {
@@ -14,7 +14,6 @@ export default function GroupLayout() {
         return groups[i];
       }
     }
-    console.log(groups);
   };
 
   return (

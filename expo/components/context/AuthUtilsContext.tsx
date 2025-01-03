@@ -1,7 +1,7 @@
 import { Group, User } from "@/types/types";
 import http from "@/util/custom-axios";
 import { save, clear } from "@/util/custom-store";
-import axios from "axios";
+import axios, { CanceledError } from "axios";
 import React, {
   createContext,
   Dispatch,
@@ -10,9 +10,10 @@ import React, {
   useReducer,
   useState,
 } from "react";
-import { useGlobalState } from "./GlobalStateContext";
+import { useGlobalStore } from "./GlobalStoreContext";
 import { useWebSocket } from "./WebSocketContext";
 import { router } from "expo-router";
+import { useMessageStore } from "./MessageStoreContext";
 
 interface AuthUtilsContextType {
   whoami: (forceRefresh?: boolean) => Promise<User | undefined>;
@@ -27,11 +28,12 @@ const AuthUtilsContext = createContext<AuthUtilsContextType | undefined>(
 
 export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   const { establishConnection, disconnect } = useWebSocket();
-  const { user, setUser } = useGlobalState();
+  const { loadHistoricalMessages } = useMessageStore();
+
+  const { user, setUser } = useGlobalStore();
   const { children } = props;
 
   const whoami = async (forceRefresh?: boolean): Promise<User | undefined> => {
-    console.log("existing user", user);
     if (!user || forceRefresh) {
       const loggedInUser = await http
         .get(`http://${process.env.EXPO_PUBLIC_HOST}/api/users/whoami`)
@@ -43,11 +45,10 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           return data;
         })
         .catch((error) => {
-          if (error.message != "canceled") {
+          if (!(error instanceof CanceledError)) {
             console.error("whoami error:", error);
           }
         });
-      console.log("loggedInUser", loggedInUser);
       return loggedInUser;
     }
     return user;
@@ -67,6 +68,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
       await save("jwt", data.token);
       await establishConnection();
       await whoami(true);
+      await loadHistoricalMessages();
     } catch (error) {
       console.error("error signing in", error);
     }
@@ -93,6 +95,8 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
         const { data } = response;
         await save("jwt", data.token);
         await establishConnection();
+        await whoami(true);
+        await loadHistoricalMessages();
       })
       .catch((error) => {
         console.error("error signing up", error);
@@ -100,9 +104,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthUtilsContext.Provider
-      value={{ whoami: whoami, login: login, logout: logout, signup: signup }}
-    >
+    <AuthUtilsContext.Provider value={{ whoami, login, logout, signup }}>
       {children}
     </AuthUtilsContext.Provider>
   );
