@@ -79,7 +79,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       socket.onmessage = (event) => {
-        console.log("event", event);
         try {
           const parsedMessage = JSON.parse(event.data);
           const currentHandlers = messageHandlersRef.current;
