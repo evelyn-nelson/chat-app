@@ -2,42 +2,38 @@ import type { IStore } from "./types";
 import type { Group, Message } from "@/types/types";
 
 export class Store implements IStore {
+  private messages: Message[] = [];
+  private groups: Group[] = [];
+
   async saveMessages(messages: Message[]): Promise<void> {
-    const stored = localStorage.getItem("messages");
-
-    const oldMessages = stored ? JSON.parse(stored) : [];
-
-    const allMessages = [...oldMessages, ...messages];
-    const uniqueMessages = allMessages.filter(
-      (item, pos) => allMessages.indexOf(item) === pos
+    const uniqueMessages = [...this.messages, ...messages].filter(
+      (item, pos, self) => self.findIndex((m) => m.id === item.id) === pos
     );
-
-    localStorage.setItem("messages", JSON.stringify(uniqueMessages));
+    this.messages = uniqueMessages;
   }
 
   async loadMessages(): Promise<Message[]> {
-    const stored = localStorage.getItem("messages");
-    return stored ? JSON.parse(stored) : [];
+    return this.messages;
   }
 
   async clearMessages(): Promise<void> {
-    localStorage.removeItem("messages");
+    this.messages = [];
   }
 
   async saveGroups(groups: Group[]): Promise<void> {
-    localStorage.setItem("groups", JSON.stringify(groups));
+    this.groups = groups;
   }
 
   async loadGroups(): Promise<Group[]> {
-    const stored = localStorage.getItem("groups");
-    return stored ? JSON.parse(stored) : [];
+    return this.groups;
   }
 
   async clearGroups(): Promise<void> {
-    localStorage.removeItem("groups");
+    this.groups = [];
   }
 
   async close(): Promise<void> {
-    // no-op
+    this.messages = [];
+    this.groups = [];
   }
 }
