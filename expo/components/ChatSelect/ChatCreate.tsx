@@ -7,7 +7,6 @@ import { router } from "expo-router";
 export const ChatCreate = (props: { user: User }) => {
   const [groupName, setGroupName] = useState<string>("");
   const { createGroup } = useWebSocket();
-  const { user } = props;
 
   return (
     <View>

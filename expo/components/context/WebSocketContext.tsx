@@ -22,7 +22,6 @@ interface WebSocketContextType {
   removeUserFromGroup: (email: string, group_id: number) => void;
   leaveGroup: (group_id: number) => void;
   getGroups: () => Promise<Group[]>;
-  // getUsers: () => Promise<User[]>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -157,8 +156,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     return groups;
   };
 
-  const getUsers = async () => {};
-
   const sendMessage = (msg: string) => {
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -209,7 +206,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         inviteUsersToGroup,
         removeUserFromGroup,
         getGroups,
-        // getUsers,
       }}
     >
       {children}

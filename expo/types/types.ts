@@ -45,4 +45,4 @@ type UserGroup = {
   updated_at: string;
 };
 
-export { Message, RawMessage, User, Group, UserGroup };
+export { Message, RawMessage, User, Group, UserGroup, GroupAdminMap };

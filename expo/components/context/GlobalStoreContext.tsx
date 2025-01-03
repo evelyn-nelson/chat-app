@@ -55,7 +55,7 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
 
   useEffect(() => {
     return () => {
-      store.close();
+      store.close(); // probably want to get rid of this eventually? sorta defeats the purpose of the store
     };
   }, [store]);
 

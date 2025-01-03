@@ -32,7 +32,7 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
       <Modal
         visible={isSignupModalOpen}
         animationType="slide"
-        transparent={true}
+        transparent
         onRequestClose={closeModal}
       >
         <Pressable style={styles.modalBackdrop} onPress={closeModal}>

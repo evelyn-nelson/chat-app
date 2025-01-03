@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 
-import type { GroupRow, IStore, MessageRow } from "./types";
-import { Group, Message } from "@/types/types";
+import type { GroupRow, IStore, MessageRow, UserRow } from "./types";
+import { Group, Message, User } from "@/types/types";
 
 export class Store implements IStore {
   private db: SQLite.SQLiteDatabase | null;
@@ -24,7 +24,7 @@ export class Store implements IStore {
         await this.db.execAsync(`
                 PRAGMA journal_mode = 'wal';
                 PRAGMA foreign_keys = ON;
-                CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY NOT NULL, username TEXT);
+                CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
                 CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, created_at TEXT, updated_at TEXT);
                 CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id INTEGER NOT NULL, group_id INTEGER NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
                 `);
@@ -55,14 +55,18 @@ export class Store implements IStore {
       const diff = group_ids.filter((id) => !real_groups.includes(id));
 
       await this.db.runAsync(
-        `INSERT OR REPLACE INTO users (id, username) 
-         VALUES ${users.map(() => "(?, ?)").join(", ")}`,
+        `INSERT INTO users (id, username) 
+         VALUES ${users.map(() => "(?, ?)").join(", ")}
+         ON CONFLICT(id) DO UPDATE SET username = excluded.username;s
+         `,
         users.flatMap((user) => [user.id, user.username])
       );
 
       await this.db.runAsync(
-        `INSERT OR REPLACE INTO groups (id) 
-         VALUES ${diff.map(() => "(?)").join(", ")}`,
+        `INSERT INTO groups (id) 
+         VALUES ${diff.map(() => "(?)").join(", ")}
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name;
+         `,
         diff.flatMap((id) => [id])
       );
 
@@ -108,7 +112,7 @@ export class Store implements IStore {
   async clearMessages(): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
 
-    await this.db.runAsync("DELETE FROM messages");
+    await this.db.runAsync("DELETE FROM messages;");
   }
 
   async saveGroups(groups: Group[]): Promise<void> {
@@ -146,7 +150,47 @@ export class Store implements IStore {
 
   async clearGroups(): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
-    await this.db.runAsync("DELETE FROM groups");
+    await this.db.runAsync("DELETE FROM groups;");
+  }
+
+  async saveUsers(users: User[]): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO users (id, username, email, created_at, updated_at, group_admin_map) 
+         VALUES ${users.map(() => "(?, ?, ?, ?, ?, ?)").join(", ")}`,
+      users.flatMap((user) => [
+        user.id,
+        user.username,
+        user.email,
+        user.created_at,
+        user.updated_at,
+        JSON.stringify(user.group_admin_map),
+      ])
+    );
+  }
+
+  async loadUsers(): Promise<User[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    const result = await this.db.getAllAsync<UserRow>(`
+        SELECT * FROM users;`);
+    return (
+      result?.map((row) => {
+        return {
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          group_admin_map: JSON.parse(row.group_admin_map) || [],
+        };
+      }) ?? []
+    );
+  }
+
+  async clearUsers(): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    await this.db.runAsync("DELETE FROM users;");
   }
 
   async close(): Promise<void> {
