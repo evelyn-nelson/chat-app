@@ -11,7 +11,9 @@ const ChatBubble = (props: {
     <View style={style}>
       <Text style={styles.chatTextUsername}>{props.username}</Text>
       <View style={[styles.chatBubble]}>
-        <Text style={styles.chatText}>{props.message}</Text>
+        <Text selectable={true} style={styles.chatText}>
+          {props.message}
+        </Text>
       </View>
     </View>
   );

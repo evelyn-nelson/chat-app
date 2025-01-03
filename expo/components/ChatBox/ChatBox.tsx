@@ -36,6 +36,7 @@ export default function ChatBox(props: { group_id: number }) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [hideMessages, setHideMessages] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -58,11 +59,12 @@ export default function ChatBox(props: { group_id: number }) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: false });
       }, 100);
-    }, 50);
+    }, 0);
   };
 
   useEffect(() => {
     scrollToBottom(false);
+    setHideMessages(false);
 
     const keyboardWillShow = Keyboard.addListener(
       isIOS ? "keyboardWillShow" : "keyboardDidShow",
@@ -157,12 +159,16 @@ export default function ChatBox(props: { group_id: number }) {
             }}
           >
             {bubbles.map((bubble, index) => (
-              <ChatBubble
+              <View
                 key={`${bubble.message.id || index}`}
-                username={bubble.message.user.username}
-                message={bubble.message.content}
-                align={bubble.align}
-              />
+                style={hideMessages ? { display: "none" } : {}}
+              >
+                <ChatBubble
+                  username={bubble.message.user.username}
+                  message={bubble.message.content}
+                  align={bubble.align}
+                />
+              </View>
             ))}
           </ScrollView>
         </View>
