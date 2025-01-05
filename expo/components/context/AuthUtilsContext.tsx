@@ -27,7 +27,7 @@ const AuthUtilsContext = createContext<AuthUtilsContextType | undefined>(
 );
 
 export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
-  const { establishConnection, disconnect } = useWebSocket();
+  const { establishConnection, disconnect, connected } = useWebSocket();
   const { loadHistoricalMessages } = useMessageStore();
 
   const { user, setUser } = useGlobalStore();
@@ -49,7 +49,13 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
             console.error("whoami error:", error);
           }
         });
+      if (!connected) {
+        establishConnection();
+      }
       return loggedInUser;
+    }
+    if (!connected) {
+      establishConnection();
     }
     return user;
   };

@@ -1,5 +1,8 @@
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
+import React from "react";
+import { Button, Pressable } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 type GroupParams = {
   id: string;
@@ -32,6 +35,24 @@ export default function GroupLayout() {
           return {
             title: group?.name ?? `Loading...`,
             headerShown: true,
+            headerLeft: () => {
+              return (
+                <Pressable
+                  style={{
+                    height: 40,
+                    width: 40,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  onPress={() => {
+                    router.back();
+                  }}
+                >
+                  <Ionicons name={"arrow-back"} size={20} />
+                </Pressable>
+              );
+            },
           };
         }}
       />

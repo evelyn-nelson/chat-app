@@ -174,15 +174,24 @@ export class Store implements IStore {
     if (!this.db) throw new Error("Database not initialized");
     const result = await this.db.getAllAsync<UserRow>(`
         SELECT * FROM users;`);
+
     return (
       result?.map((row) => {
+        var group_admin_map;
+        try {
+          group_admin_map = JSON.parse(row.group_admin_map ?? "[]");
+        } catch (error) {
+          console.log("row", row.group_admin_map);
+          console.error(error);
+          group_admin_map = [];
+        }
         return {
           id: row.id,
           username: row.username,
           email: row.email,
           created_at: row.created_at,
           updated_at: row.updated_at,
-          group_admin_map: JSON.parse(row.group_admin_map) || [],
+          group_admin_map: group_admin_map,
         };
       }) ?? []
     );
