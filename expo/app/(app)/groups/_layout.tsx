@@ -1,5 +1,5 @@
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack } from "expo-router";
 
 type GroupParams = {
   id: string;

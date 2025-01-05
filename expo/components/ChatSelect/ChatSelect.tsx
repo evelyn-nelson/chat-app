@@ -1,14 +1,10 @@
 import { View, Text, StyleSheet, Button } from "react-native";
 import { ChatSelectBox } from "./ChatSelectBox";
-import { useWebSocket } from "../context/WebSocketContext";
-import { useEffect, useRef, useState } from "react";
 import { ChatCreate } from "./ChatCreate";
 import { useGlobalStore } from "../context/GlobalStoreContext";
-import { CanceledError } from "axios";
 
 export const ChatSelect = () => {
-  const { getGroups } = useWebSocket();
-  const { store, user, groups, setGroups } = useGlobalStore();
+  const { user, groups } = useGlobalStore();
   return (
     <View style={styles.container}>
       {user ? (
