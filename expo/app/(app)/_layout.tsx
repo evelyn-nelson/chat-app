@@ -3,9 +3,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Redirect, Stack, Tabs } from "expo-router";
 import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 import { User } from "@/types/types";
+import { useWebSocket } from "@/components/context/WebSocketContext";
+import { useGlobalStore } from "@/components/context/GlobalStoreContext";
+import { CanceledError } from "axios";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
+  const { getGroups } = useWebSocket();
+  const { store, setGroups } = useGlobalStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const isMounted = useRef(true);
@@ -32,6 +37,38 @@ const AppLayout = () => {
     return () => {
       isMounted.current = false;
     };
+  }, []);
+
+  const isFetching = useRef(false);
+
+  const fetchGroups = async () => {
+    if (isFetching.current) return;
+    isFetching.current = true;
+
+    try {
+      const data = await getGroups();
+      setGroups(data);
+      store.saveGroups(data);
+    } catch (error) {
+      if (!(error instanceof CanceledError)) {
+        try {
+          const storedGroups = await store.loadGroups();
+          setGroups(storedGroups);
+        } catch (storeError) {
+          console.error("Failed to load groups:", storeError);
+        }
+      }
+    } finally {
+      isFetching.current = false;
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+
+    const intervalId = setInterval(fetchGroups, 20000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   if (isLoading) {
