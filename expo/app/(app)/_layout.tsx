@@ -10,7 +10,7 @@ import { CanceledError } from "axios";
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
   const { getGroups } = useWebSocket();
-  const { store, setGroups } = useGlobalStore();
+  const { store } = useGlobalStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const isMounted = useRef(true);
@@ -47,13 +47,11 @@ const AppLayout = () => {
 
     try {
       const data = await getGroups();
-      setGroups(data);
       store.saveGroups(data);
     } catch (error) {
       if (!(error instanceof CanceledError)) {
         try {
-          const storedGroups = await store.loadGroups();
-          setGroups(storedGroups);
+          await store.loadGroups(); // this is just to test if store is working im thinking
         } catch (storeError) {
           console.error("Failed to load groups:", storeError);
         }
@@ -66,7 +64,7 @@ const AppLayout = () => {
   useEffect(() => {
     fetchGroups();
 
-    const intervalId = setInterval(fetchGroups, 20000);
+    const intervalId = setInterval(fetchGroups, 5000);
 
     return () => clearInterval(intervalId);
   }, []);

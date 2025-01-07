@@ -38,9 +38,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
 
   const createGroup = async (name: string): Promise<Group | undefined> => {
-    if (socketRef.current) {
-      socketRef.current.close();
-    }
     const httpURL = `http://${baseURL}/createGroup`;
 
     const group = http

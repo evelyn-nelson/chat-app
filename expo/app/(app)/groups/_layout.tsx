@@ -1,15 +1,24 @@
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { router, Stack } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Pressable } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Group } from "@/types/types";
 
 type GroupParams = {
   id: string;
 };
 
 export default function GroupLayout() {
-  const { groups } = useGlobalStore();
+  const { store } = useGlobalStore();
+  const [groups, setGroups] = useState<Group[]>([]);
+
+  useEffect(() => {
+    store
+      .loadGroups()
+      .then((savedGroups) => setGroups(savedGroups))
+      .catch((error) => console.error(error));
+  }, []);
 
   const getGroup = (id: string) => {
     for (let i = 0; i < groups.length; i++) {

@@ -18,26 +18,21 @@ type Action =
 
 interface State {
   user: User | undefined;
-  groups: Group[];
 }
 
 interface GlobalStoreContextType extends State {
   store: Store;
   setUser: (user: User | undefined) => void;
-  setGroups: (groups: Group[]) => void;
 }
 
 const initialState: State = {
   user: undefined,
-  groups: [],
 };
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "SET_USER":
       return { ...state, user: action.payload };
-    case "SET_GROUPS":
-      return { ...state, groups: action.payload };
     default:
       return state;
   }
@@ -63,18 +58,13 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
     dispatch({ type: "SET_USER", payload: user });
   }, []);
 
-  const setGroups = useCallback((groups: Group[]) => {
-    dispatch({ type: "SET_GROUPS", payload: groups });
-  }, []);
-
   const value = useMemo(
     () => ({
       ...state,
       setUser,
-      setGroups,
       store,
     }),
-    [state, setUser, setGroups, store]
+    [state, setUser, store]
   );
 
   return (

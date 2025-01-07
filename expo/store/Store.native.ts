@@ -65,7 +65,7 @@ export class Store implements IStore {
       await this.db.runAsync(
         `INSERT INTO groups (id) 
          VALUES ${diff.map(() => "(?)").join(", ")}
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name;
+         ON CONFLICT(id) DO NOTHING;
          `,
         diff.flatMap((id) => [id])
       );
@@ -117,10 +117,12 @@ export class Store implements IStore {
 
   async saveGroups(groups: Group[]): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
-
+    console.log("saveGroups", groups);
     await this.db.runAsync(
-      `INSERT OR REPLACE INTO groups (id, name, admin, created_at, updated_at) 
-         VALUES ${groups.map(() => "(?, ?, ?, ?, ?)").join(", ")}`,
+      `INSERT INTO groups (id, name, admin, created_at, updated_at) 
+         VALUES ${groups.map(() => "(?, ?, ?, ?, ?)").join(", ")}
+         ON CONFLICT DO UPDATE SET name = excluded.name, admin = excluded.admin;
+         `,
       groups.flatMap((group) => [
         group.id,
         group.name,
@@ -135,6 +137,7 @@ export class Store implements IStore {
     if (!this.db) throw new Error("Database not initialized");
     const result = await this.db.getAllAsync<GroupRow>(`
         SELECT * FROM groups;`);
+    console.log("loadGroups", result);
     return (
       result?.map((row) => {
         return {
