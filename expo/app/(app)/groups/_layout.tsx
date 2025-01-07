@@ -10,7 +10,7 @@ type GroupParams = {
 };
 
 export default function GroupLayout() {
-  const { store } = useGlobalStore();
+  const { store, groupsRefreshKey } = useGlobalStore();
   const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function GroupLayout() {
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error(error));
-  }, []);
+  }, [groupsRefreshKey]);
 
   const getGroup = (id: string) => {
     for (let i = 0; i < groups.length; i++) {

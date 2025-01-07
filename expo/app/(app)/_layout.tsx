@@ -10,7 +10,7 @@ import { CanceledError } from "axios";
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
   const { getGroups } = useWebSocket();
-  const { store } = useGlobalStore();
+  const { store, refreshGroups } = useGlobalStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const isMounted = useRef(true);
@@ -48,6 +48,7 @@ const AppLayout = () => {
     try {
       const data = await getGroups();
       store.saveGroups(data);
+      refreshGroups();
     } catch (error) {
       if (!(error instanceof CanceledError)) {
         try {

@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import ChatCreateModal from "./ChatCreate/ChatCreateModal";
 
 export const ChatSelect = () => {
-  const { store } = useGlobalStore();
+  const { store, groupsRefreshKey } = useGlobalStore();
 
   const [groups, setGroups] = useState<Group[]>([]);
 
@@ -16,7 +16,7 @@ export const ChatSelect = () => {
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error(error));
-  }, [store]);
+  }, [groupsRefreshKey]);
 
   return (
     <View style={styles.container}>

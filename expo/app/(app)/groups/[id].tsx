@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 const GroupPage = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, store } = useGlobalStore();
+  const { user, store, groupsRefreshKey } = useGlobalStore();
   const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ const GroupPage = () => {
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error(error));
-  }, [store]);
+  }, [groupsRefreshKey]);
 
   if (!user) {
     return <Redirect href={"/signin"} />;

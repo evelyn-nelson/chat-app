@@ -1,14 +1,16 @@
 import { Group, User } from "@/types/types";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { useWebSocket } from "../../context/WebSocketContext";
 import { router } from "expo-router";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
 
 export const ChatCreate = (props: { onSubmit: () => void }) => {
+  const { store, groupsRefreshKey } = useGlobalStore();
+
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string>("");
-  const { createGroup, inviteUsersToGroup } = useWebSocket();
+  const { createGroup, inviteUsersToGroup, getGroups } = useWebSocket();
 
   return (
     <View>
@@ -32,7 +34,6 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
         title={"Create"}
         onPress={async () => {
           const group = await createGroup(groupName);
-          console.log(group);
           setGroupName("");
           if (group && usersToInvite) {
             await inviteUsersToGroup(usersToInvite.split(", "), group.id);
@@ -41,6 +42,12 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
           props.onSubmit();
           if (group) {
             router.push(`/groups/${group.id}`);
+            try {
+              const groups = await getGroups();
+              store.saveGroups(groups);
+            } catch (error) {
+              console.error(error);
+            }
           }
         }}
       />
