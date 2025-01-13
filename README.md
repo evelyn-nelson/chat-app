@@ -42,6 +42,5 @@ To create a new migration, run `migrate create -ext sql -dir db/migrations -seq 
 To access the db directly, run
 ```bash
 docker exec -it chat-app-db-1 bash
-psql -U postgres
-\c postgres
+psql -U postgres \c postgres
 ```
