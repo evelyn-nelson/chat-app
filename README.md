@@ -1,15 +1,19 @@
 Temporary group chats for events.
 
-## Expo app
+## Running the Expo app
 
-1. Install dependencies
+### 0. Install dependencies via your package manager of choice
+   - `golang-migrate`
+   - `sqlc`
+   - [Install Go](https://go.dev/dl/)
+### 1. Install project dependencies
 
    ```bash
    cd expo
    npm install
    ```
 
-2. Start the app
+### 2. Start the app
 
    ```bash
     npx expo start
@@ -25,15 +29,19 @@ In the output, you'll find options to open the app in a
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 
-3. From the root directory, run `docker compose up` to run the go server and postgres/migrate/sqlc
+### 3. Run the Docker containers
+From the root directory, **not** `expo/`, run
 
-this is set up to work with docker but you should probably install golang migrate, sqlc, and go yourself.
+```bash
+docker compose up
+```
+to run the Go server and postgres/migrate/sqlc.
 
-`brew install golang-migrate`
-
-To create a new migration, run migrate create -ext sql -dir db/migrations -seq {name_of_migration}
+To create a new migration, run `migrate create -ext sql -dir db/migrations -seq {name_of_migration}`
 
 To access the db directly, run
-`docker exec -it chat-app-db-1 bash`
-`psql -U postgres`
-`\c postgres`
+```bash
+docker exec -it chat-app-db-1 bash
+psql -U postgres
+\c postgres
+```
