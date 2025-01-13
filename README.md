@@ -2,10 +2,28 @@ Temporary group chats for events.
 
 ## Running the Expo app
 
-### 0. Install dependencies via your package manager of choice
+### 0. Setup
+#### Install dependencies via your package manager of choice
    - `golang-migrate`
    - `sqlc`
    - [Install Go](https://go.dev/dl/)
+#### Setup `.env` files
+   1. Generate a JWT_SECRET [here](https://jwtsecret.com/generate)
+   2. In root directory, setup a `.env` with these contents:
+   ```
+   DB_USER=postgres
+   DB_PASSWORD=postgres
+   DB_URL=postgres://postgres:postgres@db:5432/postgres
+   JWT_SECRET={generated secret}
+   ```
+   3. Check your wifi settings and get your local IP address. It should be in the form `192.168.1.X`
+   4. In `expo/`, setup a .env with these contents:
+   ```
+   NODE_ENV=development
+   EXPO_PUBLIC_HOST=192.168.1.X:8080
+   ```
+   5. In `server/router.go`, add your IP address with port `8081` to the list of known addresses.
+       - TODO: Make this automated.
 ### 1. Install project dependencies
 
    ```bash
