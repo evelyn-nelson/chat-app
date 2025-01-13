@@ -1,16 +1,20 @@
 type Message = {
   id: number;
   content: string;
-  user: User;
+  user: MessageUser;
   group_id: number;
-  created_at: string;
-  updated_at: string;
+  timestamp: string;
 };
 
 type RawMessage = {
   content: string;
   sender_id: number;
   group_id: number;
+};
+
+type MessageUser = {
+  id: number;
+  username: string;
 };
 
 type User = {

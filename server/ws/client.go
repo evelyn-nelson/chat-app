@@ -19,11 +19,17 @@ type Client struct {
 	mutex   sync.RWMutex
 }
 
+type MessageUser struct {
+	ID       int32  `json:"id"`
+	Username string `json:"username"`
+}
+
 type Message struct {
-	ID      int32             `json:"id"`
-	Content string            `json:"content"`
-	GroupID int32             `json:"group_id"`
-	User    db.GetUserByIdRow `json:"user"`
+	ID        int32            `json:"id"`
+	Content   string           `json:"content"`
+	GroupID   int32            `json:"group_id"`
+	User      MessageUser      `json:"user"`
+	Timestamp pgtype.Timestamp `json:"timestamp"`
 }
 
 type RawMessage struct {
@@ -99,7 +105,7 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries, ctx context.Context)
 		msg := &Message{
 			Content: rawMessage.Content,
 			GroupID: rawMessage.GroupID,
-			User:    c.User,
+			User:    MessageUser{ID: c.User.ID, Username: c.User.Username},
 		}
 
 		hub.Broadcast <- msg

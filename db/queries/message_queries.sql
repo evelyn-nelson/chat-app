@@ -12,6 +12,8 @@ DELETE FROM messages
 WHERE id = $1 RETURNING *;
 
 -- name: GetRelevantMessages :many
-SELECT m.id, m.content, m.user_id, m.group_id, m.created_at
+SELECT m.id, m.content, m.user_id, u2.username, m.group_id, m.created_at
 FROM messages m
-JOIN user_groups ug ON ug.group_id = m.group_id AND ug.user_id = $1;
+JOIN user_groups ug ON ug.group_id = m.group_id AND ug.user_id = $1
+JOIN users u ON u.id = ug.user_id
+JOIN users u2 ON u2.id = m.user_id;

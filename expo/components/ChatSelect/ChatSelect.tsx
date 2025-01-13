@@ -3,11 +3,12 @@ import { ChatSelectBox } from "./ChatSelectBox";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useEffect, useRef, useState } from "react";
 import { ChatCreate } from "./ChatCreate";
-import { useGlobalState } from "../context/GlobalStateContext";
+import { useGlobalStore } from "../context/GlobalStoreContext";
+import { CanceledError } from "axios";
 
 export const ChatSelect = () => {
   const { getGroups } = useWebSocket();
-  const { user, groups, setGroups } = useGlobalState();
+  const { store, user, groups, setGroups } = useGlobalStore();
 
   const isFetching = useRef(false);
 
@@ -18,8 +19,16 @@ export const ChatSelect = () => {
     try {
       const data = await getGroups();
       setGroups(data);
+      store.saveGroups(data);
     } catch (error) {
-      console.error("Failed to fetch groups:", error);
+      if (!(error instanceof CanceledError)) {
+        try {
+          const storedGroups = await store.loadGroups();
+          setGroups(storedGroups);
+        } catch (storeError) {
+          console.error("Failed to load groups:", storeError);
+        }
+      }
     } finally {
       isFetching.current = false;
     }
@@ -28,7 +37,7 @@ export const ChatSelect = () => {
   useEffect(() => {
     fetchGroups();
 
-    const intervalId = setInterval(fetchGroups, 5000);
+    const intervalId = setInterval(fetchGroups, 20000);
 
     return () => clearInterval(intervalId);
   }, []);
