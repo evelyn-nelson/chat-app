@@ -67,6 +67,8 @@ export default function GroupLayout() {
               );
             },
             headerRight: () => {
+              // realistically this should show for everybody 
+              // (and probably with a different icon, but it should just show who all of the users are instead of an admin menu)
               if (group?.admin) {
                 return <ChatSettingsModal groupId={Number(id)} />;
               }
