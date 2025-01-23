@@ -69,7 +69,6 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           password: password,
         }
       );
-
       const { data } = response;
       await save("jwt", data.token);
       await establishConnection();

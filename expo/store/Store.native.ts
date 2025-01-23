@@ -117,7 +117,6 @@ export class Store implements IStore {
 
   async saveGroups(groups: Group[]): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
-    console.log("saveGroups", groups);
     await this.db.runAsync(
       `INSERT INTO groups (id, name, admin, created_at, updated_at) 
          VALUES ${groups.map(() => "(?, ?, ?, ?, ?)").join(", ")}
@@ -137,7 +136,6 @@ export class Store implements IStore {
     if (!this.db) throw new Error("Database not initialized");
     const result = await this.db.getAllAsync<GroupRow>(`
         SELECT * FROM groups;`);
-    console.log("loadGroups", result);
     return (
       result?.map((row) => {
         return {

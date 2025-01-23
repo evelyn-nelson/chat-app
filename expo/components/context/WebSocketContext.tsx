@@ -97,9 +97,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
       socket.onerror = (error) => {
         console.log("WebSocket error: ", error);
-        setTimeout(() => {
-          establishConnection();
-        }, 1000);
+        // setTimeout(() => {
+        // establishConnection();
+        // }, 1000);
         reject();
       };
     });
