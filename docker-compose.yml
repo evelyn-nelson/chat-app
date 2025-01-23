@@ -55,6 +55,7 @@ services:
     command: ["generate"]
     depends_on:
       - db
+      - migrate
 volumes:
   db:
     driver: local
