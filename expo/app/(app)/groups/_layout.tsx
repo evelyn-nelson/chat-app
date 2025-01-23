@@ -1,9 +1,10 @@
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { router, Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Button, Pressable } from "react-native";
+import { Button, Pressable, View, Text } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Group } from "@/types/types";
+import ChatSettingsModal from "@/components/ChatSettings/ChatSettingsModal";
 
 type GroupParams = {
   id: string;
@@ -40,6 +41,9 @@ export default function GroupLayout() {
         name="[id]"
         options={({ route }) => {
           const { id } = route.params as GroupParams;
+          if (!Number(id)) {
+            router.back();
+          }
           const group = getGroup(id);
           return {
             title: group?.name ?? `Loading...`,
@@ -61,6 +65,9 @@ export default function GroupLayout() {
                   <Ionicons name={"arrow-back"} size={20} />
                 </Pressable>
               );
+            },
+            headerRight: () => {
+              return <ChatSettingsModal groupId={Number(id)} />;
             },
           };
         }}
