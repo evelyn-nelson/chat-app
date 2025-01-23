@@ -24,6 +24,7 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
         placeholder="Group name"
       />
       <UserInviteMultiselect
+        placeholderText="Users to invite"
         userList={usersToInvite}
         setUserList={setUsersToInvite}
       />

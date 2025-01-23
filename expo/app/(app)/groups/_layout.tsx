@@ -67,7 +67,9 @@ export default function GroupLayout() {
               );
             },
             headerRight: () => {
-              return <ChatSettingsModal groupId={Number(id)} />;
+              if (group?.admin) {
+                return <ChatSettingsModal groupId={Number(id)} />;
+              }
             },
           };
         }}

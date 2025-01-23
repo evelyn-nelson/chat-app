@@ -3,14 +3,15 @@ import { useState } from "react";
 import TagInput from "@/components/Global/TagInput";
 
 const UserInviteMultiselect = (props: {
+  placeholderText: string;
   userList: string[];
   setUserList: React.Dispatch<React.SetStateAction<string[]>>;
 }) => {
-  const { userList, setUserList } = props;
+  const { placeholderText, userList, setUserList } = props;
   return (
     <View style={styles.container}>
       <TagInput
-        placeholderText={"Users to invite"}
+        placeholderText={placeholderText}
         tags={userList}
         setTags={setUserList}
       />
