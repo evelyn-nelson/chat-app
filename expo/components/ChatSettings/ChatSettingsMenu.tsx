@@ -1,6 +1,6 @@
 import { Button, StyleSheet, Text, View } from "react-native";
 import React, { useState } from "react";
-import UserInviteMultiselect from "../Global/UserInviteMultiselect";
+import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
 import { useWebSocket } from "../context/WebSocketContext";
 
 const ChatSettingsMenu = (props: { groupId: number }) => {

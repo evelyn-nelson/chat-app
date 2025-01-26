@@ -4,7 +4,7 @@ import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { useWebSocket } from "../../context/WebSocketContext";
 import { router } from "expo-router";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
-import UserInviteMultiselect from "../../Global/UserInviteMultiselect";
+import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
 
 export const ChatCreate = (props: { onSubmit: () => void }) => {
   const { store, groupsRefreshKey } = useGlobalStore();
@@ -27,6 +27,8 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
         placeholderText="Users to invite"
         userList={usersToInvite}
         setUserList={setUsersToInvite}
+        excludedUserList={[]}
+        setExcludedUserList={[]}
       />
       <View style={styles.button}>
         <Button

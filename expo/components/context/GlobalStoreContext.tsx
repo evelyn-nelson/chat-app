@@ -14,22 +14,26 @@ import React, {
 
 type Action =
   | { type: "SET_USER"; payload: User | undefined }
-  | { type: "TRIGGER_GROUPS_REFRESH" };
+  | { type: "TRIGGER_GROUPS_REFRESH" }
+  | { type: "TRIGGER_USERS_REFRESH" };
 
 interface State {
   user: User | undefined;
   groupsRefreshKey: number;
+  usersRefreshKey: number;
 }
 
 interface GlobalStoreContextType extends State {
   store: Store;
   setUser: (user: User | undefined) => void;
   refreshGroups: () => void;
+  refreshUsers: () => void;
 }
 
 const initialState: State = {
   user: undefined,
   groupsRefreshKey: 0,
+  usersRefreshKey: 0,
 };
 
 const reducer = (state: State, action: Action): State => {
@@ -38,6 +42,8 @@ const reducer = (state: State, action: Action): State => {
       return { ...state, user: action.payload };
     case "TRIGGER_GROUPS_REFRESH":
       return { ...state, groupsRefreshKey: state.groupsRefreshKey + 1 };
+    case "TRIGGER_USERS_REFRESH":
+      return { ...state, usersRefreshKey: state.usersRefreshKey + 1 };
     default:
       return state;
   }
@@ -67,14 +73,19 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
     dispatch({ type: "TRIGGER_GROUPS_REFRESH" });
   };
 
+  const refreshUsers = () => {
+    dispatch({ type: "TRIGGER_USERS_REFRESH" });
+  };
+
   const value = useMemo(
     () => ({
       ...state,
       setUser,
       refreshGroups,
+      refreshUsers,
       store,
     }),
-    [state, setUser, refreshGroups, store]
+    [state, setUser, refreshGroups, refreshUsers, store]
   );
 
   return (
