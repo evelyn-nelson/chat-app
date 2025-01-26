@@ -26,6 +26,7 @@ export interface GroupRow {
   id: number;
   name: string;
   admin: boolean;
+  group_users: string;
   created_at: string;
   updated_at: string;
 }

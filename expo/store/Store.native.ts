@@ -6,7 +6,7 @@ import { Group, Message, User } from "@/types/types";
 export class Store implements IStore {
   private db: SQLite.SQLiteDatabase | null;
   constructor() {
-    this.db = SQLite.openDatabaseSync("messages.db");
+    this.db = SQLite.openDatabaseSync("store.db");
     this.initDatabase();
   }
 
@@ -25,7 +25,7 @@ export class Store implements IStore {
                 PRAGMA journal_mode = 'wal';
                 PRAGMA foreign_keys = ON;
                 CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
-                CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, created_at TEXT, updated_at TEXT);
+                CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, group_users TEXT NOT NULL DEFAULT '[]', created_at TEXT, updated_at TEXT);
                 CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id INTEGER NOT NULL, group_id INTEGER NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
                 `);
 
@@ -118,17 +118,20 @@ export class Store implements IStore {
   async saveGroups(groups: Group[]): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
     await this.db.runAsync(
-      `INSERT INTO groups (id, name, admin, created_at, updated_at) 
-         VALUES ${groups.map(() => "(?, ?, ?, ?, ?)").join(", ")}
+      `INSERT INTO groups (id, name, admin, group_users, created_at, updated_at) 
+         VALUES ${groups.map(() => "(?, ?, ?, ?, ?, ?)").join(", ")}
          ON CONFLICT DO UPDATE SET name = excluded.name, admin = excluded.admin;
          `,
-      groups.flatMap((group) => [
-        group.id,
-        group.name,
-        group.admin,
-        group.created_at,
-        group.updated_at,
-      ])
+      groups.flatMap((group) => {
+        return [
+          group.id,
+          group.name,
+          group.admin,
+          JSON.stringify(group.group_users),
+          group.created_at,
+          group.updated_at,
+        ];
+      })
     );
   }
 
@@ -136,12 +139,14 @@ export class Store implements IStore {
     if (!this.db) throw new Error("Database not initialized");
     const result = await this.db.getAllAsync<GroupRow>(`
         SELECT * FROM groups;`);
+
     return (
       result?.map((row) => {
         return {
           id: row.id,
           name: row.name,
           admin: row.admin,
+          group_users: JSON.parse(row.group_users),
           created_at: row.created_at,
           updated_at: row.updated_at,
         };
@@ -182,7 +187,6 @@ export class Store implements IStore {
         try {
           group_admin_map = JSON.parse(row.group_admin_map ?? "[]");
         } catch (error) {
-          console.log("row", row.group_admin_map);
           console.error(error);
           group_admin_map = [];
         }

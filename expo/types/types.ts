@@ -28,12 +28,15 @@ type User = {
 
 type GroupAdminMap = Map<number, boolean>;
 
+type GroupUser = User & { admin: boolean };
+
 type Group = {
   id: number;
   name: string;
   created_at: string;
   updated_at: string;
   admin: boolean;
+  group_users: GroupUser[];
 };
 
 type UserGroup = {

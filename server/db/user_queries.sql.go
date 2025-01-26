@@ -165,7 +165,7 @@ WITH s AS (
     JOIN user_groups ug ON ug.group_id = g.id
     WHERE ug.user_id = $1
 )
-SELECT u.id, u.username, u.created_at, jsonb_object_agg(ug.group_id, ug.admin)::text AS group_admin_map FROM users u 
+SELECT u.id, u.username, u.email, u.created_at, jsonb_object_agg(ug.group_id, ug.admin)::text AS group_admin_map FROM users u 
 JOIN user_groups ug ON ug.user_id = u.id
 JOIN s ON s.id = group_id
 GROUP BY u.id
@@ -174,6 +174,7 @@ GROUP BY u.id
 type GetRelevantUsersRow struct {
 	ID            int32            `json:"id"`
 	Username      string           `json:"username"`
+	Email         string           `json:"email"`
 	CreatedAt     pgtype.Timestamp `json:"created_at"`
 	GroupAdminMap string           `json:"group_admin_map"`
 }
@@ -190,6 +191,7 @@ func (q *Queries) GetRelevantUsers(ctx context.Context, userID pgtype.Int4) ([]G
 		if err := rows.Scan(
 			&i.ID,
 			&i.Username,
+			&i.Email,
 			&i.CreatedAt,
 			&i.GroupAdminMap,
 		); err != nil {

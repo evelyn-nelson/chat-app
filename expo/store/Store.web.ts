@@ -22,7 +22,9 @@ export class Store implements IStore {
   }
 
   async saveGroups(groups: Group[]): Promise<void> {
-    this.groups = groups;
+    this.groups = groups.map((group) => {
+      return { ...group, group_users: JSON.parse(`${group.group_users}`) };
+    });
   }
 
   async loadGroups(): Promise<Group[]> {
@@ -34,7 +36,12 @@ export class Store implements IStore {
   }
 
   async saveUsers(users: User[]): Promise<void> {
-    this.users = users;
+    this.users = users.map((user) => {
+      return {
+        ...user,
+        group_admin_map: JSON.parse(`${user.group_admin_map}`) ?? {},
+      };
+    });
   }
 
   async loadUsers(): Promise<User[]> {
