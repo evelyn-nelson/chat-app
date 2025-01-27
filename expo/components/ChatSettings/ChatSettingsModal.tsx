@@ -3,16 +3,17 @@ import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ChatCreate } from "../ChatSelect/ChatCreate/ChatCreate";
 import ChatSettingsMenu from "./ChatSettingsMenu";
+import { Group } from "@/types/types";
 
-const ChatSettingsModal = (props: { groupId: number }) => {
+const ChatSettingsModal = (props: { group: Group }) => {
   const [isChatSettingsModalOpen, setIsChatSettingsModalOpen] =
     useState<boolean>(false);
 
   const closeModal = () => {
     setIsChatSettingsModalOpen(false);
   };
-  const { groupId } = props;
-  if (!groupId) {
+  const { group } = props;
+  if (!group.id) {
     return <View />;
   }
   return (
@@ -29,7 +30,7 @@ const ChatSettingsModal = (props: { groupId: number }) => {
       >
         {({ pressed }) => (
           <Ionicons
-            name={"settings-outline"}
+            name={"ellipsis-horizontal-outline"}
             size={20}
             color={pressed ? "gray" : "black"}
           />
@@ -46,7 +47,7 @@ const ChatSettingsModal = (props: { groupId: number }) => {
             style={styles.modalContainer}
             onPress={(e) => e.stopPropagation()}
           >
-            <ChatSettingsMenu groupId={groupId} />
+            <ChatSettingsMenu group={group} />
           </Pressable>
         </Pressable>
       </Modal>

@@ -10,7 +10,7 @@ const UserInviteMultiselect = (props: {
   userList: string[];
   setUserList: React.Dispatch<React.SetStateAction<string[]>>;
   excludedUserList: User[];
-  setExcludedUserList: User[];
+  setExcludedUserList: React.Dispatch<React.SetStateAction<User[]>>;
 }) => {
   const {
     placeholderText,
@@ -391,8 +391,8 @@ const UserInviteMultiselect = (props: {
         tags={userList}
         options={contacts}
         setTags={setUserList}
-        excludedUserList={[]}
-        setExcludedUserList={[]}
+        excludedUserList={excludedUserList}
+        setExcludedUserList={setExcludedUserList}
       />
     </View>
   );
