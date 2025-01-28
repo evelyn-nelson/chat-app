@@ -24,7 +24,6 @@ interface UserState {
 }
 
 interface UserStoreContextType {
-  // searchUsers: (string: string) => User[];
   loadUsers: () => Promise<void>;
   loading: boolean;
   error: string | null;

@@ -36,6 +36,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
+  const isReconnecting = useRef(false);
 
   const createGroup = async (name: string): Promise<Group | undefined> => {
     const httpURL = `http://${baseURL}/createGroup`;
@@ -59,49 +60,100 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const establishConnection = (): Promise<void> => {
     return new Promise(async (resolve, reject) => {
       const token = await get("jwt");
-      if (socketRef.current) {
-        socketRef.current.close(1000);
+      if (!token) {
+        return;
       }
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        resolve();
+        return;
+      }
+
+      if (isReconnecting.current) {
+        console.log("Already reconnecting, waiting for existing connection...");
+        return;
+      }
+
+      isReconnecting.current = true;
 
       const wsURL = `ws://${baseURL}/establishConnection/${token}`;
 
-      const socket = new WebSocket(wsURL);
-      socketRef.current = socket;
+      let retryCount = 0;
+      const MAX_RETRIES = 5;
+      const INITIAL_RETRY_DELAY = 1000;
 
-      socket.onopen = () => {
-        console.log("WebSocket connected");
-        setConnected(true);
-        resolve();
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const parsedMessage = JSON.parse(event.data);
-          const currentHandlers = messageHandlersRef.current;
-          currentHandlers.forEach((handler, index) => {
-            try {
-              handler(parsedMessage);
-            } catch (handlerError) {
-              console.error(`Error in handler ${index}:`, handlerError);
-            }
-          });
-        } catch (error) {
-          console.error("Error in onmessage:", error);
+      const cleanup = () => {
+        if (socketRef.current) {
+          socketRef.current.onclose = null;
+          socketRef.current.onerror = null;
+          socketRef.current.onmessage = null;
+          socketRef.current.onopen = null;
+          socketRef.current.close(1000);
         }
       };
 
-      socket.onclose = (event) => {
-        console.log("WebSocket closed", event);
-        setConnected(false);
-      };
+      const connect = () => {
+        cleanup();
 
-      socket.onerror = (error) => {
-        console.log("WebSocket error: ", error);
-        // setTimeout(() => {
-        // establishConnection();
-        // }, 1000);
-        reject();
+        const socket = new WebSocket(wsURL);
+        socketRef.current = socket;
+
+        socket.onopen = () => {
+          console.log("WebSocket connected");
+          setConnected(true);
+          isReconnecting.current = false;
+          retryCount = 0;
+          resolve();
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const parsedMessage = JSON.parse(event.data);
+            const currentHandlers = messageHandlersRef.current;
+            currentHandlers.forEach((handler, index) => {
+              try {
+                handler(parsedMessage);
+              } catch (handlerError) {
+                console.error(`Error in handler ${index}:`, handlerError);
+              }
+            });
+          } catch (error) {
+            console.error("Error in onmessage:", error);
+          }
+        };
+
+        socket.onclose = (event) => {
+          console.log("WebSocket closed", event);
+          setConnected(false);
+
+          if (event.code === 1000 || event.code === 401) {
+            isReconnecting.current = false;
+            return;
+          }
+
+          retryCount++;
+          if (retryCount < MAX_RETRIES) {
+            const delay = Math.min(
+              INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1),
+              60000
+            );
+            console.log(
+              `Retrying connection in ${delay} ms... (Attempt ${retryCount} of ${MAX_RETRIES})`
+            );
+            setTimeout(connect, delay);
+          } else {
+            console.error("Failed to establish connection after retries");
+            isReconnecting.current = false;
+            reject(
+              new Error("WebSocket connection failed after maximum retries")
+            );
+          }
+        };
+
+        socket.onerror = (error) => {
+          console.log("WebSocket error: ", error);
+        };
       };
+      connect();
     });
   };
 

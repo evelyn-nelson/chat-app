@@ -13,29 +13,33 @@ const AppLayout = () => {
   const { store, refreshGroups } = useGlobalStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const isMounted = useRef(true);
 
   useEffect(() => {
-    isMounted.current = true;
+    let isMounted = true;
 
-    const fetchUser = async () => {
+    const initialize = async () => {
       try {
-        if (isMounted.current) {
-          const loggedInUser = await whoami();
+        setIsLoading(true);
+        const loggedInUser = await whoami();
+        if (isMounted) {
           setUser(loggedInUser);
-          setIsLoading(false);
+          if (loggedInUser) {
+            await fetchGroups();
+          }
         }
       } catch (err) {
         console.error(err);
-        if (isMounted.current) {
+      } finally {
+        if (isMounted) {
           setIsLoading(false);
         }
       }
     };
-    fetchUser();
+
+    initialize();
 
     return () => {
-      isMounted.current = false;
+      isMounted = false;
     };
   }, []);
 
