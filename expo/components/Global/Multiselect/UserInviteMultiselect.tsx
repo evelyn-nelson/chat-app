@@ -385,7 +385,7 @@ const UserInviteMultiselect = (props: {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View>
       <UserMultiSelect
         placeholderText={placeholderText}
         tags={userList}
@@ -400,8 +400,4 @@ const UserInviteMultiselect = (props: {
 
 export default UserInviteMultiselect;
 
-const styles = StyleSheet.create({
-  container: {
-    marginLeft: 12,
-  },
-});
+const styles = StyleSheet.create({});
