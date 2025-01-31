@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalContainer: {
+    cursor: "auto",
     justifyContent: "center",
     alignItems: "center",
     height: "75%",
@@ -51,6 +52,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   modalBackdrop: {
+    cursor: "auto",
     position: "absolute",
     top: 0,
     left: 0,
