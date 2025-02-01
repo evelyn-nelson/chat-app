@@ -17,7 +17,6 @@ const UserMultiSelect = (props: {
   options: User[];
   setTags: React.Dispatch<React.SetStateAction<string[]>>;
   excludedUserList: User[];
-  setExcludedUserList: React.Dispatch<React.SetStateAction<User[]>>;
 }) => {
   const { placeholderText, tags, options, setTags, excludedUserList } = props;
 

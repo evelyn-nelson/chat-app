@@ -9,9 +9,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
   const { inviteUsersToGroup } = useWebSocket();
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
-  const [excludedUserList, setExcludedUserList] = useState<User[]>(
-    group.group_users
-  );
+  const excludedUserList = group.group_users;
   return (
     <View
       style={[
@@ -28,7 +26,6 @@ const ChatSettingsMenu = (props: { group: Group }) => {
           userList={usersToInvite}
           setUserList={setUsersToInvite}
           excludedUserList={excludedUserList}
-          setExcludedUserList={setExcludedUserList}
         />
         {usersToInvite.length > 0 && (
           <View style={styles.button}>

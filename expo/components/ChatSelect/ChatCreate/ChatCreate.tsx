@@ -7,12 +7,14 @@ import { useGlobalStore } from "../../context/GlobalStoreContext";
 import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
 
 export const ChatCreate = (props: { onSubmit: () => void }) => {
-  const { store, groupsRefreshKey } = useGlobalStore();
+  const { user: self, store, groupsRefreshKey } = useGlobalStore();
 
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
   const { createGroup, inviteUsersToGroup, getGroups } = useWebSocket();
-
+  if (!self) {
+    return <View></View>;
+  }
   return (
     <View>
       <TextInput
@@ -23,13 +25,14 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
         value={groupName}
         placeholder="Group name"
       />
-      <UserInviteMultiselect
-        placeholderText="Users to invite"
-        userList={usersToInvite}
-        setUserList={setUsersToInvite}
-        excludedUserList={[]}
-        setExcludedUserList={[]}
-      />
+      <View style={{ marginLeft: 12 }}>
+        <UserInviteMultiselect
+          placeholderText="Users to invite"
+          userList={usersToInvite}
+          setUserList={setUsersToInvite}
+          excludedUserList={[self]}
+        />
+      </View>
       <View style={styles.button}>
         <Button
           title={"Create"}
@@ -60,7 +63,7 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
 const styles = StyleSheet.create({
   input: {
     height: 40,
-    width: 250,
+    width: 300,
     margin: 12,
     borderWidth: 1,
     padding: 10,
@@ -68,5 +71,5 @@ const styles = StyleSheet.create({
   header: {
     marginLeft: 12,
   },
-  button: { margin: 12, width: 250 },
+  button: { margin: 12, width: 300 },
 });
