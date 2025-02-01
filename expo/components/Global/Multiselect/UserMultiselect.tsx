@@ -19,14 +19,7 @@ const UserMultiSelect = (props: {
   excludedUserList: User[];
   setExcludedUserList: React.Dispatch<React.SetStateAction<User[]>>;
 }) => {
-  const {
-    placeholderText,
-    tags,
-    options,
-    setTags,
-    excludedUserList,
-    setExcludedUserList,
-  } = props;
+  const { placeholderText, tags, options, setTags, excludedUserList } = props;
 
   const isUserAvailable = (user: User) => {
     const isExcluded = excludedUserList.some(
@@ -75,34 +68,40 @@ const UserMultiSelect = (props: {
   };
 
   return (
-    <View>
-      <View style={styles.tagsContainer}>
-        {tags.map((tag, index) => {
-          return (
-            <View key={index}>
-              <Pressable
-                onPress={() => {
-                  handleRemoveTag(index);
-                }}
-              >
-                {({ pressed }) => (
-                  <View style={styles.tagBox}>
-                    <Text numberOfLines={1} style={styles.tagText}>
-                      {tag}
-                    </Text>
-                    <View style={styles.closeIcon}>
-                      <Ionicons
-                        name={"close-circle-outline"}
-                        size={15}
-                        color={pressed ? "gray" : "white"}
-                      />
+    <View style={styles.container}>
+      <View style={styles.tagsSection}>
+        <ScrollView
+          style={styles.tagsScrollView}
+          contentContainerStyle={styles.tagsContainer}
+          showsVerticalScrollIndicator={true}
+        >
+          {tags.map((tag, index) => {
+            return (
+              <View key={index}>
+                <Pressable
+                  onPress={() => {
+                    handleRemoveTag(index);
+                  }}
+                >
+                  {({ pressed }) => (
+                    <View style={styles.tagBox}>
+                      <Text numberOfLines={1} style={styles.tagText}>
+                        {tag}
+                      </Text>
+                      <View style={styles.closeIcon}>
+                        <Ionicons
+                          name={"close-circle-outline"}
+                          size={15}
+                          color={pressed ? "gray" : "white"}
+                        />
+                      </View>
                     </View>
-                  </View>
-                )}
-              </Pressable>
-            </View>
-          );
-        })}
+                  )}
+                </Pressable>
+              </View>
+            );
+          })}
+        </ScrollView>
       </View>
       <View>
         <TextInput
@@ -153,17 +152,25 @@ const UserMultiSelect = (props: {
 export default UserMultiSelect;
 
 const styles = StyleSheet.create({
+  container: {
+    width: 250,
+  },
+  tagsSection: {
+    height: 100,
+    marginBottom: 5,
+  },
+  tagsScrollView: {
+    flex: 1,
+  },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 5,
-    maxWidth: 250,
+  },
+  tagWrapper: {
+    margin: 2,
   },
   tagBox: {
     flexDirection: "row",
-    marginTop: 3,
-    marginLeft: 4,
-    marginRight: 1,
     padding: 4,
     borderRadius: 20,
     backgroundColor: "cornflowerblue",
@@ -180,6 +187,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  inputSection: {
+    position: "relative",
+  },
   input: {
     height: 40,
     width: 250,
@@ -191,6 +201,10 @@ const styles = StyleSheet.create({
     width: 250,
     borderWidth: 1,
     borderTopWidth: 0,
+    position: "absolute",
+    top: "100%",
+    backgroundColor: "white",
+    zIndex: 1,
   },
   optionItem: {
     padding: 8,

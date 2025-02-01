@@ -59,7 +59,7 @@ export default function GroupLayout() {
                     justifyContent: "center",
                   }}
                   onPress={() => {
-                    router.back();
+                    router.replace("/groups");
                   }}
                 >
                   <Ionicons name={"arrow-back"} size={20} />

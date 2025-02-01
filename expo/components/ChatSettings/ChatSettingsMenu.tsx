@@ -13,30 +13,39 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     group.group_users
   );
   return (
-    <View style={Platform.OS === "web" ? styles.webAlign : styles.nativeAlign}>
-      <UserList group={group} />
-      <UserInviteMultiselect
-        placeholderText="Invite additional users"
-        userList={usersToInvite}
-        setUserList={setUsersToInvite}
-        excludedUserList={excludedUserList}
-        setExcludedUserList={setExcludedUserList}
-      />
-      {usersToInvite.length > 0 && (
-        <View style={styles.button}>
-          <Button
-            title={"Add new users"}
-            onPress={async () => {
-              try {
-                await inviteUsersToGroup(usersToInvite, group.id);
-                setUsersToInvite([]);
-              } catch (error) {
-                console.error(error);
-              }
-            }}
-          />
-        </View>
-      )}
+    <View
+      style={[
+        styles.container,
+        Platform.OS === "web" ? styles.webAlign : styles.nativeAlign,
+      ]}
+    >
+      <View style={styles.listContainer}>
+        <UserList group={group} />
+      </View>
+      <View style={styles.controlsContainer}>
+        <UserInviteMultiselect
+          placeholderText="Invite additional users"
+          userList={usersToInvite}
+          setUserList={setUsersToInvite}
+          excludedUserList={excludedUserList}
+          setExcludedUserList={setExcludedUserList}
+        />
+        {usersToInvite.length > 0 && (
+          <View style={styles.button}>
+            <Button
+              title={"Add new users"}
+              onPress={async () => {
+                try {
+                  await inviteUsersToGroup(usersToInvite, group.id);
+                  setUsersToInvite([]);
+                } catch (error) {
+                  console.error(error);
+                }
+              }}
+            />
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -44,7 +53,22 @@ const ChatSettingsMenu = (props: { group: Group }) => {
 export default ChatSettingsMenu;
 
 const styles = StyleSheet.create({
-  button: { margin: 12, width: 250 },
+  container: {
+    height: "100%",
+    maxHeight: 600,
+    width: "100%",
+    maxWidth: 350,
+  },
+  listContainer: {
+    marginBottom: 16,
+  },
+  controlsContainer: {
+    width: 250,
+  },
+  button: {
+    margin: 12,
+    width: 250,
+  },
   webAlign: {
     marginLeft: 42,
     alignSelf: "flex-start",
