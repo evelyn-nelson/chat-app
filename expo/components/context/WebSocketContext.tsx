@@ -182,7 +182,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const removeUserFromGroup = async (email: string, group_id: number) => {
     http
-      .post(`http://${baseURL}/removeUserToGroup`, {
+      .post(`http://${baseURL}/removeUserFromGroup`, {
         group_id: group_id,
         email: email,
       })

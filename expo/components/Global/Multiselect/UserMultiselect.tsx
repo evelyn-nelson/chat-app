@@ -30,11 +30,9 @@ const UserMultiSelect = (props: {
   };
 
   const [currentText, setCurrentText] = useState<string>("");
-
   const [availableOptions, setAvailableOptions] = useState<User[]>(
     options.filter(isUserAvailable)
   );
-
   const [filteredOptions, setFilteredOptions] = useState<User[]>(
     options.filter(isUserAvailable)
   );
@@ -77,7 +75,7 @@ const UserMultiSelect = (props: {
         >
           {tags.map((tag, index) => {
             return (
-              <View key={index}>
+              <View key={index} style={styles.tagWrapper}>
                 <Pressable
                   onPress={() => {
                     handleRemoveTag(index);
@@ -103,7 +101,8 @@ const UserMultiSelect = (props: {
           })}
         </ScrollView>
       </View>
-      <View>
+
+      <View style={styles.inputSection}>
         <TextInput
           placeholder={placeholderText}
           ref={inputRef}
@@ -127,23 +126,19 @@ const UserMultiSelect = (props: {
         {currentText && filteredOptions.length > 0 ? (
           <View style={styles.searchOptions}>
             <ScrollView>
-              {filteredOptions.map((option) => {
-                return (
-                  <Pressable
-                    key={option.id}
-                    onPress={() => handleSelectUser(option.email)}
-                    style={styles.optionItem}
-                  >
-                    <Text>{option.username}</Text>
-                    <Text style={styles.emailText}>{option.email}</Text>
-                  </Pressable>
-                );
-              })}
+              {filteredOptions.map((option) => (
+                <Pressable
+                  key={option.id}
+                  onPress={() => handleSelectUser(option.email)}
+                  style={styles.optionItem}
+                >
+                  <Text>{option.username}</Text>
+                  <Text style={styles.emailText}>{option.email}</Text>
+                </Pressable>
+              ))}
             </ScrollView>
           </View>
-        ) : (
-          <View />
-        )}
+        ) : null}
       </View>
     </View>
   );
@@ -153,7 +148,7 @@ export default UserMultiSelect;
 
 const styles = StyleSheet.create({
   container: {
-    width: 250,
+    width: 300,
   },
   tagsSection: {
     height: 100,
@@ -192,13 +187,13 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 40,
-    width: 250,
+    width: 300,
     borderWidth: 1,
     padding: 10,
   },
   searchOptions: {
     maxHeight: 120,
-    width: 250,
+    width: 300,
     borderWidth: 1,
     borderTopWidth: 0,
     position: "absolute",

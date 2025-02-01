@@ -1,8 +1,8 @@
 import { Group } from "@/types/types";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import UserListItem from "./UserListItem";
 
 const UserList = (props: { group: Group }) => {
-  // MAKE SURE ADDING NEW USERS DOESN'T MAKE THIS GROW OFF THE PAGE
   const { group } = props;
   return (
     <View style={styles.container}>
@@ -18,9 +18,7 @@ const UserList = (props: { group: Group }) => {
               key={index}
               style={isLast ? [styles.lastBox, styles.box] : [styles.box]}
             >
-              <Text numberOfLines={1} style={styles.text}>
-                {user.username}
-              </Text>
+              <UserListItem user={user} group={group} />
             </View>
           );
         })}
@@ -35,7 +33,7 @@ const styles = StyleSheet.create({
   container: {
     borderWidth: 2,
     height: 400,
-    width: 250,
+    width: 300,
     overflow: "hidden",
   },
   scrollView: {
@@ -52,8 +50,5 @@ const styles = StyleSheet.create({
   },
   lastBox: {
     borderBottomWidth: 1,
-  },
-  text: {
-    paddingHorizontal: 10,
   },
 });

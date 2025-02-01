@@ -54,6 +54,7 @@ export default ChatSettingsMenu;
 
 const styles = StyleSheet.create({
   container: {
+    paddingLeft: 12,
     height: "100%",
     maxHeight: 600,
     width: "100%",
@@ -63,11 +64,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   controlsContainer: {
-    width: 250,
+    width: 300,
   },
   button: {
     margin: 12,
-    width: 250,
+    width: 300,
   },
   webAlign: {
     marginLeft: 42,
