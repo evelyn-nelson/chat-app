@@ -2,14 +2,33 @@ Temporary group chats for events.
 
 ## Expo app
 
-1. Install dependencies
+#### 1. Install dependencies
 
    ```bash
    cd expo
    npm install
    ```
 
-2. Start the app
+#### 2. Set environment variables
+In `expo/` copy this to a `.env` file.
+```
+NODE_ENV=development
+EXPO_PUBLIC_HOST=<IP Addr>:8080
+```
+Get IP Addr by running `npx expo start` in the `expo/` directory.
+One of the log lines is `Metro waiting on exp://<IP Addr>:8081`.
+⚠️ The address that expo shows is port 8081, but it must be 8080 in your `.env`.
+
+In the root directory, make a new `.env` file.
+```
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_URL=postgres://postgres:postgres@db:5432/postgres
+JWT_SECRET=<secret>
+```
+Get your JWT_SECRET from https://jwtsecret.com/generate.
+
+#### 3. Start the app
 
    ```bash
     npx expo start
@@ -25,7 +44,7 @@ In the output, you'll find options to open the app in a
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 
-3. From the root directory, run `docker compose up` to run the go server and postgres/migrate/sqlc
+#### 4. From the root directory, run `docker compose up` to run the go server and postgres/migrate/sqlc
 
 this is set up to work with docker but you should probably install golang migrate, sqlc, and go yourself.
 
