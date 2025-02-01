@@ -139,7 +139,6 @@ export class Store implements IStore {
     if (!this.db) throw new Error("Database not initialized");
     const result = await this.db.getAllAsync<GroupRow>(`
         SELECT * FROM groups;`);
-    console.log("result", result);
     return (
       result?.map((row) => {
         return {
