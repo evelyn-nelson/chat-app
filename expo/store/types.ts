@@ -1,4 +1,4 @@
-import { Group, Message } from "@/types/types";
+import { Group, Message, User } from "@/types/types";
 
 export interface IStore {
   saveMessages(messages: Message[]): Promise<void>;
@@ -7,6 +7,9 @@ export interface IStore {
   saveGroups(groups: Group[]): Promise<void>;
   loadGroups(): Promise<Group[]>;
   clearGroups(): Promise<void>;
+  saveUsers(users: User[]): Promise<void>;
+  loadUsers(): Promise<User[]>;
+  clearUsers(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -23,6 +26,16 @@ export interface GroupRow {
   id: number;
   name: string;
   admin: boolean;
+  group_users: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserRow {
+  id: number;
+  username: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+  group_admin_map: string;
 }

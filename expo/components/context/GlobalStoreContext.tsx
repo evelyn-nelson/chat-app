@@ -14,30 +14,36 @@ import React, {
 
 type Action =
   | { type: "SET_USER"; payload: User | undefined }
-  | { type: "SET_GROUPS"; payload: Group[] };
+  | { type: "TRIGGER_GROUPS_REFRESH" }
+  | { type: "TRIGGER_USERS_REFRESH" };
 
 interface State {
   user: User | undefined;
-  groups: Group[];
+  groupsRefreshKey: number;
+  usersRefreshKey: number;
 }
 
 interface GlobalStoreContextType extends State {
   store: Store;
   setUser: (user: User | undefined) => void;
-  setGroups: (groups: Group[]) => void;
+  refreshGroups: () => void;
+  refreshUsers: () => void;
 }
 
 const initialState: State = {
   user: undefined,
-  groups: [],
+  groupsRefreshKey: 0,
+  usersRefreshKey: 0,
 };
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "SET_USER":
       return { ...state, user: action.payload };
-    case "SET_GROUPS":
-      return { ...state, groups: action.payload };
+    case "TRIGGER_GROUPS_REFRESH":
+      return { ...state, groupsRefreshKey: state.groupsRefreshKey + 1 };
+    case "TRIGGER_USERS_REFRESH":
+      return { ...state, usersRefreshKey: state.usersRefreshKey + 1 };
     default:
       return state;
   }
@@ -55,7 +61,7 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
 
   useEffect(() => {
     return () => {
-      store.close();
+      store.close(); // probably want to get rid of this eventually? sorta defeats the purpose of the store
     };
   }, [store]);
 
@@ -63,18 +69,23 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
     dispatch({ type: "SET_USER", payload: user });
   }, []);
 
-  const setGroups = useCallback((groups: Group[]) => {
-    dispatch({ type: "SET_GROUPS", payload: groups });
-  }, []);
+  const refreshGroups = () => {
+    dispatch({ type: "TRIGGER_GROUPS_REFRESH" });
+  };
+
+  const refreshUsers = () => {
+    dispatch({ type: "TRIGGER_USERS_REFRESH" });
+  };
 
   const value = useMemo(
     () => ({
       ...state,
       setUser,
-      setGroups,
+      refreshGroups,
+      refreshUsers,
       store,
     }),
-    [state, setUser, setGroups, store]
+    [state, setUser, refreshGroups, refreshUsers, store]
   );
 
   return (

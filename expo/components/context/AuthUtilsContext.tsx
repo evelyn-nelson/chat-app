@@ -27,31 +27,43 @@ const AuthUtilsContext = createContext<AuthUtilsContextType | undefined>(
 );
 
 export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
-  const { establishConnection, disconnect } = useWebSocket();
+  const { establishConnection, disconnect, connected } = useWebSocket();
   const { loadHistoricalMessages } = useMessageStore();
 
   const { user, setUser } = useGlobalStore();
   const { children } = props;
 
   const whoami = async (forceRefresh?: boolean): Promise<User | undefined> => {
-    if (!user || forceRefresh) {
-      const loggedInUser = await http
-        .get(`http://${process.env.EXPO_PUBLIC_HOST}/api/users/whoami`)
-        .then((response) => {
-          const { data } = response;
-          setUser({
-            ...data,
+    try {
+      if (!user || forceRefresh) {
+        const loggedInUser = await http
+          .get(`http://${process.env.EXPO_PUBLIC_HOST}/api/users/whoami`)
+          .then((response) => {
+            const { data } = response;
+            setUser({
+              ...data,
+            });
+            return data;
+          })
+          .catch((error) => {
+            if (!(error instanceof CanceledError)) {
+              console.error("whoami error:", error);
+              throw error;
+            }
           });
-          return data;
-        })
-        .catch((error) => {
-          if (!(error instanceof CanceledError)) {
-            console.error("whoami error:", error);
-          }
-        });
-      return loggedInUser;
+        if (loggedInUser && !connected) {
+          await establishConnection();
+        }
+        return loggedInUser;
+      }
+      if (user && !connected) {
+        await establishConnection();
+      }
+      return user;
+    } catch (error) {
+      console.error("Error in whoami:", error);
+      return undefined;
     }
-    return user;
   };
 
   const login = async (email: string, password: string): Promise<void> => {
@@ -63,10 +75,8 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           password: password,
         }
       );
-
       const { data } = response;
       await save("jwt", data.token);
-      await establishConnection();
       await whoami(true);
       await loadHistoricalMessages();
     } catch (error) {

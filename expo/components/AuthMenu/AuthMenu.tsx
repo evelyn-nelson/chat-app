@@ -32,7 +32,7 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
       <Modal
         visible={isSignupModalOpen}
         animationType="slide"
-        transparent={true}
+        transparent
         onRequestClose={closeModal}
       >
         <Pressable style={styles.modalBackdrop} onPress={closeModal}>
@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
     fontSize: 60,
   },
   modalContainer: {
+    cursor: "auto",
     justifyContent: "center",
     alignItems: "center",
     height: 300,
@@ -87,6 +88,7 @@ const styles = StyleSheet.create({
     marginBottom: 150,
   },
   modalBackdrop: {
+    cursor: "auto",
     position: "absolute",
     top: 0,
     left: 0,

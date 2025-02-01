@@ -9,11 +9,6 @@ import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 import ConnectionTesting from "@/components/ConnectionTesting";
 
 export default function HomeScreen() {
-  const { setUser } = useGlobalStore();
-  const { whoami } = useAuthUtils();
-
-  const { establishConnection } = useWebSocket();
-
   return (
     <View style={styles.container}>
       <ConnectionTesting />
