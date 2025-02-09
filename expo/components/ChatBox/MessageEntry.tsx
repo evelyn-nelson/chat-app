@@ -28,9 +28,9 @@ const MessageEntry = (props: { group_id: number }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="p-[10]">
       <TextInput
-        style={styles.input}
+        className="h-[40] w-[90%] m-auto border p-[10]"
         onChangeText={(event) => {
           if (user) {
             setMessage({
@@ -49,18 +49,5 @@ const MessageEntry = (props: { group_id: number }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  input: {
-    height: 40,
-    width: "90%",
-    margin: "auto",
-    borderWidth: 1,
-    padding: 10,
-  },
-  container: {
-    padding: 10,
-  },
-});
 
 export default MessageEntry;

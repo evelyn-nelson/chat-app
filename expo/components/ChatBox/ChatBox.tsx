@@ -135,15 +135,21 @@ export default function ChatBox(props: { group_id: number }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1"
       behavior={isIOS ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
-      <View style={[styles.chatBox, { height: windowHeight }]}>
-        <View style={[styles.scrollContainer, { height: messageAreaHeight }]}>
+      <View
+        className="flex-1 w-full border-t-[5px] border-[#353636] bg-blue-300"
+        style={{ height: windowHeight }}
+      >
+        <View
+          className="flex-1 mb-[60px]"
+          style={{ height: messageAreaHeight }}
+        >
           <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }}
             ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -174,69 +180,18 @@ export default function ChatBox(props: { group_id: number }) {
         </View>
         {hasNewMessages && (
           <Animated.View
-            style={[styles.newMessageIndicator, { opacity: fadeAnim }]}
+            className="absolute bottom-20 self-center bg-blue-900 px-5 py-2.5 rounded-full shadow-md"
+            style={{ opacity: fadeAnim }}
           >
             <Pressable onPress={handleNewMessagePress}>
-              <Text style={styles.newMessageText}>New messages ↓</Text>
+              <Text className="text-white font-semibold">New messages ↓</Text>
             </Pressable>
           </Animated.View>
         )}
-        <View style={styles.messageEntryContainer}>
+        <View className="h-[60px] absolute bottom-0 w-full bg-blue-300">
           <MessageEntry group_id={group_id} />
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  chatBox: {
-    flex: 1,
-    width: "100%",
-    borderTopWidth: 5,
-    borderColor: "#353636",
-    backgroundColor: "#fff",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    justifyContent: "flex-end",
-  },
-  scrollContainer: {
-    flex: 1,
-    marginBottom: 60,
-  },
-  messageEntryContainer: {
-    height: 60,
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "#fff",
-  },
-  newMessageIndicator: {
-    position: "absolute",
-    bottom: 80,
-    alignSelf: "center",
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  newMessageText: {
-    color: "white",
-    fontWeight: "600",
-  },
-});
