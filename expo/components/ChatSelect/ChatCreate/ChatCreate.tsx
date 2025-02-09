@@ -25,7 +25,7 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
         value={groupName}
         placeholder="Group name"
       />
-      <View style={{ marginLeft: 12 }}>
+      <View style={{ marginLeft: 12, zIndex: 999 }}>
         <UserInviteMultiselect
           placeholderText="Users to invite"
           userList={usersToInvite}
