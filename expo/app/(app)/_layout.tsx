@@ -97,6 +97,9 @@ const AppLayout = () => {
         options={{
           title: "Home",
           tabBarLabel: "Home",
+          tabBarActiveBackgroundColor: "#60A5FA",
+          tabBarStyle: { backgroundColor: "#93C5FD" },
+          tabBarLabelStyle: { color: "#1E3A8A" },
           tabBarIcon: () => <Ionicons size={25} name="home-outline" />,
         }}
       />
@@ -104,7 +107,10 @@ const AppLayout = () => {
         name="groups"
         options={{
           title: "Groups",
+          tabBarActiveBackgroundColor: "#60A5FA",
+          tabBarStyle: { backgroundColor: "#93C5FD" },
           tabBarLabel: "Groups",
+          tabBarLabelStyle: { color: "#1E3A8A" },
           tabBarIcon: () => <Ionicons size={25} name="chatbubbles-outline" />,
         }}
       />

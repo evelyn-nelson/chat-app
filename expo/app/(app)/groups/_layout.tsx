@@ -48,6 +48,7 @@ export default function GroupLayout() {
           return {
             title: group?.name ?? `Loading...`,
             headerShown: true,
+            headerStyle: { backgroundColor: "#93C5FD" },
             headerLeft: () => {
               return (
                 <Pressable
