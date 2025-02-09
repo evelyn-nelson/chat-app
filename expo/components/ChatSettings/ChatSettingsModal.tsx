@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ChatCreate } from "../ChatSelect/ChatCreate/ChatCreate";
 import ChatSettingsMenu from "./ChatSettingsMenu";
 import { Group } from "@/types/types";
+import BundleModal from "../Global/BundleModal/BundleModal";
 
 const ChatSettingsModal = (props: { group: Group }) => {
   const [isChatSettingsModalOpen, setIsChatSettingsModalOpen] =
@@ -19,68 +20,22 @@ const ChatSettingsModal = (props: { group: Group }) => {
   return (
     <View>
       <Pressable
-        style={{
-          height: 40,
-          width: 40,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        className="h-[40] w-[40] flex items-center justify-center"
         onPress={() => setIsChatSettingsModalOpen(!isChatSettingsModalOpen)}
       >
         {({ pressed }) => (
           <Ionicons
             name={"ellipsis-horizontal-outline"}
             size={20}
-            color={pressed ? "gray" : "black"}
+            color={pressed ? "gray" : "#1E3A8A"}
           />
         )}
       </Pressable>
-      <Modal
-        visible={isChatSettingsModalOpen}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={closeModal}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={closeModal}>
-          <Pressable
-            style={styles.modalContainer}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <ChatSettingsMenu group={group} />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <BundleModal visible={isChatSettingsModalOpen} closeModal={closeModal}>
+        <ChatSettingsMenu group={group} />
+      </BundleModal>
     </View>
   );
 };
 
 export default ChatSettingsModal;
-
-const styles = StyleSheet.create({
-  container: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalContainer: {
-    cursor: "auto",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "75%",
-    width: "85%",
-    backgroundColor: "white",
-    borderRadius: 10,
-  },
-  modalBackdrop: {
-    cursor: "auto",
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-});

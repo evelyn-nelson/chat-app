@@ -12,18 +12,18 @@ const UserListItem = (props: { user: GroupUser; group: Group }) => {
   const { user: self } = useGlobalStore();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.textContainer}>
-        <Text numberOfLines={1} style={styles.username}>
+    <View className="flex-row items-center px-[10]">
+      <View className="flex-1">
+        <Text numberOfLines={1} className="font-bold text-blue-950">
           {user.username}
         </Text>
-        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.email}>
+        <Text numberOfLines={1} ellipsizeMode="tail" className="text-sky-700">
           {user.email}
         </Text>
       </View>
       {!user.admin && self?.id != user.id && (
         <Pressable
-          style={styles.iconContainer}
+          className="w-[30] h-full flex-row-reverse"
           onPress={() => {
             if (user && group) {
               removeUserFromGroup(user.email, group.id);
@@ -32,7 +32,7 @@ const UserListItem = (props: { user: GroupUser; group: Group }) => {
         >
           {({ pressed }) => (
             <Ionicons
-              style={styles.icon}
+              className="my-auto self-start"
               color={pressed ? "gray" : "black"}
               name={"close-circle-outline"}
               size={20}
@@ -45,27 +45,3 @@ const UserListItem = (props: { user: GroupUser; group: Group }) => {
 };
 
 export default UserListItem;
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  username: {
-    fontWeight: "bold",
-  },
-  email: {
-    color: "gray",
-    overflow: "hidden",
-  },
-  iconContainer: {
-    width: 30,
-    height: "100%",
-    flexDirection: "row-reverse",
-  },
-  icon: { marginVertical: "auto", alignSelf: "flex-start" },
-});

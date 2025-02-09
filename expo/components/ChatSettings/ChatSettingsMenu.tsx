@@ -1,9 +1,10 @@
-import { Button, Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import React, { useState } from "react";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
 import { useWebSocket } from "../context/WebSocketContext";
 import { Group, User } from "@/types/types";
 import UserList from "./UserList";
+import Button from "../Global/Button/Button";
 
 const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
@@ -12,35 +13,33 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   const excludedUserList = group.group_users;
   return (
     <View
-      style={[
-        styles.container,
-        Platform.OS === "web" ? styles.webAlign : styles.nativeAlign,
-      ]}
+      className={`${Platform.OS === "web" ? "self-start w-[85%] ml-[12]" : "w-full"} h-full  max-h-[600]`}
     >
-      <View style={styles.listContainer}>
+      <View className="mb-[16]">
         <UserList group={group} />
       </View>
-      <View style={styles.controlsContainer}>
-        <UserInviteMultiselect
-          placeholderText="Invite additional users"
-          userList={usersToInvite}
-          setUserList={setUsersToInvite}
-          excludedUserList={excludedUserList}
-        />
+      <View className="w-[300]">
+        <View className="z-50">
+          <UserInviteMultiselect
+            placeholderText="Invite additional users"
+            userList={usersToInvite}
+            setUserList={setUsersToInvite}
+            excludedUserList={excludedUserList}
+          />
+        </View>
         {usersToInvite.length > 0 && (
-          <View style={styles.button}>
-            <Button
-              title={"Add new users"}
-              onPress={async () => {
-                try {
-                  await inviteUsersToGroup(usersToInvite, group.id);
-                  setUsersToInvite([]);
-                } catch (error) {
-                  console.error(error);
-                }
-              }}
-            />
-          </View>
+          <Button
+            text={"Add new users"}
+            size="xl"
+            onPress={async () => {
+              try {
+                await inviteUsersToGroup(usersToInvite, group.id);
+                setUsersToInvite([]);
+              } catch (error) {
+                console.error(error);
+              }
+            }}
+          />
         )}
       </View>
     </View>
@@ -48,30 +47,3 @@ const ChatSettingsMenu = (props: { group: Group }) => {
 };
 
 export default ChatSettingsMenu;
-
-const styles = StyleSheet.create({
-  container: {
-    paddingLeft: 12,
-    height: "100%",
-    maxHeight: 600,
-    width: "100%",
-    maxWidth: 350,
-  },
-  listContainer: {
-    marginBottom: 16,
-  },
-  controlsContainer: {
-    width: 300,
-  },
-  button: {
-    margin: 12,
-    width: 300,
-  },
-  webAlign: {
-    marginLeft: 42,
-    alignSelf: "flex-start",
-  },
-  nativeAlign: {
-    marginLeft: 12,
-  },
-});
