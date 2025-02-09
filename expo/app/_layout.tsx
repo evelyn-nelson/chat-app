@@ -4,6 +4,8 @@ import { Stack, Tabs } from "expo-router";
 import { AuthUtilsProvider } from "@/components/context/AuthUtilsContext";
 import { MessageStoreProvider } from "@/components/context/MessageStoreContext";
 
+import "../styles/global.css";
+
 export default function RootLayout() {
   return (
     <GlobalStoreProvider>
