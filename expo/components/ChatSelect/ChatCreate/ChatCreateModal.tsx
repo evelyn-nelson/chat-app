@@ -17,7 +17,7 @@ const ChatCreateModal = () => {
       />
       <Modal
         visible={isChatCreateModalOpen}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={closeModal}
       >

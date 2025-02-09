@@ -14,30 +14,32 @@ export default function SignupForm(props: { onSubmit: () => void }) {
   const [password, setPassword] = useState<string>();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Sign Up</Text>
-      <Text style={styles.inputTitle}>Enter Email</Text>
+    <View className="h-[300] w-[400]">
+      <Text className="ml-[12] font-bold text-2xl mb-1 mt-1 color-blue-900">
+        Sign Up
+      </Text>
+      <Text className="ml-[12] color-blue-900">Enter Email</Text>
       <TextInput
         autoFocus
         autoCapitalize="none"
-        style={styles.input}
+        className="h-[40] w-[300] m-[12] border border-blue-900 p-[10] text-blue-900"
         onChangeText={(event) => {
           setEmail(event);
         }}
       />
-      <Text style={styles.inputTitle}>Enter Username</Text>
+      <Text className="ml-[12] color-blue-900">Enter Username</Text>
       <TextInput
         autoCapitalize="none"
-        style={styles.input}
+        className="h-[40] w-[300] m-[12] border border-blue-900 p-[10] text-blue-900"
         onChangeText={(event) => {
           setUsername(event);
         }}
       />
-      <Text style={styles.inputTitle}>Enter Password</Text>
+      <Text className="ml-[12] color-blue-900">Enter Password</Text>
       <TextInput
         autoCapitalize="none"
         secureTextEntry={true}
-        style={styles.input}
+        className="h-[40] w-[300] m-[12] border border-blue-900 p-[10] text-blue-900"
         onChangeText={(event) => {
           setPassword(event);
         }}
@@ -52,28 +54,3 @@ export default function SignupForm(props: { onSubmit: () => void }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderWidth: 5,
-    height: 300,
-    width: 400,
-    margin: 10,
-    padding: 4,
-  },
-  input: {
-    height: 40,
-    width: 300,
-    margin: 12,
-    borderWidth: 1,
-    padding: 10,
-  },
-  header: {
-    marginLeft: 12,
-    fontWeight: "bold",
-    fontSize: 20,
-  },
-  inputTitle: {
-    marginLeft: 12,
-  },
-});

@@ -38,7 +38,7 @@ const ChatSettingsModal = (props: { group: Group }) => {
       </Pressable>
       <Modal
         visible={isChatSettingsModalOpen}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={closeModal}
       >
