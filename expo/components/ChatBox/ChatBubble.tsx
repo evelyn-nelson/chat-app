@@ -1,56 +1,30 @@
+import { MessageUser } from "@/types/types";
 import { StyleSheet, Text, View } from "react-native";
 
 const ChatBubble = (props: {
-  username: string;
+  prevUserId: number;
+  user: MessageUser;
   message: string;
   align: string;
 }) => {
-  const style =
-    props.align === "left" ? styles.chatBubbleLeft : styles.chatBubbleRight;
+  const { align, user, prevUserId, message } = props;
   return (
-    <View style={style}>
-      <Text style={styles.chatTextUsername}>{props.username}</Text>
-      <View style={[styles.chatBubble]}>
-        <Text selectable={true} style={styles.chatText}>
-          {props.message}
+    <View className={align === "left" ? "ml-[5]" : "ml-auto mr-[5]"}>
+      {prevUserId != user.id && (
+        <Text className="ml-[10] mt-[1] text-sky-800 text-sm">
+          {props.user.username}
+        </Text>
+      )}
+      <View className="mt-[2] h-auto w-[150] border-2 border-blue-950 rounded-2xl">
+        <Text
+          selectable={true}
+          className="text-left my-auto ml-[5] p-[5] max-w-[140] flex-wrap shrink text-blue-950"
+        >
+          {message}
         </Text>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  chatBubble: {
-    marginTop: 3,
-    height: "auto",
-    width: 150,
-    borderWidth: 2,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  chatBubbleLeft: {
-    marginLeft: 5,
-  },
-  chatBubbleRight: {
-    marginLeft: "auto",
-    marginRight: 5,
-  },
-  chatTextUsername: {
-    marginTop: 3,
-    marginLeft: 10,
-    color: "#808080",
-    fontSize: 10,
-  },
-  chatText: {
-    textAlign: "left",
-    marginTop: "auto",
-    marginBottom: "auto",
-    marginLeft: 5,
-    padding: 6,
-    maxWidth: 140,
-    flexWrap: "wrap",
-    flexShrink: 1,
-  },
-});
 
 export default ChatBubble;

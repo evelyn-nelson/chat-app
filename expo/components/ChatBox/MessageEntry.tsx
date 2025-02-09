@@ -30,7 +30,7 @@ const MessageEntry = (props: { group_id: number }) => {
   return (
     <View className="p-[10]">
       <TextInput
-        className="h-[40] w-[90%] m-auto border p-[10]"
+        className="h-[40] w-[90%] m-auto border border-blue-900 p-[10] text-blue-900"
         onChangeText={(event) => {
           if (user) {
             setMessage({

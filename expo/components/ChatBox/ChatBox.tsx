@@ -140,7 +140,7 @@ export default function ChatBox(props: { group_id: number }) {
       keyboardVerticalOffset={90}
     >
       <View
-        className="flex-1 w-full border-t-[5px] border-[#353636] bg-blue-300"
+        className="flex-1 w-full border-t-[5px] border-blue-900 bg-blue-300"
         style={{ height: windowHeight }}
       >
         <View
@@ -170,7 +170,10 @@ export default function ChatBox(props: { group_id: number }) {
                 style={hideMessages ? { display: "none" } : {}}
               >
                 <ChatBubble
-                  username={bubble.message.user.username}
+                  prevUserId={
+                    index != 0 ? bubbles[index - 1].message.user.id : 0
+                  }
+                  user={bubble.message.user}
                   message={bubble.message.content}
                   align={bubble.align}
                 />
