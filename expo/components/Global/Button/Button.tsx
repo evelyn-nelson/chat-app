@@ -15,7 +15,7 @@ const Button = (props: ButtonProps) => {
         onPress={onPress}
         className={`border-4 border-blue-300 hover:border-blue-400 active:border-blue-400 bg-blue-500 hover:bg-blue-600 active:bg-blue-600 rounded-lg flex items-center min-w-36 justify-center`}
       >
-        <Text className={`text-blue-300 text-${size} pt-1 pb-1 pl-1 pr-1`}>
+        <Text className={`text-blue-200 text-${size} pt-1 pb-1 pl-1 pr-1`}>
           {text}
         </Text>
       </Pressable>

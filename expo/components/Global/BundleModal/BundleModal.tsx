@@ -21,9 +21,8 @@ const BundleModal = (props: BundleModalProps) => {
         className="cursor-auto absolute top-0 left-0 right-0 bottom-0 justify-center items-center bg-[rgba(0,0,0,0.5)]"
       >
         <Pressable
-          className="cursor-auto justify-center align-center bg-blue-300 border-4 border-blue-600"
+          className="h-[75%] w-[85%] p-3 cursor-auto justify-center items-center bg-blue-300 border-4 border-blue-600"
           onPress={(e) => e.stopPropagation()}
-          style={{ maxHeight: "75%", maxWidth: "85%" }}
         >
           {children}
         </Pressable>

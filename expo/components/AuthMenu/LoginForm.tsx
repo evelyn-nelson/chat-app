@@ -26,7 +26,7 @@ export default function LoginForm(props: { onSubmit: () => void }) {
   };
 
   return (
-    <View className="h-[300] w-[400]">
+    <View className="h-[300]">
       <Text className="ml-[12] font-bold text-2xl mb-1 mt-1 color-blue-900">
         Sign In
       </Text>
