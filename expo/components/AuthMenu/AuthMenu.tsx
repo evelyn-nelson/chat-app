@@ -24,16 +24,20 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
   return (
     <View className="h-screen flex items-center justify-center">
       <Text className="text-blue-300 text-8xl font-bold">Chat App</Text>
-      <Button
-        onPress={() => setIsSignupModalOpen(!isSignupModalOpen)}
-        text="Sign up"
-        size={"3xl"}
-      />
-      <Button
-        onPress={() => setIsLoginModalOpen(!isLoginModalOpen)}
-        text="Sign in"
-        size={"3xl"}
-      />
+      <View className="mt-4">
+        <Button
+          onPress={() => setIsSignupModalOpen(!isSignupModalOpen)}
+          text="Sign up"
+          size={"3xl"}
+        />
+      </View>
+      <View className="mt-2">
+        <Button
+          onPress={() => setIsLoginModalOpen(!isLoginModalOpen)}
+          text="Sign in"
+          size={"3xl"}
+        />
+      </View>
       <BundleModal visible={isSignupModalOpen} closeModal={closeModal}>
         <SignupForm onSubmit={furtherOnSubmit} />
       </BundleModal>
