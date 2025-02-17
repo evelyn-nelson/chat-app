@@ -20,4 +20,4 @@ const signin = () => {
 
 export default signin;
 
-const styles = StyleSheet.create({});
+

@@ -76,9 +76,7 @@ export default function ChatBox(props: { group_id: number }) {
     const keyboardWillHide = Keyboard.addListener(
       isIOS ? "keyboardWillHide" : "keyboardDidHide",
       () => {
-        if (isNearBottom) {
-          scrollToBottom(true);
-        }
+        scrollToBottom(true);
       }
     );
 
@@ -140,16 +138,27 @@ export default function ChatBox(props: { group_id: number }) {
       keyboardVerticalOffset={90}
     >
       <View
-        className="flex-1 w-full border-t-[5px] border-blue-900 bg-blue-300"
+        className="flex-1 w-full bg-blue-900 px-2 pt-2"
         style={{ height: windowHeight }}
       >
         <View
-          className="flex-1 mb-[60px]"
-          style={{ height: messageAreaHeight }}
+          className="flex-1 mb-[60px] pb-1 bg-blue-900 rounded-t-xl overflow-hidden"
+          style={{
+            height: messageAreaHeight,
+            shadowColor: "black",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.75,
+            shadowRadius: 8,
+            elevation: 5,
+          }}
         >
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "flex-end",
+              padding: 10,
+            }}
             ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -183,15 +192,33 @@ export default function ChatBox(props: { group_id: number }) {
         </View>
         {hasNewMessages && (
           <Animated.View
-            className="absolute bottom-20 self-center bg-blue-900 px-5 py-2.5 rounded-full shadow-md"
-            style={{ opacity: fadeAnim }}
+            className="absolute bottom-20 self-center bg-blue-300 px-5 py-2.5 rounded-full shadow-md"
+            style={{
+              opacity: fadeAnim,
+              shadowColor: "black",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
+            }}
           >
             <Pressable onPress={handleNewMessagePress}>
-              <Text className="text-white font-semibold">New messages ↓</Text>
+              <Text className="text-blue-900 font-semibold">
+                New messages ↓
+              </Text>
             </Pressable>
           </Animated.View>
         )}
-        <View className="h-[60px] absolute bottom-0 w-full bg-blue-300">
+        <View
+          className="h-[60px] absolute bottom-0 w-[100vw] pb-1 bg-blue-900"
+          style={{
+            shadowColor: "black",
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+        >
           <MessageEntry group_id={group_id} />
         </View>
       </View>

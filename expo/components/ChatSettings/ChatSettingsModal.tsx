@@ -1,10 +1,18 @@
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ChatCreate } from "../ChatSelect/ChatCreate/ChatCreate";
 import ChatSettingsMenu from "./ChatSettingsMenu";
 import { Group } from "@/types/types";
 import BundleModal from "../Global/BundleModal/BundleModal";
+import KeyboardAvoidingScrollView from "../Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
 
 const ChatSettingsModal = (props: { group: Group }) => {
   const [isChatSettingsModalOpen, setIsChatSettingsModalOpen] =
@@ -32,7 +40,9 @@ const ChatSettingsModal = (props: { group: Group }) => {
         )}
       </Pressable>
       <BundleModal visible={isChatSettingsModalOpen} closeModal={closeModal}>
-        <ChatSettingsMenu group={group} />
+        <KeyboardAvoidingScrollView>
+          <ChatSettingsMenu group={group} />
+        </KeyboardAvoidingScrollView>
       </BundleModal>
     </View>
   );

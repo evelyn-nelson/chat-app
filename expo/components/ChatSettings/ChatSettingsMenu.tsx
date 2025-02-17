@@ -18,7 +18,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       <View className="mb-[16]">
         <UserList group={group} />
       </View>
-      <View className="w-[300]">
+      <View className="w-[280]">
         <View className="z-50">
           <UserInviteMultiselect
             placeholderText="Invite additional users"
@@ -28,18 +28,21 @@ const ChatSettingsMenu = (props: { group: Group }) => {
           />
         </View>
         {usersToInvite.length > 0 && (
-          <Button
-            text={"Add new users"}
-            size="xl"
-            onPress={async () => {
-              try {
-                await inviteUsersToGroup(usersToInvite, group.id);
-                setUsersToInvite([]);
-              } catch (error) {
-                console.error(error);
-              }
-            }}
-          />
+          <View className="pt-2">
+            <Button
+              border={false}
+              text={"Add new users"}
+              size="xl"
+              onPress={async () => {
+                try {
+                  await inviteUsersToGroup(usersToInvite, group.id);
+                  setUsersToInvite([]);
+                } catch (error) {
+                  console.error(error);
+                }
+              }}
+            />
+          </View>
         )}
       </View>
     </View>

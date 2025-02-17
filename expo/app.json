@@ -12,6 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -26,12 +27,7 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-font",
-      "expo-sqlite"
-    ],
+    "plugins": ["expo-router", "expo-secure-store", "expo-font", "expo-sqlite"],
     "experiments": {
       "typedRoutes": true
     }

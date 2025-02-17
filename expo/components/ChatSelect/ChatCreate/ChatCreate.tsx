@@ -63,7 +63,7 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
 const styles = StyleSheet.create({
   input: {
     height: 40,
-    width: 300,
+    width: 280,
     margin: 12,
     borderWidth: 1,
     padding: 10,

@@ -1,4 +1,4 @@
-import { StyleSheet, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useState } from "react";
 import { useWebSocket } from "../context/WebSocketContext";
 import { Message, RawMessage, User } from "@/types/types";
@@ -29,23 +29,29 @@ const MessageEntry = (props: { group_id: number }) => {
 
   return (
     <View className="p-[10]">
-      <TextInput
-        className="h-[40] w-[90%] m-auto border border-blue-900 p-[10] text-blue-900"
-        onChangeText={(event) => {
-          if (user) {
-            setMessage({
-              sender_id: user?.id,
-              content: event,
-              group_id: group_id,
-            });
-          }
-        }}
-        onSubmitEditing={() => {
-          handleSubmit();
-        }}
-        value={message.content}
-        blurOnSubmit={false}
-      />
+      <ScrollView
+        className="h-[40] w-[90%] m-auto border border-blue-300 p-[10]"
+        keyboardShouldPersistTaps="always"
+        scrollEnabled={false}
+      >
+        <TextInput
+          className="text-blue-300"
+          onChangeText={(event) => {
+            if (user) {
+              setMessage({
+                sender_id: user?.id,
+                content: event,
+                group_id: group_id,
+              });
+            }
+          }}
+          onSubmitEditing={() => {
+            handleSubmit();
+          }}
+          value={message.content}
+          blurOnSubmit={false}
+        />
+      </ScrollView>
     </View>
   );
 };

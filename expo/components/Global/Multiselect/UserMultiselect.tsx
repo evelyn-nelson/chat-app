@@ -68,6 +68,7 @@ const UserMultiSelect = (props: {
     <View style={styles.container}>
       <View style={styles.tagsSection}>
         <ScrollView
+          keyboardShouldPersistTaps="handled"
           style={styles.tagsScrollView}
           contentContainerStyle={styles.tagsContainer}
           showsVerticalScrollIndicator={true}
@@ -102,29 +103,31 @@ const UserMultiSelect = (props: {
       </View>
 
       <View style={styles.inputSection}>
-        <TextInput
-          placeholder={placeholderText}
-          ref={inputRef}
-          style={styles.input}
-          onChangeText={(text) => {
-            setCurrentText(text);
-            const searchResults = text
-              ? fuse.search(text).map((result) => result.item)
-              : availableOptions;
-            setFilteredOptions(searchResults);
-          }}
-          value={currentText}
-          blurOnSubmit={false}
-          onSubmitEditing={() => {
-            if (currentText) {
-              handleSelectUser(currentText);
-            }
-            inputRef.current?.focus();
-          }}
-        />
+        <ScrollView keyboardShouldPersistTaps="always" scrollEnabled={false}>
+          <TextInput
+            placeholder={placeholderText}
+            ref={inputRef}
+            style={styles.input}
+            onChangeText={(text) => {
+              setCurrentText(text);
+              const searchResults = text
+                ? fuse.search(text).map((result) => result.item)
+                : availableOptions;
+              setFilteredOptions(searchResults);
+            }}
+            value={currentText}
+            blurOnSubmit={false}
+            onSubmitEditing={() => {
+              if (currentText) {
+                handleSelectUser(currentText);
+              }
+              inputRef.current?.focus();
+            }}
+          />
+        </ScrollView>
         {currentText && filteredOptions.length > 0 ? (
           <View style={styles.searchOptions}>
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="always">
               {filteredOptions.map((option) => (
                 <Pressable
                   key={option.id}
@@ -147,7 +150,7 @@ export default UserMultiSelect;
 
 const styles = StyleSheet.create({
   container: {
-    width: 300,
+    width: 280,
   },
   tagsSection: {
     height: 100,
@@ -186,13 +189,13 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 40,
-    width: 300,
+    width: 280,
     borderWidth: 1,
     padding: 10,
   },
   searchOptions: {
     maxHeight: 120,
-    width: 300,
+    width: 280,
     borderWidth: 1,
     borderTopWidth: 0,
     position: "absolute",

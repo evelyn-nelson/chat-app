@@ -5,7 +5,7 @@ import UserListItem from "./UserListItem";
 const UserList = (props: { group: Group }) => {
   const { group } = props;
   return (
-    <View className="border-2 border-blue-950 h-[400] w-[300] overflow-hidden">
+    <View className="border-2 border-blue-950 h-[400] w-[280] overflow-hidden">
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
