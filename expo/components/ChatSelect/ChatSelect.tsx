@@ -8,7 +8,6 @@ import {
   Platform,
 } from "react-native";
 import { ChatSelectBox } from "./ChatSelectBox";
-import { ChatCreate } from "./ChatCreate/ChatCreate";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { Group } from "@/types/types";
 import { useState, useEffect, useCallback } from "react";
@@ -45,22 +44,19 @@ export const ChatSelect = () => {
 
   return (
     <View
-      style={
-        Platform.OS != "web"
-          ? [styles.container, styles.nativeWidth]
-          : [styles.container, styles.webWidth]
-      }
+      className={`${
+        Platform.OS != "web" ? "w-full" : "w-[250]"
+      } flex-1 pt-[50] border-r-2
+      `}
     >
       <ChatCreateModal />
+      <View className="h-1" />
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          Platform.select({
-            web: styles.scrollContentWeb,
-            native: styles.scrollContentMobile,
-          }),
-        ]}
+        className="bg-blue-300 flex-1 w-full h-full"
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: "flex-start",
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -69,7 +65,6 @@ export const ChatSelect = () => {
           />
         }
       >
-        <View style={styles.listPadding}></View>
         {groups.map((group, index) => {
           const isLast = index === groups.length - 1;
           return (
@@ -86,36 +81,3 @@ export const ChatSelect = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  webWidth: {
-    width: 250,
-  },
-  nativeWidth: {
-    width: "100%",
-  },
-  container: {
-    flex: 1,
-    marginTop: 50,
-    borderRightWidth: 2,
-  },
-  scrollView: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: "center",
-  },
-  scrollContentWeb: {
-    alignItems: "flex-start",
-  },
-  scrollContentMobile: {
-    alignItems: "flex-start",
-  },
-
-  listPadding: {
-    height: 10,
-  },
-});

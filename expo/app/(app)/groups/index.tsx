@@ -1,20 +1,10 @@
 import { ChatSelect } from "@/components/ChatSelect/ChatSelect";
-import ConnectionTesting from "@/components/ConnectionTesting";
-import { Link, Stack } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 
 export default function HomeScreen() {
   return (
-    <View style={styles.container}>
+    <View className="flex-1 justify-start items-start bg-[#7faee3]">
       <ChatSelect />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-  },
-});

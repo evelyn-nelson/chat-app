@@ -17,7 +17,6 @@ const UserInviteMultiselect = (props: {
   useEffect(() => {
     (async () => {
       try {
-        // const users = await store.loadUsers();
         const users = [
           {
             id: 1,

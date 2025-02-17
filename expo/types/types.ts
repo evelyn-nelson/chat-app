@@ -55,5 +55,5 @@ export {
   Group,
   UserGroup,
   GroupAdminMap,
-  GroupUser,
+  GroupUser, MessageUser,
 };

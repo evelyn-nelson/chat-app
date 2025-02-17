@@ -6,6 +6,7 @@ import { User } from "@/types/types";
 import { useWebSocket } from "@/components/context/WebSocketContext";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { CanceledError } from "axios";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
@@ -96,13 +97,23 @@ const AppLayout = () => {
         options={{
           title: "Home",
           tabBarLabel: "Home",
+          tabBarActiveBackgroundColor: "#60A5FA",
+          tabBarInactiveBackgroundColor: "#7faee3",
+          tabBarStyle: { backgroundColor: "#7faee3" },
+          tabBarLabelStyle: { color: "#1E3A8A" },
+          tabBarIcon: () => <Ionicons size={25} name="home-outline" />,
         }}
       />
       <Tabs.Screen
         name="groups"
         options={{
           title: "Groups",
+          tabBarActiveBackgroundColor: "#60A5FA",
+          tabBarStyle: { backgroundColor: "#7faee3" },
+          tabBarInactiveBackgroundColor: "#7faee3",
           tabBarLabel: "Groups",
+          tabBarLabelStyle: { color: "#1E3A8A" },
+          tabBarIcon: () => <Ionicons size={25} name="chatbubbles-outline" />,
         }}
       />
     </Tabs>

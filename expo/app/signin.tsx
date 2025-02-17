@@ -7,7 +7,7 @@ import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 const signin = () => {
   const { whoami } = useAuthUtils();
   return (
-    <View>
+    <View className="bg-blue-500">
       <AuthMenu
         onSubmit={async () => {
           await whoami();
@@ -20,4 +20,4 @@ const signin = () => {
 
 export default signin;
 
-const styles = StyleSheet.create({});
+

@@ -1,6 +1,9 @@
-import { Button, Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import React, { useState } from "react";
+import { Pressable, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
 import { ChatCreate } from "./ChatCreate";
+import BundleModal from "@/components/Global/BundleModal/BundleModal";
+import Button from "@/components/Global/Button/Button";
+import KeyboardAvoidingScrollView from "@/components/Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
 
 const ChatCreateModal = () => {
   const [isChatCreateModalOpen, setIsChatCreateModalOpen] = useState(false);
@@ -10,56 +13,22 @@ const ChatCreateModal = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Button
-        title="Create new group"
-        onPress={() => setIsChatCreateModalOpen(!isChatCreateModalOpen)}
-      />
-      <Modal
-        visible={isChatCreateModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeModal}
+    <View className="flex items-center justify-center">
+      <Text
+        onPress={() => {
+          setIsChatCreateModalOpen(true);
+        }}
+        className="text-xl font-semibold text-blue-950 hover:text-blue-900 active:text-blue-900 mt-3"
       >
-        <Pressable style={styles.modalBackdrop} onPress={closeModal}>
-          <Pressable
-            style={styles.modalContainer}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <ChatCreate onSubmit={closeModal} />
-          </Pressable>
-        </Pressable>
-      </Modal>
+        Create new group
+      </Text>
+      <BundleModal visible={isChatCreateModalOpen} closeModal={closeModal}>
+        <KeyboardAvoidingScrollView>
+          <ChatCreate onSubmit={closeModal} />
+        </KeyboardAvoidingScrollView>
+      </BundleModal>
     </View>
   );
 };
 
 export default ChatCreateModal;
-
-const styles = StyleSheet.create({
-  container: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalContainer: {
-    cursor: "auto",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "75%",
-    width: "85%",
-    backgroundColor: "white",
-    borderRadius: 10,
-  },
-  modalBackdrop: {
-    cursor: "auto",
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-});

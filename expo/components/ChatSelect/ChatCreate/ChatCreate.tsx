@@ -1,10 +1,11 @@
 import { Group, User } from "@/types/types";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useWebSocket } from "../../context/WebSocketContext";
 import { router } from "expo-router";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
 import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
+import Button from "@/components/Global/Button/Button";
 
 export const ChatCreate = (props: { onSubmit: () => void }) => {
   const { user: self, store, groupsRefreshKey } = useGlobalStore();
@@ -18,14 +19,14 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
   return (
     <View>
       <TextInput
-        style={styles.input}
+        className="h-[40] w-[280] m-[12] border border-blue-950 text-blue-950 p-[10]"
         onChangeText={(event) => {
           setGroupName(event);
         }}
         value={groupName}
         placeholder="Group name"
       />
-      <View style={{ marginLeft: 12, zIndex: 999 }}>
+      <View className="ml-[12] z-50s">
         <UserInviteMultiselect
           placeholderText="Users to invite"
           userList={usersToInvite}
@@ -33,9 +34,11 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
           excludedUserList={[self]}
         />
       </View>
-      <View style={styles.button}>
+      <View className="w-[280] ml-[12] mt-2">
         <Button
-          title={"Create"}
+          border={false}
+          size="lg"
+          text={"Create"}
           onPress={async () => {
             const group = await createGroup(groupName);
             setGroupName("");
@@ -63,7 +66,7 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
 const styles = StyleSheet.create({
   input: {
     height: 40,
-    width: 300,
+    width: 280,
     margin: 12,
     borderWidth: 1,
     padding: 10,

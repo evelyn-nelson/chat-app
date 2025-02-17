@@ -1,19 +1,24 @@
-import { Button, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import React from "react";
 import { useWebSocket } from "./context/WebSocketContext";
 import { useAuthUtils } from "./context/AuthUtilsContext";
 import { useMessageStore } from "./context/MessageStoreContext";
+import Button from "./Global/Button/Button";
 
 const ConnectionTesting = () => {
   const { establishConnection, disconnect } = useWebSocket();
   const { loadHistoricalMessages } = useMessageStore();
   const { logout } = useAuthUtils();
   return (
-    <View style={styles.container}>
-      <Button title={"Connect"} onPress={establishConnection} />
-      <Button title={"Disconnect"} onPress={disconnect} />
-      <Button title={"Log out"} onPress={logout} />
-      <Button title={"Load messages"} onPress={loadHistoricalMessages} />
+    <View className="h-screen flex items-center justify-center">
+      <Button text={"Connect"} onPress={establishConnection} size={"xl"} />
+      <Button text={"Disconnect"} onPress={disconnect} size={"xl"} />
+      <Button text={"Log out"} onPress={logout} size={"xl"} />
+      <Button
+        text={"Load messages"}
+        onPress={loadHistoricalMessages}
+        size={"xl"}
+      />
     </View>
   );
 };

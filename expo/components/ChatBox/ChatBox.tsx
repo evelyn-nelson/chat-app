@@ -25,7 +25,7 @@ export type BubbleProps = {
 const SCROLL_THRESHOLD = 200;
 const isIOS = Platform.OS === "ios";
 
-export default function ChatBox(props: { group_id: number }) {
+const ChatBox = (props: { group_id: number }) => {
   const { group_id } = props;
   const { user } = useGlobalStore();
   const { getMessagesForGroup, loading } = useMessageStore();
@@ -76,9 +76,7 @@ export default function ChatBox(props: { group_id: number }) {
     const keyboardWillHide = Keyboard.addListener(
       isIOS ? "keyboardWillHide" : "keyboardDidHide",
       () => {
-        if (isNearBottom) {
-          scrollToBottom(true);
-        }
+        scrollToBottom(true);
       }
     );
 
@@ -135,15 +133,32 @@ export default function ChatBox(props: { group_id: number }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1"
       behavior={isIOS ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
-      <View style={[styles.chatBox, { height: windowHeight }]}>
-        <View style={[styles.scrollContainer, { height: messageAreaHeight }]}>
+      <View
+        className="flex-1 w-full bg-blue-900 px-2 pt-2"
+        style={{ height: windowHeight }}
+      >
+        <View
+          className="flex-1 mb-[60px] pb-1 bg-blue-900 rounded-t-xl overflow-hidden"
+          style={{
+            height: messageAreaHeight,
+            shadowColor: "black",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.75,
+            shadowRadius: 8,
+            elevation: 5,
+          }}
+        >
           <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
+            className="flex-1"
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "flex-end",
+              padding: 10,
+            }}
             ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -164,7 +179,10 @@ export default function ChatBox(props: { group_id: number }) {
                 style={hideMessages ? { display: "none" } : {}}
               >
                 <ChatBubble
-                  username={bubble.message.user.username}
+                  prevUserId={
+                    index != 0 ? bubbles[index - 1].message.user.id : 0
+                  }
+                  user={bubble.message.user}
                   message={bubble.message.content}
                   align={bubble.align}
                 />
@@ -174,69 +192,38 @@ export default function ChatBox(props: { group_id: number }) {
         </View>
         {hasNewMessages && (
           <Animated.View
-            style={[styles.newMessageIndicator, { opacity: fadeAnim }]}
+            className="absolute bottom-20 self-center bg-blue-300 px-5 py-2.5 rounded-full shadow-md"
+            style={{
+              opacity: fadeAnim,
+              shadowColor: "black",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
+            }}
           >
             <Pressable onPress={handleNewMessagePress}>
-              <Text style={styles.newMessageText}>New messages ↓</Text>
+              <Text className="text-blue-900 font-semibold">
+                New messages ↓
+              </Text>
             </Pressable>
           </Animated.View>
         )}
-        <View style={styles.messageEntryContainer}>
+        <View
+          className="h-[60px] absolute bottom-0 w-[100vw] pb-1 bg-blue-900"
+          style={{
+            shadowColor: "black",
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+        >
           <MessageEntry group_id={group_id} />
         </View>
       </View>
     </KeyboardAvoidingView>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  chatBox: {
-    flex: 1,
-    width: "100%",
-    borderTopWidth: 5,
-    borderColor: "#353636",
-    backgroundColor: "#fff",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    justifyContent: "flex-end",
-  },
-  scrollContainer: {
-    flex: 1,
-    marginBottom: 60,
-  },
-  messageEntryContainer: {
-    height: 60,
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "#fff",
-  },
-  newMessageIndicator: {
-    position: "absolute",
-    bottom: 80,
-    alignSelf: "center",
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  newMessageText: {
-    color: "white",
-    fontWeight: "600",
-  },
-});
+export default ChatBox;

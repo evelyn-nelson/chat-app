@@ -5,10 +5,12 @@ import UserListItem from "./UserListItem";
 const UserList = (props: { group: Group }) => {
   const { group } = props;
   return (
-    <View style={styles.container}>
+    <View className="border-2 border-blue-950 h-[400] w-[280] overflow-hidden">
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent]}
+        className="flex-1"
+        contentContainerStyle={{
+          width: "100%",
+        }}
         showsVerticalScrollIndicator={Platform.OS !== "web"}
       >
         {group.group_users.map((user, index) => {
@@ -16,7 +18,7 @@ const UserList = (props: { group: Group }) => {
           return (
             <View
               key={index}
-              style={isLast ? [styles.lastBox, styles.box] : [styles.box]}
+              className={`${isLast ? "border-b" : ""} h-[40] border-t w-full justify-center`}
             >
               <UserListItem user={user} group={group} />
             </View>
@@ -28,27 +30,3 @@ const UserList = (props: { group: Group }) => {
 };
 
 export default UserList;
-
-const styles = StyleSheet.create({
-  container: {
-    borderWidth: 2,
-    height: 400,
-    width: 300,
-    overflow: "hidden",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    width: "100%",
-  },
-  box: {
-    height: 40,
-    borderTopWidth: 1,
-    width: "100%",
-    justifyContent: "center",
-  },
-  lastBox: {
-    borderBottomWidth: 1,
-  },
-});

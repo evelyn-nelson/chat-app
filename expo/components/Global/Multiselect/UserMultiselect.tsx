@@ -65,27 +65,31 @@ const UserMultiSelect = (props: {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tagsSection}>
+    <View className="w-[280]">
+      <View className="h-24 mb-1">
         <ScrollView
-          style={styles.tagsScrollView}
+          keyboardShouldPersistTaps="handled"
+          className="flex"
           contentContainerStyle={styles.tagsContainer}
           showsVerticalScrollIndicator={true}
         >
           {tags.map((tag, index) => {
             return (
-              <View key={index} style={styles.tagWrapper}>
+              <View key={index} className="m-1">
                 <Pressable
                   onPress={() => {
                     handleRemoveTag(index);
                   }}
                 >
                   {({ pressed }) => (
-                    <View style={styles.tagBox}>
-                      <Text numberOfLines={1} style={styles.tagText}>
+                    <View className="flex-row p-1 rounded-3xl bg-blue-500 max-h-7 max-w-60">
+                      <Text
+                        numberOfLines={1}
+                        className="text-white overflow-hidden"
+                      >
                         {tag}
                       </Text>
-                      <View style={styles.closeIcon}>
+                      <View className="ml-2 flex items-center justify-center">
                         <Ionicons
                           name={"close-circle-outline"}
                           size={15}
@@ -101,38 +105,40 @@ const UserMultiSelect = (props: {
         </ScrollView>
       </View>
 
-      <View style={styles.inputSection}>
-        <TextInput
-          placeholder={placeholderText}
-          ref={inputRef}
-          style={styles.input}
-          onChangeText={(text) => {
-            setCurrentText(text);
-            const searchResults = text
-              ? fuse.search(text).map((result) => result.item)
-              : availableOptions;
-            setFilteredOptions(searchResults);
-          }}
-          value={currentText}
-          blurOnSubmit={false}
-          onSubmitEditing={() => {
-            if (currentText) {
-              handleSelectUser(currentText);
-            }
-            inputRef.current?.focus();
-          }}
-        />
+      <View className="relative">
+        <ScrollView keyboardShouldPersistTaps="always" scrollEnabled={false}>
+          <TextInput
+            placeholder={placeholderText}
+            ref={inputRef}
+            className="h-10 w-[280] border p-[10]"
+            onChangeText={(text) => {
+              setCurrentText(text);
+              const searchResults = text
+                ? fuse.search(text).map((result) => result.item)
+                : availableOptions;
+              setFilteredOptions(searchResults);
+            }}
+            value={currentText}
+            blurOnSubmit={false}
+            onSubmitEditing={() => {
+              if (currentText) {
+                handleSelectUser(currentText);
+              }
+              inputRef.current?.focus();
+            }}
+          />
+        </ScrollView>
         {currentText && filteredOptions.length > 0 ? (
-          <View style={styles.searchOptions}>
-            <ScrollView>
+          <View className="absolute max-h-24 w-[280] border border-top-0 top-[100%] bg-white z-10">
+            <ScrollView keyboardShouldPersistTaps="always">
               {filteredOptions.map((option) => (
                 <Pressable
                   key={option.id}
                   onPress={() => handleSelectUser(option.email)}
-                  style={styles.optionItem}
+                  className="p-2 border-b border-white"
                 >
                   <Text>{option.username}</Text>
-                  <Text style={styles.emailText}>{option.email}</Text>
+                  <Text className="text-sm text-gray-500">{option.email}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -146,67 +152,8 @@ const UserMultiSelect = (props: {
 export default UserMultiSelect;
 
 const styles = StyleSheet.create({
-  container: {
-    width: 300,
-  },
-  tagsSection: {
-    height: 100,
-    marginBottom: 5,
-  },
-  tagsScrollView: {
-    flex: 1,
-  },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-  },
-  tagWrapper: {
-    margin: 2,
-  },
-  tagBox: {
-    flexDirection: "row",
-    padding: 4,
-    borderRadius: 20,
-    backgroundColor: "cornflowerblue",
-    maxHeight: 25,
-    maxWidth: 245,
-  },
-  tagText: {
-    color: "white",
-    overflow: "hidden",
-  },
-  closeIcon: {
-    marginLeft: 5,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  inputSection: {
-    position: "relative",
-  },
-  input: {
-    height: 40,
-    width: 300,
-    borderWidth: 1,
-    padding: 10,
-  },
-  searchOptions: {
-    maxHeight: 120,
-    width: 300,
-    borderWidth: 1,
-    borderTopWidth: 0,
-    position: "absolute",
-    top: "100%",
-    backgroundColor: "white",
-    zIndex: 1,
-  },
-  optionItem: {
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  emailText: {
-    fontSize: 12,
-    color: "#666",
   },
 });
