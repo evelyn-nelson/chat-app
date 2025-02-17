@@ -25,7 +25,7 @@ export type BubbleProps = {
 const SCROLL_THRESHOLD = 200;
 const isIOS = Platform.OS === "ios";
 
-export default function ChatBox(props: { group_id: number }) {
+const ChatBox = (props: { group_id: number }) => {
   const { group_id } = props;
   const { user } = useGlobalStore();
   const { getMessagesForGroup, loading } = useMessageStore();
@@ -224,4 +224,6 @@ export default function ChatBox(props: { group_id: number }) {
       </View>
     </KeyboardAvoidingView>
   );
-}
+};
+
+export default ChatBox;
