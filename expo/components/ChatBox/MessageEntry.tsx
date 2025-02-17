@@ -30,12 +30,11 @@ const MessageEntry = (props: { group_id: number }) => {
   return (
     <View className="p-[10]">
       <ScrollView
-        className="h-[40] w-[90%] m-auto border border-blue-300 p-[10]"
-        keyboardShouldPersistTaps="always"
+        className="h-[40] w-[90%] m-auto border border-blue-200 p-[10]"
         scrollEnabled={false}
       >
         <TextInput
-          className="text-blue-300"
+          className="text-blue-200"
           onChangeText={(event) => {
             if (user) {
               setMessage({
