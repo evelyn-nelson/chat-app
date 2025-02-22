@@ -75,6 +75,14 @@ const GroupDateOptions = ({
           <Picker
             selectedValue={expirationInterval}
             onValueChange={(item) => setExpirationInterval(item)}
+            style={{
+              height: 60,
+              width: 200,
+            }}
+            itemStyle={{
+              fontSize: 14,
+              height: 60,
+            }}
           >
             <Picker.Item label="1 day" value={1} />
             <Picker.Item label="2 days" value={2} />

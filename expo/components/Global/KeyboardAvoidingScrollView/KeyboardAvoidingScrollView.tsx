@@ -20,6 +20,7 @@ const KeyboardAvoidingScrollView: React.FC<Props> = ({
         {
           flexGrow: 1,
           justifyContent: "flex-start",
+          maxWidth: "100%",
           paddingBottom: 50,
         },
         contentContainerStyle,
