@@ -47,6 +47,7 @@ const MessageEntry = (props: { group_id: number }) => {
           onSubmitEditing={() => {
             handleSubmit();
           }}
+          style={{ outline: "none" }}
           value={message.content}
           blurOnSubmit={false}
         />
