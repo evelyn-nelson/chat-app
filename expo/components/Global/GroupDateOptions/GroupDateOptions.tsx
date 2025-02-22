@@ -1,4 +1,4 @@
-import { Button, Text, View } from "react-native";
+import { Button, Platform, Text, View } from "react-native";
 import React, { SetStateAction, useState } from "react";
 import { DateOptions } from "@/types/types";
 import DateTimePicker, {
@@ -98,6 +98,16 @@ const GroupDateOptions = ({
     showMode("datetime");
   };
 
+  const convertToDateTimeLocalString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}:00`;
+  };
+
   return (
     <View>
       <Button onPress={showDatepicker} title="Show date picker!" />
@@ -105,13 +115,29 @@ const GroupDateOptions = ({
       <Text>expire: {dateOptions?.endDate?.toLocaleString()}</Text>
       {show && (
         <View>
-          <DateTimePicker
-            testID="dateTimePicker"
-            value={dateOptions?.startDate ?? new Date()}
-            mode={mode}
-            is24Hour={true}
-            onChange={onChange}
-          />
+          {Platform.OS != "web" ? (
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={dateOptions?.startDate ?? new Date()}
+              mode={mode}
+              is24Hour={true}
+              onChange={onChange}
+            />
+          ) : (
+            <input
+              type={"datetime-local"}
+              value={convertToDateTimeLocalString(
+                dateOptions?.startDate ?? new Date()
+              )}
+              onChange={(event) => {
+                console.log(dateOptions?.startDate.toISOString().slice(0, -8));
+                onChange(
+                  {} as DateTimePickerEvent,
+                  new Date(event.target.value)
+                );
+              }}
+            ></input>
+          )}
           <Dropdown
             data={data}
             placeholder="Choose expiration interval"
