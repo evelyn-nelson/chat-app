@@ -4,7 +4,7 @@ import { DateOptions } from "@/types/types";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
+import { Dropdown } from "react-native-element-dropdown";
 
 type GroupDateOptionsProps = {
   dateOptions: DateOptions | undefined;
@@ -14,6 +14,45 @@ type GroupDateOptionsProps = {
 type DatePickerMode = "date" | "time" | "datetime" | "countdown";
 
 type ExpirationOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 14 | "month";
+
+const data = [
+  {
+    label: "1 day",
+    value: 1,
+  },
+  {
+    label: "2 days",
+    value: 2,
+  },
+  {
+    label: "3 days",
+    value: 3,
+  },
+  {
+    label: "4 days",
+    value: 4,
+  },
+  {
+    label: "5 days",
+    value: 5,
+  },
+  {
+    label: "6 days",
+    value: 6,
+  },
+  {
+    label: "1 week",
+    value: 7,
+  },
+  {
+    label: "2 weeks",
+    value: 14,
+  },
+  {
+    label: "1 month",
+    value: "month",
+  },
+];
 
 const GroupDateOptions = ({
   dateOptions,
@@ -31,6 +70,7 @@ const GroupDateOptions = ({
     const currentDate = selectedDate;
     setShow(false);
     if (currentDate && expirationInterval != "month") {
+      console.log(expirationInterval);
       const expirationDate = new Date(currentDate);
       expirationDate.setDate(
         expirationDate.getDate() + Number(expirationInterval)
@@ -72,28 +112,14 @@ const GroupDateOptions = ({
             is24Hour={true}
             onChange={onChange}
           />
-          <Picker
-            selectedValue={expirationInterval}
-            onValueChange={(item) => setExpirationInterval(item)}
-            style={{
-              height: 60,
-              width: 200,
-            }}
-            itemStyle={{
-              fontSize: 14,
-              height: 60,
-            }}
-          >
-            <Picker.Item label="1 day" value={1} />
-            <Picker.Item label="2 days" value={2} />
-            <Picker.Item label="3 days" value={3} />
-            <Picker.Item label="4 days" value={4} />
-            <Picker.Item label="5 days" value={5} />
-            <Picker.Item label="6 days" value={6} />
-            <Picker.Item label="1 week" value={7} />
-            <Picker.Item label="2 weeks" value={14} />
-            <Picker.Item label="1 month" value={"month"} />
-          </Picker>
+          <Dropdown
+            data={data}
+            placeholder="Choose expiration interval"
+            value={expirationInterval}
+            onChange={(item) => setExpirationInterval(item.value)}
+            labelField={"label"}
+            valueField={"value"}
+          />
         </View>
       )}
     </View>
