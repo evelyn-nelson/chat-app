@@ -22,7 +22,7 @@ const GroupDateOptions = ({
   const [mode, setMode] = useState<DatePickerMode>("datetime");
   const [show, setShow] = useState(false);
   const [expirationInterval, setExpirationInterval] =
-    useState<ExpirationOptions>("month");
+    useState<ExpirationOptions>(1);
 
   const onChange = (
     event: DateTimePickerEvent,
@@ -31,21 +31,15 @@ const GroupDateOptions = ({
     const currentDate = selectedDate;
     setShow(false);
     if (currentDate && expirationInterval != "month") {
-      console.log("normal");
-      console.log(expirationInterval);
-      console.log(currentDate.toLocaleDateString());
       const expirationDate = new Date(currentDate);
-      console.log(expirationDate.toLocaleDateString());
       expirationDate.setDate(
         expirationDate.getDate() + Number(expirationInterval)
       );
-      console.log(expirationDate.toLocaleDateString());
       setDateOptions({
         startDate: currentDate,
         endDate: expirationDate,
       });
     } else if (currentDate) {
-      console.log("month");
       const expirationDate = new Date(currentDate);
       expirationDate.setMonth(expirationDate.getMonth() + 1);
       setDateOptions({
