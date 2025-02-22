@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ChatCreate } from "../ChatSelect/ChatCreate/ChatCreate";
 import ChatSettingsMenu from "./ChatSettingsMenu";
 import { Group } from "@/types/types";
 import BundleModal from "../Global/BundleModal/BundleModal";

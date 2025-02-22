@@ -1,4 +1,4 @@
-import { Group, User } from "@/types/types";
+import { DateOptions, Group, User } from "@/types/types";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useWebSocket } from "../../context/WebSocketContext";
@@ -6,12 +6,14 @@ import { router } from "expo-router";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
 import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
 import Button from "@/components/Global/Button/Button";
+import GroupDateOptions from "@/components/Global/GroupDateOptions/GroupDateOptions";
 
-export const ChatCreate = (props: { onSubmit: () => void }) => {
+export const ChatCreateMenu = (props: { onSubmit: () => void }) => {
   const { user: self, store, groupsRefreshKey } = useGlobalStore();
 
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
+  const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
   const { createGroup, inviteUsersToGroup, getGroups } = useWebSocket();
   if (!self) {
     return <View></View>;
@@ -26,6 +28,13 @@ export const ChatCreate = (props: { onSubmit: () => void }) => {
         value={groupName}
         placeholder="Group name"
       />
+      <View className="m-[12]">
+        <GroupDateOptions
+          dateOptions={dateOptions}
+          setDateOptions={setDateOptions}
+        />
+      </View>
+
       <View className="ml-[12] z-50s">
         <UserInviteMultiselect
           placeholderText="Users to invite"

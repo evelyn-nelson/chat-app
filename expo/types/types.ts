@@ -48,6 +48,11 @@ type UserGroup = {
   updated_at: string;
 };
 
+type DateOptions = {
+  startDate: Date;
+  endDate: Date;
+};
+
 export {
   Message,
   RawMessage,
@@ -55,5 +60,7 @@ export {
   Group,
   UserGroup,
   GroupAdminMap,
-  GroupUser, MessageUser,
+  GroupUser,
+  MessageUser,
+  DateOptions,
 };

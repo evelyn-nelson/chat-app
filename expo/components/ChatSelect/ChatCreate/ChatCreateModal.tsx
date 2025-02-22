@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import React, { useEffect, useState } from "react";
-import { ChatCreate } from "./ChatCreate";
+import { ChatCreateMenu } from "./ChatCreateMenu";
 import BundleModal from "@/components/Global/BundleModal/BundleModal";
 import Button from "@/components/Global/Button/Button";
 import KeyboardAvoidingScrollView from "@/components/Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
@@ -24,7 +24,7 @@ const ChatCreateModal = () => {
       </Text>
       <BundleModal visible={isChatCreateModalOpen} closeModal={closeModal}>
         <KeyboardAvoidingScrollView>
-          <ChatCreate onSubmit={closeModal} />
+          <ChatCreateMenu onSubmit={closeModal} />
         </KeyboardAvoidingScrollView>
       </BundleModal>
     </View>

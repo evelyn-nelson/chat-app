@@ -2,14 +2,16 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 import React, { useState } from "react";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
 import { useWebSocket } from "../context/WebSocketContext";
-import { Group, User } from "@/types/types";
+import { DateOptions, Group, User } from "@/types/types";
 import UserList from "./UserList";
 import Button from "../Global/Button/Button";
+import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 
 const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
   const { inviteUsersToGroup } = useWebSocket();
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
+  const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
   const excludedUserList = group.group_users;
   return (
     <View
@@ -20,6 +22,10 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       </View>
       <View className="w-[280]">
         <View className="z-50">
+          <GroupDateOptions
+            dateOptions={dateOptions}
+            setDateOptions={setDateOptions}
+          />
           <UserInviteMultiselect
             placeholderText="Invite additional users"
             userList={usersToInvite}
