@@ -70,7 +70,6 @@ const GroupDateOptions = ({
     const currentDate = selectedDate;
     setShow(false);
     if (currentDate && expirationInterval != "month") {
-      console.log(expirationInterval);
       const expirationDate = new Date(currentDate);
       expirationDate.setDate(
         expirationDate.getDate() + Number(expirationInterval)
@@ -130,13 +129,12 @@ const GroupDateOptions = ({
                 dateOptions?.startDate ?? new Date()
               )}
               onChange={(event) => {
-                console.log(dateOptions?.startDate.toISOString().slice(0, -8));
                 onChange(
                   {} as DateTimePickerEvent,
                   new Date(event.target.value)
                 );
               }}
-            ></input>
+            />
           )}
           <Dropdown
             data={data}
