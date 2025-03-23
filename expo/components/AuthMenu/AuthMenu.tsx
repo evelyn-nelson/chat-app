@@ -29,6 +29,7 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
           onPress={() => setIsSignupModalOpen(!isSignupModalOpen)}
           text="Sign up"
           size={"3xl"}
+          className="min-w-[280]"
         />
       </View>
       <View className="mt-2">
@@ -36,6 +37,7 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
           onPress={() => setIsLoginModalOpen(!isLoginModalOpen)}
           text="Sign in"
           size={"3xl"}
+          className="min-w-[280]"
         />
       </View>
       <BundleModal visible={isSignupModalOpen} closeModal={closeModal}>

@@ -18,6 +18,7 @@ const ConnectionTesting = () => {
         text={"Load messages"}
         onPress={loadHistoricalMessages}
         size={"xl"}
+        className="min-w-[280]"
       />
     </View>
   );

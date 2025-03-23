@@ -39,6 +39,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               border={false}
               text={"Add new users"}
               size="xl"
+              className="min-w-[280]"
               onPress={async () => {
                 try {
                   await inviteUsersToGroup(usersToInvite, group.id);

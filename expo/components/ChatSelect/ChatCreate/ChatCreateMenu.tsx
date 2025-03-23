@@ -47,6 +47,7 @@ export const ChatCreateMenu = (props: { onSubmit: () => void }) => {
         <Button
           border={false}
           size="lg"
+          className="min-w-[280]"
           text={"Create"}
           onPress={async () => {
             const group = await createGroup(groupName);
