@@ -1,10 +1,11 @@
-import { Button, Platform, Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import React, { SetStateAction, useState } from "react";
 import { DateOptions } from "@/types/types";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
+import Button from "../Button/Button";
 
 type GroupDateOptionsProps = {
   dateOptions: DateOptions | undefined;
@@ -108,8 +109,127 @@ const GroupDateOptions = ({
   };
 
   return (
-    <View>
-      <Button onPress={showDatepicker} title="Show date picker!" />
+    <View className="border border-blue-900 p-2">
+      <View className="flex flex-col">
+        <View className="flex flex-row">
+          <Button
+            size="base"
+            onPress={() => {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+
+              setDateOptions({
+                startDate: new Date(),
+                endDate: tomorrow,
+              });
+            }}
+            text="Today"
+            className="m-1 flex-1"
+            border={false}
+          />
+          <Button
+            size="base"
+            onPress={() => {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+
+              const nextDay = new Date();
+              nextDay.setDate(nextDay.getDate() + 2);
+
+              setDateOptions({
+                startDate: tomorrow,
+                endDate: nextDay,
+              });
+            }}
+            text="Tomorrow"
+            className="m-1 flex-1"
+            border={false}
+          />
+        </View>
+        <Button
+          size="base"
+          onPress={() => {
+            const startDate = new Date();
+            const endDate = new Date();
+            const dayOfWeek = startDate.getDay();
+            switch (dayOfWeek) {
+              case 0:
+                endDate.setDate(endDate.getDate() + 1);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+              case 1:
+                startDate.setDate(startDate.getDate() + 4);
+                startDate.setHours(18);
+                startDate.setMinutes(0);
+                startDate.setSeconds(0);
+                endDate.setDate(endDate.getDate() + 7);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+              case 2:
+                startDate.setDate(startDate.getDate() + 3);
+                startDate.setHours(18);
+                startDate.setMinutes(0);
+                startDate.setSeconds(0);
+                endDate.setDate(endDate.getDate() + 6);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+              case 3:
+                startDate.setDate(startDate.getDate() + 2);
+                startDate.setHours(18);
+                startDate.setMinutes(0);
+                startDate.setSeconds(0);
+                endDate.setDate(endDate.getDate() + 5);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+              case 4:
+                startDate.setDate(startDate.getDate() + 1);
+                startDate.setHours(18);
+                startDate.setMinutes(0);
+                startDate.setSeconds(0);
+                endDate.setDate(endDate.getDate() + 4);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+              case 5:
+                endDate.setDate(endDate.getDate() + 3);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+              case 6:
+                endDate.setDate(endDate.getDate() + 2);
+                endDate.setHours(9);
+                endDate.setMinutes(0);
+                endDate.setSeconds(0);
+                break;
+            }
+
+            setDateOptions({
+              startDate: startDate,
+              endDate: endDate,
+            });
+          }}
+          text="This weekend"
+          className="m-1"
+          border={false}
+        />
+      </View>
+      <Button
+        size="base"
+        onPress={showDatepicker}
+        text="Show date picker!"
+        className="m-1"
+        border={false}
+      />
       <Text>selected: {dateOptions?.startDate?.toLocaleString()}</Text>
       <Text>expire: {dateOptions?.endDate?.toLocaleString()}</Text>
       {show && (
