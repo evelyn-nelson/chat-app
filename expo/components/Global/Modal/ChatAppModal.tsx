@@ -58,74 +58,93 @@ const ChatAppModal = ({
       transparent={true}
       onRequestClose={closeModal}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: keyboardHeight > 0 ? "flex-start" : "center",
+          paddingTop: keyboardHeight > 0 ? 40 : 0,
+          alignItems: "center",
+          backgroundColor: "rgba(0,0,0,0.7)",
+        }}
+      >
+        {/* Modal background press handler */}
+        <Pressable
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+          onPress={() => {
+            Keyboard.dismiss();
+            closeModal();
+          }}
+        />
+
+        {/* Modal content container */}
         <View
           style={{
-            flex: 1,
-            justifyContent: keyboardHeight > 0 ? "flex-start" : "center",
-            paddingTop: keyboardHeight > 0 ? 40 : 0,
-            alignItems: "center",
-            backgroundColor: "rgba(0,0,0,0.7)",
+            width: "90%",
+            maxWidth: 500,
+            maxHeight: availableHeight,
+            backgroundColor: "#1F2937", // gray-800
+            borderRadius: 12,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: "rgba(37, 99, 235, 0.3)", // blue-600/30
           }}
         >
+          {/* Modal header */}
           <View
             style={{
-              width: "90%",
-              maxWidth: 500,
-              maxHeight: availableHeight,
-              backgroundColor: "#1F2937", // gray-800
-              borderRadius: 12,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: "rgba(37, 99, 235, 0.3)", // blue-600/30
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: "#374151", // gray-700
             }}
           >
-            <View
+            <Text
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: "#374151", // gray-700
+                fontSize: 18,
+                fontWeight: "bold",
+                color: "#60A5FA",
               }}
             >
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  color: "#60A5FA",
-                }}
-              >
-                {title}
-              </Text>
-              <Pressable
-                onPress={closeModal}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  backgroundColor: "#374151", // gray-700
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ color: "white", fontSize: 16 }}>×</Text>
-              </Pressable>
-            </View>
-
-            <ScrollView
-              style={{ maxHeight: availableHeight - 60 }}
-              contentContainerStyle={{ padding: 16 }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={true}
+              {title}
+            </Text>
+            <Pressable
+              onPress={closeModal}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 15,
+                backgroundColor: "#374151", // gray-700
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              {children}
-            </ScrollView>
+              <Text style={{ color: "white", fontSize: 16 }}>×</Text>
+            </Pressable>
           </View>
+
+          {/* Modal content with scroll */}
+          <ScrollView
+            style={{ maxHeight: availableHeight - 60 }}
+            contentContainerStyle={{ padding: 16 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+          >
+            <Pressable onPress={() => {}} style={{ flex: 1 }}>
+              {children}
+            </Pressable>
+          </ScrollView>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 };

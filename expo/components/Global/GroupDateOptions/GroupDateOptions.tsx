@@ -313,6 +313,7 @@ const GroupDateOptions = ({
                 borderRadius: 8,
                 paddingHorizontal: 8,
                 width: "100%",
+                maxWidth: "100%", // Add maxWidth to prevent overflow
               }}
               placeholderStyle={{
                 fontSize: 14,
@@ -331,9 +332,15 @@ const GroupDateOptions = ({
                 borderWidth: 1,
                 borderRadius: 8,
                 width: "100%",
+                maxWidth: "65%", // Add maxWidth to prevent overflow
               }}
               activeColor="#1E293B"
               maxHeight={200}
+              itemContainerStyle={{
+                width: "100%",
+                justifyContent: "space-between",
+                // paddingHorizontal: 8, // Add padding to match
+              }}
             />
           </View>
         </View>

@@ -1,11 +1,11 @@
 import {
   View,
   Text,
-  StyleSheet,
-  Button,
   ScrollView,
   RefreshControl,
   Platform,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { ChatSelectBox } from "./ChatSelectBox";
 import { useGlobalStore } from "../context/GlobalStoreContext";
@@ -42,42 +42,61 @@ export const ChatSelect = () => {
       .catch((error) => console.error(error));
   }, [groupsRefreshKey]);
 
+  // Get status bar height for proper padding
+  const statusBarHeight = StatusBar.currentHeight || 0;
+  const topPadding = Platform.OS === "ios" ? 50 : statusBarHeight + 16;
+
   return (
-    <View
+    <SafeAreaView
       className={`${
-        Platform.OS != "web" ? "w-full" : "w-[250]"
-      } flex-1 pt-[50] border-r-2
-      `}
+        Platform.OS !== "web" ? "w-full" : "w-[280px]"
+      } flex-1 bg-gray-900 border-r border-gray-700`}
+      style={{
+        paddingTop: Platform.OS === "web" ? 16 : topPadding,
+      }}
     >
-      <ChatCreateModal />
-      <View className="h-1" />
+      <View className="px-3 mb-2">
+        <Text className="text-xl font-semibold text-blue-400 mb-3 px-1">
+          Your Groups
+        </Text>
+        <ChatCreateModal />
+      </View>
+
       <ScrollView
-        className="bg-blue-300 flex-1 w-full h-full"
+        className="flex-1 mt-3"
         contentContainerStyle={{
           flexGrow: 1,
-          alignItems: "flex-start",
+          paddingBottom: 20,
         }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             progressViewOffset={60}
+            tintColor="#60A5FA" // blue-400
+            colors={["#60A5FA"]} // blue-400
           />
         }
       >
-        {groups.map((group, index) => {
-          const isLast = index === groups.length - 1;
-          return (
-            <ChatSelectBox
-              key={group.id || index}
-              group={{
-                ...group,
-              }}
-              isLast={isLast}
-            />
-          );
-        })}
+        <View className="bg-gray-800 mx-3 rounded-lg overflow-hidden">
+          {groups.length > 0 ? (
+            groups.map((group, index) => (
+              <ChatSelectBox
+                key={group.id || index}
+                group={group}
+                isFirst={index === 0}
+                isLast={index === groups.length - 1}
+              />
+            ))
+          ) : (
+            <View className="py-6 px-4">
+              <Text className="text-gray-400 text-center">
+                No groups yet. Create a new group to get started.
+              </Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };

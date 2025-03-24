@@ -1,11 +1,4 @@
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, View } from "react-native";
 import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ChatSettingsMenu from "./ChatSettingsMenu";
@@ -16,16 +9,18 @@ import KeyboardAvoidingScrollView from "../Global/KeyboardAvoidingScrollView/Key
 const ChatSettingsModal = (props: { group: Group }) => {
   const [isChatSettingsModalOpen, setIsChatSettingsModalOpen] =
     useState<boolean>(false);
+  const { group } = props;
 
   const closeModal = () => {
     setIsChatSettingsModalOpen(false);
   };
-  const { group } = props;
+
   if (!group.id) {
     return <View />;
   }
+
   return (
-    <View>
+    <View style={{ alignItems: "center", justifyContent: "center" }}>
       <Pressable
         className="h-[40] w-[40] flex items-center justify-center"
         onPress={() => setIsChatSettingsModalOpen(!isChatSettingsModalOpen)}
@@ -38,10 +33,13 @@ const ChatSettingsModal = (props: { group: Group }) => {
           />
         )}
       </Pressable>
-      <ChatAppModal visible={isChatSettingsModalOpen} closeModal={closeModal}>
-        <KeyboardAvoidingScrollView>
-          <ChatSettingsMenu group={group} />
-        </KeyboardAvoidingScrollView>
+
+      <ChatAppModal
+        visible={isChatSettingsModalOpen}
+        closeModal={closeModal}
+        title="Group Settings"
+      >
+        <ChatSettingsMenu group={group} />
       </ChatAppModal>
     </View>
   );
