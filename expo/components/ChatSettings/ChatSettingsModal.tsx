@@ -10,7 +10,7 @@ import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ChatSettingsMenu from "./ChatSettingsMenu";
 import { Group } from "@/types/types";
-import BundleModal from "../Global/BundleModal/BundleModal";
+import ChatAppModal from "../Global/Modal/ChatAppModal";
 import KeyboardAvoidingScrollView from "../Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
 
 const ChatSettingsModal = (props: { group: Group }) => {
@@ -38,11 +38,11 @@ const ChatSettingsModal = (props: { group: Group }) => {
           />
         )}
       </Pressable>
-      <BundleModal visible={isChatSettingsModalOpen} closeModal={closeModal}>
+      <ChatAppModal visible={isChatSettingsModalOpen} closeModal={closeModal}>
         <KeyboardAvoidingScrollView>
           <ChatSettingsMenu group={group} />
         </KeyboardAvoidingScrollView>
-      </BundleModal>
+      </ChatAppModal>
     </View>
   );
 };

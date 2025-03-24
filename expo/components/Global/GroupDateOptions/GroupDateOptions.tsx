@@ -1,5 +1,5 @@
-import { Platform, Text, View } from "react-native";
-import React, { SetStateAction, useState } from "react";
+import { Platform, Text, View, Dimensions } from "react-native";
+import React, { useState, useEffect } from "react";
 import { DateOptions } from "@/types/types";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -17,42 +17,15 @@ type DatePickerMode = "date" | "time" | "datetime" | "countdown";
 type ExpirationOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 14 | "month";
 
 const data = [
-  {
-    label: "1 day",
-    value: 1,
-  },
-  {
-    label: "2 days",
-    value: 2,
-  },
-  {
-    label: "3 days",
-    value: 3,
-  },
-  {
-    label: "4 days",
-    value: 4,
-  },
-  {
-    label: "5 days",
-    value: 5,
-  },
-  {
-    label: "6 days",
-    value: 6,
-  },
-  {
-    label: "1 week",
-    value: 7,
-  },
-  {
-    label: "2 weeks",
-    value: 14,
-  },
-  {
-    label: "1 month",
-    value: "month",
-  },
+  { label: "1 day", value: 1 },
+  { label: "2 days", value: 2 },
+  { label: "3 days", value: 3 },
+  { label: "4 days", value: 4 },
+  { label: "5 days", value: 5 },
+  { label: "6 days", value: 6 },
+  { label: "1 week", value: 7 },
+  { label: "2 weeks", value: 14 },
+  { label: "1 month", value: "month" },
 ];
 
 const GroupDateOptions = ({
@@ -64,12 +37,28 @@ const GroupDateOptions = ({
   const [expirationInterval, setExpirationInterval] =
     useState<ExpirationOptions>(1);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return { datePart: "Not set", timePart: "" };
+
+    const datePart = date.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+
+    const timePart = date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return { datePart, timePart };
+  };
+
   const onChange = (
     event: DateTimePickerEvent,
     selectedDate: Date | undefined
   ) => {
     const currentDate = selectedDate;
-    setShow(false);
     if (currentDate && expirationInterval != "month") {
       const expirationDate = new Date(currentDate);
       expirationDate.setDate(
@@ -108,10 +97,24 @@ const GroupDateOptions = ({
     return `${year}-${month}-${day}T${hours}:${minutes}:00`;
   };
 
+  const toggleDatePicker = () => {
+    setShow(!show);
+  };
+
+  const startFormatted = formatDate(dateOptions?.startDate);
+  const endFormatted = formatDate(dateOptions?.endDate);
+
   return (
-    <View className="border border-blue-900 p-2">
-      <View className="flex flex-col">
-        <View className="flex flex-row">
+    <View
+      style={{ width: "100%" }}
+      className="bg-gray-900 rounded-xl shadow-md p-4 mx-0 my-0 overflow-hidden"
+    >
+      <Text className="text-lg font-semibold text-blue-400 mb-3">
+        Event Schedule
+      </Text>
+
+      <View className="mb-4 w-full">
+        <View className="flex flex-row mb-2 w-full">
           <Button
             size="base"
             onPress={() => {
@@ -124,7 +127,8 @@ const GroupDateOptions = ({
               });
             }}
             text="Today"
-            className="m-1 flex-1"
+            className="mr-2 flex-1 bg-gray-800 rounded-lg"
+            textClassName="text-blue-300 font-medium"
             border={false}
           />
           <Button
@@ -142,7 +146,8 @@ const GroupDateOptions = ({
               });
             }}
             text="Tomorrow"
-            className="m-1 flex-1"
+            className="flex-1 bg-gray-800 rounded-lg"
+            textClassName="text-blue-300 font-medium"
             border={false}
           />
         </View>
@@ -219,51 +224,118 @@ const GroupDateOptions = ({
             });
           }}
           text="This weekend"
-          className="m-1"
+          className="bg-gray-800 rounded-lg w-full"
+          textClassName="text-blue-300 font-medium"
           border={false}
         />
       </View>
       <Button
         size="base"
-        onPress={showDatepicker}
-        text="Show date picker!"
-        className="m-1"
+        onPress={toggleDatePicker}
+        text={show ? "Hide Custom Date" : "Custom Date & Time"}
+        className="bg-blue-600 rounded-lg mb-4 w-full"
+        textClassName="text-white font-medium"
         border={false}
       />
-      <Text>selected: {dateOptions?.startDate?.toLocaleString()}</Text>
-      <Text>expire: {dateOptions?.endDate?.toLocaleString()}</Text>
-      {show && (
+      <View
+        className="bg-gray-800 rounded-lg p-3 mb-2 w-full"
+        style={{ minHeight: 80 }}
+      >
+        <View className="mb-1">
+          <Text className="text-sm text-gray-400 mb-1">Starts:</Text>
+          <View className="flex flex-row">
+            <Text className="text-base font-medium text-gray-200">
+              {startFormatted.datePart} {startFormatted.timePart}
+            </Text>
+          </View>
+        </View>
+
         <View>
+          <Text className="text-sm text-gray-400 mb-1">Ends:</Text>
+          <View className="flex flex-row">
+            <Text className="text-base font-medium text-gray-200">
+              {endFormatted.datePart} {endFormatted.timePart}
+            </Text>
+          </View>
+        </View>
+      </View>
+      {show && (
+        <View className="mt-2 bg-gray-800 rounded-lg p-3 w-full">
+          <Text className="text-sm font-medium text-gray-300 mb-2">
+            Select Start Date & Time
+          </Text>
           {Platform.OS != "web" ? (
-            <DateTimePicker
-              testID="dateTimePicker"
-              value={dateOptions?.startDate ?? new Date()}
-              mode={mode}
-              is24Hour={true}
-              onChange={onChange}
-            />
+            <View className="w-full items-center">
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={dateOptions?.startDate ?? new Date()}
+                mode={mode}
+                is24Hour={true}
+                onChange={onChange}
+                themeVariant="dark"
+              />
+            </View>
           ) : (
-            <input
-              type={"datetime-local"}
-              value={convertToDateTimeLocalString(
-                dateOptions?.startDate ?? new Date()
-              )}
-              onChange={(event) => {
-                onChange(
-                  {} as DateTimePickerEvent,
-                  new Date(event.target.value)
-                );
-              }}
-            />
+            <View className="bg-gray-700 rounded-lg p-2 w-full">
+              <input
+                type={"datetime-local"}
+                className="p-2 bg-gray-700 text-white border border-gray-600 rounded-md w-full mb-3"
+                value={convertToDateTimeLocalString(
+                  dateOptions?.startDate ?? new Date()
+                )}
+                onChange={(event) => {
+                  onChange(
+                    {} as DateTimePickerEvent,
+                    new Date(event.target.value)
+                  );
+                }}
+                style={{ colorScheme: "dark" }}
+              />
+            </View>
           )}
-          <Dropdown
-            data={data}
-            placeholder="Choose expiration interval"
-            value={expirationInterval}
-            onChange={(item) => setExpirationInterval(item.value)}
-            labelField={"label"}
-            valueField={"value"}
-          />
+
+          <Text className="text-sm font-medium text-gray-300 mb-2 mt-3">
+            Set Duration
+          </Text>
+          <View className="w-full">
+            <Dropdown
+              data={data}
+              placeholder="Choose duration"
+              value={expirationInterval}
+              onChange={(item) => setExpirationInterval(item.value)}
+              labelField={"label"}
+              valueField={"value"}
+              style={{
+                height: 50,
+                backgroundColor: "#374151",
+                borderColor: "#4B5563",
+                borderWidth: 1,
+                borderRadius: 8,
+                paddingHorizontal: 8,
+                width: "100%",
+              }}
+              placeholderStyle={{
+                fontSize: 14,
+                color: "#9CA3AF",
+              }}
+              selectedTextStyle={{
+                fontSize: 14,
+                color: "#E5E7EB",
+              }}
+              itemTextStyle={{
+                color: "#E5E7EB",
+              }}
+              containerStyle={{
+                backgroundColor: "#374151",
+                borderColor: "#4B5563",
+                borderWidth: 1,
+                borderRadius: 8,
+                width: "100%",
+              }}
+              activeColor="#1E293B"
+              maxHeight={200}
+            />
+          </View>
         </View>
       )}
     </View>

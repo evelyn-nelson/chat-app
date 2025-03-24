@@ -377,7 +377,7 @@ const UserInviteMultiselect = (props: {
   }, []);
 
   return (
-    <View>
+    <View className="w-full">
       <UserMultiSelect
         placeholderText={placeholderText}
         tags={userList}
@@ -390,5 +390,3 @@ const UserInviteMultiselect = (props: {
 };
 
 export default UserInviteMultiselect;
-
-const styles = StyleSheet.create({});

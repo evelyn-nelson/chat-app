@@ -1,3 +1,5 @@
+// KeyboardAvoidingScrollView.tsx
+
 import React from "react";
 import { View, ScrollViewProps } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -28,7 +30,7 @@ const KeyboardAvoidingScrollView: React.FC<Props> = ({
       keyboardShouldPersistTaps="handled"
       extraScrollHeight={keyboardOffset}
     >
-      <View>{children}</View>
+      <View style={{ flex: 1 }}>{children}</View>
     </KeyboardAwareScrollView>
   );
 };

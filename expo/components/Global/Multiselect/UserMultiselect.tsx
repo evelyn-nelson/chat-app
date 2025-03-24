@@ -1,10 +1,10 @@
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
+  Dimensions,
 } from "react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -19,6 +19,7 @@ const UserMultiSelect = (props: {
   excludedUserList: User[];
 }) => {
   const { placeholderText, tags, options, setTags, excludedUserList } = props;
+  const { width } = Dimensions.get("window");
 
   const isUserAvailable = (user: User) => {
     const isExcluded = excludedUserList.some(
@@ -64,16 +65,24 @@ const UserMultiSelect = (props: {
     setTags((prevTags) => prevTags.filter((_, tagIndex) => tagIndex !== index));
   };
 
+  // Function to truncate email for display
+  const truncateEmail = (email: string, maxLength = 20) => {
+    if (email.length <= maxLength) return email;
+    return email.substring(0, maxLength - 3) + "...";
+  };
+
   return (
-    <View className="w-[280]">
-      <View className="h-24 mb-1">
+    <View className="w-full">
+      {/* Tags container with more height */}
+      <View className="h-28 mb-2 bg-gray-700 rounded-lg p-2">
         <ScrollView
           keyboardShouldPersistTaps="handled"
           className="flex"
-          contentContainerStyle={styles.tagsContainer}
+          contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap" }}
           showsVerticalScrollIndicator={true}
         >
           {tags.map((tag, index) => {
+            const displayTag = truncateEmail(tag);
             return (
               <View key={index} className="m-1">
                 <Pressable
@@ -82,20 +91,19 @@ const UserMultiSelect = (props: {
                   }}
                 >
                   {({ pressed }) => (
-                    <View className="flex-row p-1 rounded-3xl bg-blue-500 max-h-7 max-w-60">
+                    <View className="flex-row items-center p-2 px-3 rounded-full bg-blue-600">
                       <Text
                         numberOfLines={1}
-                        className="text-white overflow-hidden"
+                        className="text-white max-w-[150px]"
                       >
-                        {tag}
+                        {displayTag}
                       </Text>
-                      <View className="ml-2 flex items-center justify-center">
-                        <Ionicons
-                          name={"close-circle-outline"}
-                          size={15}
-                          color={pressed ? "gray" : "white"}
-                        />
-                      </View>
+                      <Pressable
+                        onPress={() => handleRemoveTag(index)}
+                        className="ml-2 h-5 w-5 rounded-full bg-blue-700 items-center justify-center"
+                      >
+                        <Text className="text-white text-xs">×</Text>
+                      </Pressable>
                     </View>
                   )}
                 </Pressable>
@@ -105,40 +113,45 @@ const UserMultiSelect = (props: {
         </ScrollView>
       </View>
 
-      <View className="relative">
-        <ScrollView keyboardShouldPersistTaps="always" scrollEnabled={false}>
-          <TextInput
-            placeholder={placeholderText}
-            ref={inputRef}
-            className="h-10 w-[280] border p-[10]"
-            onChangeText={(text) => {
-              setCurrentText(text);
-              const searchResults = text
-                ? fuse.search(text).map((result) => result.item)
-                : availableOptions;
-              setFilteredOptions(searchResults);
-            }}
-            value={currentText}
-            blurOnSubmit={false}
-            onSubmitEditing={() => {
-              if (currentText) {
-                handleSelectUser(currentText);
-              }
-              inputRef.current?.focus();
-            }}
-          />
-        </ScrollView>
+      <View className="relative z-20">
+        <TextInput
+          placeholder={placeholderText}
+          ref={inputRef}
+          className="h-12 w-full border border-gray-600 rounded-lg bg-gray-700 text-white px-3"
+          placeholderTextColor="#9CA3AF"
+          onChangeText={(text) => {
+            setCurrentText(text);
+            const searchResults = text
+              ? fuse.search(text).map((result) => result.item)
+              : availableOptions;
+            setFilteredOptions(searchResults);
+          }}
+          value={currentText}
+          blurOnSubmit={false}
+          onSubmitEditing={() => {
+            if (currentText) {
+              handleSelectUser(currentText);
+            }
+            inputRef.current?.focus();
+          }}
+        />
+
         {currentText && filteredOptions.length > 0 ? (
-          <View className="absolute max-h-24 w-[280] border border-top-0 top-[100%] bg-white z-10">
+          <View
+            className="absolute max-h-40 w-full top-[100%] bg-gray-700 z-50 rounded-lg mt-1 border border-gray-600 shadow-lg"
+            style={{ elevation: 5 }}
+          >
             <ScrollView keyboardShouldPersistTaps="always">
               {filteredOptions.map((option) => (
                 <Pressable
                   key={option.id}
                   onPress={() => handleSelectUser(option.email)}
-                  className="p-2 border-b border-white"
+                  className="p-3 border-b border-gray-600"
                 >
-                  <Text>{option.username}</Text>
-                  <Text className="text-sm text-gray-500">{option.email}</Text>
+                  <Text className="text-white font-medium">
+                    {option.username}
+                  </Text>
+                  <Text className="text-sm text-gray-400">{option.email}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -150,10 +163,3 @@ const UserMultiSelect = (props: {
 };
 
 export default UserMultiSelect;
-
-const styles = StyleSheet.create({
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-});
