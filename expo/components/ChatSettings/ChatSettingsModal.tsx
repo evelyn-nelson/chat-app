@@ -4,7 +4,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import ChatSettingsMenu from "./ChatSettingsMenu";
 import { Group } from "@/types/types";
 import ChatAppModal from "../Global/Modal/ChatAppModal";
-import KeyboardAvoidingScrollView from "../Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
 
 const ChatSettingsModal = (props: { group: Group }) => {
   const [isChatSettingsModalOpen, setIsChatSettingsModalOpen] =
@@ -29,7 +28,7 @@ const ChatSettingsModal = (props: { group: Group }) => {
           <Ionicons
             name={"ellipsis-horizontal-outline"}
             size={20}
-            color={pressed ? "gray" : "#1E3A8A"}
+            color={pressed ? "gray" : "white"}
           />
         )}
       </Pressable>
