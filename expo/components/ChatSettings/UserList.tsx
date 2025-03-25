@@ -17,11 +17,8 @@ const UserList = (props: { group: Group }) => {
           return (
             <View
               key={index}
-              className={`${
-                index !== 0 ? "border-t border-gray-700" : ""
-              } w-full`}
             >
-              <UserListItem user={user} group={group} />
+              <UserListItem user={user} group={group} index={index} />
             </View>
           );
         })}

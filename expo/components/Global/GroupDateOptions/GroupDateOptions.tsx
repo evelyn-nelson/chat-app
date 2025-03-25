@@ -109,10 +109,6 @@ const GroupDateOptions = ({
       style={{ width: "100%" }}
       className="bg-gray-900 rounded-xl shadow-md p-4 mx-0 my-0 overflow-hidden"
     >
-      <Text className="text-lg font-semibold text-blue-400 mb-3">
-        Event Schedule
-      </Text>
-
       <View className="mb-4 w-full">
         <View className="flex flex-row mb-2 w-full">
           <Button
