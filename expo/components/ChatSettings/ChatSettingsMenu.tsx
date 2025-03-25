@@ -2,6 +2,7 @@ import { Platform, Text, View } from "react-native";
 import React, { useState } from "react";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
 import { useWebSocket } from "../context/WebSocketContext";
+import { useGlobalStore } from "../context/GlobalStoreContext";
 import { DateOptions, Group } from "@/types/types";
 import UserList from "./UserList";
 import Button from "../Global/Button/Button";
@@ -10,12 +11,12 @@ import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
   const { inviteUsersToGroup } = useWebSocket();
+  const { refreshGroups } = useGlobalStore();
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
   const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
   const [showDateOptions, setShowDateOptions] = useState(false);
   const excludedUserList = group.group_users;
 
-  // Format date for display
   const formatDate = (date: Date | undefined) => {
     if (!date) return "Not set";
 
@@ -117,7 +118,6 @@ const ChatSettingsMenu = (props: { group: Group }) => {
         </View>
       </View>
 
-      {/* Add Users Button */}
       {usersToInvite.length > 0 && (
         <View style={{ zIndex: 10 }}>
           <Button
@@ -130,6 +130,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               try {
                 await inviteUsersToGroup(usersToInvite, group.id);
                 setUsersToInvite([]);
+                refreshGroups();
               } catch (error) {
                 console.error(error);
               }

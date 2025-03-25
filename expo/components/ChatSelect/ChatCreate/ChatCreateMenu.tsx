@@ -9,7 +9,7 @@ import Button from "@/components/Global/Button/Button";
 import GroupDateOptions from "@/components/Global/GroupDateOptions/GroupDateOptions";
 
 export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
-  const { user: self, store } = useGlobalStore();
+  const { user: self, store, refreshGroups } = useGlobalStore();
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
   const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
@@ -32,6 +32,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
       if (group && usersToInvite.length > 0) {
         await inviteUsersToGroup(usersToInvite, group.id);
         setUsersToInvite([]);
+        refreshGroups();
       }
 
       onSubmit();

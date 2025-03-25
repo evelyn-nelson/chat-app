@@ -27,12 +27,11 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
         {/* Logo and heading area */}
         <View className="mb-10 items-center">
           <View className="w-20 h-20 bg-blue-600 rounded-2xl mb-6 items-center justify-center">
-            {/* You could replace this with an actual logo image */}
             <Text className="text-white text-4xl font-bold">C</Text>
           </View>
           <Text className="text-blue-400 text-4xl font-bold">Chat App</Text>
           <Text className="text-gray-400 text-base mt-2 text-center">
-            Connect with friends and the world around you
+            Connect with friends
           </Text>
         </View>
 
@@ -43,7 +42,7 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
             text="Create Account"
             size="lg"
             variant="primary"
-            className="w-full"
+            className="w-full my-1"
           />
 
           <Button
@@ -51,7 +50,7 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
             text="Sign In"
             size="lg"
             variant="secondary"
-            className="w-full"
+            className="w-full my-1"
           />
         </View>
 

@@ -25,9 +25,3 @@ const ConnectionTesting = () => {
 };
 
 export default ConnectionTesting;
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 200,
-  },
-});
