@@ -1,28 +1,56 @@
-import { Group, User } from "@/types/types";
-import {
-  Button,
-  Pressable,
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-} from "react-native";
-import { router } from "expo-router";
+import { Group } from "@/types/types";
+import { Pressable, View, Text } from "react-native";
+import { router, usePathname } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
-export const ChatSelectBox = (props: { group: Group; isLast: boolean }) => {
-  const { group, isLast } = props;
+export const ChatSelectBox = (props: {
+  group: Group;
+  isFirst: boolean;
+  isLast: boolean;
+}) => {
+  const { group, isFirst, isLast } = props;
+  const pathname = usePathname();
+  const isActive = pathname === `/groups/${group.id}`;
+
   return (
-    <View className={Platform.OS != "web" ? "w-full" : "w-[250]"}>
-      <Pressable
-        className={`${isLast ? "border-b" : ""} flex items-start justify-center h-[40] border-t border-blue-950`}
-        onPress={() => {
-          router.push(`/groups/${group.id}`);
-        }}
-      >
-        <Text numberOfLines={1} className="px-[10]">
-          {group.name}
-        </Text>
-      </Pressable>
-    </View>
+    <Pressable
+      className={`
+        ${!isFirst ? "border-t border-gray-700" : ""}
+        ${isActive ? "bg-gray-700" : ""}
+      `}
+      onPress={() => {
+        router.push(`/groups/${group.id}`);
+      }}
+    >
+      <View className="flex-row items-center py-3 px-4">
+        <View className="w-8 h-8 rounded-full bg-blue-900 items-center justify-center mr-3">
+          <Text className="text-blue-300 font-medium">
+            {group.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+
+        <View className="flex-1">
+          <Text
+            numberOfLines={1}
+            className="text-base font-medium text-gray-200"
+          >
+            {group.name}
+          </Text>
+
+          {group.group_users && (
+            <Text numberOfLines={1} className="text-xs text-gray-400">
+              {group.group_users.length}{" "}
+              {group.group_users.length === 1 ? "member" : "members"}
+            </Text>
+          )}
+        </View>
+
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={isActive ? "#60A5FA" : "#9CA3AF"}
+        />
+      </View>
+    </Pressable>
   );
 };

@@ -1,5 +1,5 @@
 import { MessageUser } from "@/types/types";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 const ChatBubble = (props: {
   prevUserId: number;
@@ -8,17 +8,38 @@ const ChatBubble = (props: {
   align: string;
 }) => {
   const { align, user, prevUserId, message } = props;
+  const isOwnMessage = align === "right";
+
   return (
-    <View className={align === "left" ? "ml-[5] py-1" : "ml-auto mr-[5] py-1"}>
+    <View
+      className={`py-1 ${
+        isOwnMessage ? "ml-auto mr-2 items-end" : "ml-2 items-start"
+      }`}
+    >
       {prevUserId != user.id && (
-        <Text className="ml-[10] mt-[1] text-sky-300 text-sm">
-          {props.user.username}
+        <Text
+          className={`text-xs mb-1 ${
+            isOwnMessage
+              ? "text-blue-400 text-right mr-2"
+              : "text-gray-400 ml-2"
+          }`}
+        >
+          {user.username}
         </Text>
       )}
-      <View className="mt-[2] h-auto w-[150] border-2 border-blue-200 rounded-2xl">
+      <View
+        className={`rounded-2xl px-3 py-2 max-w-[80%] ${
+          isOwnMessage
+            ? "bg-blue-600 rounded-tr-none"
+            : "bg-gray-700 rounded-tl-none"
+        }`}
+        style={{ alignSelf: isOwnMessage ? "flex-end" : "flex-start" }}
+      >
         <Text
           selectable={true}
-          className="text-left my-auto ml-[5] p-[5] max-w-[140] flex-wrap shrink text-blue-200"
+          className={`text-base ${
+            isOwnMessage ? "text-white" : "text-gray-200"
+          }`}
         >
           {message}
         </Text>

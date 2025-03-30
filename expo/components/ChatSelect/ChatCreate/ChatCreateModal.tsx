@@ -1,9 +1,8 @@
-import { Pressable, Text, View } from "react-native";
-import React, { useEffect, useState } from "react";
-import { ChatCreate } from "./ChatCreate";
-import BundleModal from "@/components/Global/BundleModal/BundleModal";
+import { View } from "react-native";
+import React, { useState } from "react";
+import { ChatCreateMenu } from "./ChatCreateMenu";
+import ChatAppModal from "@/components/Global/Modal/ChatAppModal";
 import Button from "@/components/Global/Button/Button";
-import KeyboardAvoidingScrollView from "@/components/Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
 
 const ChatCreateModal = () => {
   const [isChatCreateModalOpen, setIsChatCreateModalOpen] = useState(false);
@@ -13,20 +12,22 @@ const ChatCreateModal = () => {
   };
 
   return (
-    <View className="flex items-center justify-center">
-      <Text
-        onPress={() => {
-          setIsChatCreateModalOpen(true);
-        }}
-        className="text-xl font-semibold text-blue-950 hover:text-blue-900 active:text-blue-900 mt-3"
+    <View className="items-center justify-center">
+      <Button
+        onPress={() => setIsChatCreateModalOpen(true)}
+        text="Create New Group"
+        size="base"
+        variant="secondary"
+        className="mt-3"
+      />
+
+      <ChatAppModal
+        visible={isChatCreateModalOpen}
+        closeModal={closeModal}
+        title="Create New Group"
       >
-        Create new group
-      </Text>
-      <BundleModal visible={isChatCreateModalOpen} closeModal={closeModal}>
-        <KeyboardAvoidingScrollView>
-          <ChatCreate onSubmit={closeModal} />
-        </KeyboardAvoidingScrollView>
-      </BundleModal>
+        <ChatCreateMenu onSubmit={closeModal} />
+      </ChatAppModal>
     </View>
   );
 };

@@ -1,32 +1,25 @@
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, View } from "react-native";
 import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ChatCreate } from "../ChatSelect/ChatCreate/ChatCreate";
 import ChatSettingsMenu from "./ChatSettingsMenu";
 import { Group } from "@/types/types";
-import BundleModal from "../Global/BundleModal/BundleModal";
-import KeyboardAvoidingScrollView from "../Global/KeyboardAvoidingScrollView/KeyboardAvoidingScrollView";
+import ChatAppModal from "../Global/Modal/ChatAppModal";
 
 const ChatSettingsModal = (props: { group: Group }) => {
   const [isChatSettingsModalOpen, setIsChatSettingsModalOpen] =
     useState<boolean>(false);
+  const { group } = props;
 
   const closeModal = () => {
     setIsChatSettingsModalOpen(false);
   };
-  const { group } = props;
+
   if (!group.id) {
     return <View />;
   }
+
   return (
-    <View>
+    <View className="justify-center items-center">
       <Pressable
         className="h-[40] w-[40] flex items-center justify-center"
         onPress={() => setIsChatSettingsModalOpen(!isChatSettingsModalOpen)}
@@ -35,15 +28,18 @@ const ChatSettingsModal = (props: { group: Group }) => {
           <Ionicons
             name={"ellipsis-horizontal-outline"}
             size={20}
-            color={pressed ? "gray" : "#1E3A8A"}
+            color={pressed ? "gray" : "white"}
           />
         )}
       </Pressable>
-      <BundleModal visible={isChatSettingsModalOpen} closeModal={closeModal}>
-        <KeyboardAvoidingScrollView>
-          <ChatSettingsMenu group={group} />
-        </KeyboardAvoidingScrollView>
-      </BundleModal>
+
+      <ChatAppModal
+        visible={isChatSettingsModalOpen}
+        closeModal={closeModal}
+        title="Group Settings"
+      >
+        <ChatSettingsMenu group={group} />
+      </ChatAppModal>
     </View>
   );
 };

@@ -1,7 +1,6 @@
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -138,18 +137,13 @@ const ChatBox = (props: { group_id: number }) => {
       keyboardVerticalOffset={90}
     >
       <View
-        className="flex-1 w-full bg-blue-900 px-2 pt-2"
+        className="flex-1 w-full bg-gray-900 px-2 pt-2"
         style={{ height: windowHeight }}
       >
         <View
-          className="flex-1 mb-[60px] pb-1 bg-blue-900 rounded-t-xl overflow-hidden"
+          className="flex-1 mb-[60px] pb-1 bg-gray-900 rounded-t-xl overflow-hidden"
           style={{
             height: messageAreaHeight,
-            shadowColor: "black",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.75,
-            shadowRadius: 8,
-            elevation: 5,
           }}
         >
           <ScrollView
@@ -192,7 +186,7 @@ const ChatBox = (props: { group_id: number }) => {
         </View>
         {hasNewMessages && (
           <Animated.View
-            className="absolute bottom-20 self-center bg-blue-300 px-5 py-2.5 rounded-full shadow-md"
+            className="absolute bottom-20 self-center bg-blue-600 px-5 py-2.5 rounded-full"
             style={{
               opacity: fadeAnim,
               shadowColor: "black",
@@ -203,14 +197,12 @@ const ChatBox = (props: { group_id: number }) => {
             }}
           >
             <Pressable onPress={handleNewMessagePress}>
-              <Text className="text-blue-900 font-semibold">
-                New messages ↓
-              </Text>
+              <Text className="text-white font-semibold">New messages ↓</Text>
             </Pressable>
           </Animated.View>
         )}
         <View
-          className="h-[60px] absolute bottom-0 w-[100vw] pb-1 bg-blue-900"
+          className="h-[60px] absolute bottom-0 w-full pb-1 bg-gray-900"
           style={{
             shadowColor: "black",
             shadowOffset: { width: 0, height: -2 },

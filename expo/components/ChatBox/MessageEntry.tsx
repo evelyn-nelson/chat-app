@@ -1,8 +1,9 @@
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { useState } from "react";
 import { useWebSocket } from "../context/WebSocketContext";
-import { Message, RawMessage, User } from "@/types/types";
+import { RawMessage } from "@/types/types";
 import { useGlobalStore } from "../context/GlobalStoreContext";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const MessageEntry = (props: { group_id: number }) => {
   const { group_id } = props;
@@ -28,13 +29,10 @@ const MessageEntry = (props: { group_id: number }) => {
   };
 
   return (
-    <View className="p-[10]">
-      <ScrollView
-        className="h-[40] w-[90%] m-auto border border-blue-200 p-[10]"
-        scrollEnabled={false}
-      >
+    <View className="flex-row items-center px-3 py-2 h-full">
+      <View className="flex-1 bg-gray-800 rounded-full border border-gray-700 flex-row items-center px-4 h-10">
         <TextInput
-          className="text-blue-200"
+          className="flex-1 text-gray-200 text-base h-full"
           onChangeText={(event) => {
             if (user) {
               setMessage({
@@ -44,14 +42,33 @@ const MessageEntry = (props: { group_id: number }) => {
               });
             }
           }}
-          onSubmitEditing={() => {
-            handleSubmit();
+          onSubmitEditing={handleSubmit}
+          style={{
+            outline: "none",
+            textAlignVertical: "center",
+            paddingTop: 0,
+            paddingBottom: 0,
           }}
-          style={{ outline: "none" }}
           value={message.content}
           blurOnSubmit={false}
+          placeholder="Type a message..."
+          placeholderTextColor="#9CA3AF"
+          multiline={false}
         />
-      </ScrollView>
+        <Pressable
+          onPress={handleSubmit}
+          disabled={!message.content}
+          className={`ml-2 p-2 rounded-full ${
+            message.content ? "bg-blue-600" : "bg-gray-700"
+          }`}
+        >
+          <Ionicons
+            name="send"
+            size={18}
+            color={message.content ? "#FFFFFF" : "#9CA3AF"}
+          />
+        </Pressable>
+      </View>
     </View>
   );
 };

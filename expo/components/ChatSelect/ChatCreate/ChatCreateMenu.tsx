@@ -1,22 +1,59 @@
-import { Platform, Text, View } from "react-native";
-import React, { useState } from "react";
-import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
-import { useWebSocket } from "../context/WebSocketContext";
-import { useGlobalStore } from "../context/GlobalStoreContext";
-import { DateOptions, Group } from "@/types/types";
-import UserList from "./UserList";
-import Button from "../Global/Button/Button";
-import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
+import { DateOptions } from "@/types/types";
+import { useState } from "react";
+import { Text, TextInput, View } from "react-native";
+import { useWebSocket } from "../../context/WebSocketContext";
+import { router } from "expo-router";
+import { useGlobalStore } from "../../context/GlobalStoreContext";
+import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
+import Button from "@/components/Global/Button/Button";
+import GroupDateOptions from "@/components/Global/GroupDateOptions/GroupDateOptions";
 
-const ChatSettingsMenu = (props: { group: Group }) => {
-  const { group } = props;
-  const { inviteUsersToGroup } = useWebSocket();
-  const { refreshGroups } = useGlobalStore();
+export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
+  const { user: self, store, refreshGroups } = useGlobalStore();
+  const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
   const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
+  const { createGroup, inviteUsersToGroup, getGroups } = useWebSocket();
+  const [isLoading, setIsLoading] = useState(false);
   const [showDateOptions, setShowDateOptions] = useState(false);
-  const excludedUserList = group.group_users;
 
+  if (!self) {
+    return <View></View>;
+  }
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const group = await createGroup(groupName);
+      setGroupName("");
+
+      if (group && usersToInvite.length > 0) {
+        await inviteUsersToGroup(usersToInvite, group.id);
+        setUsersToInvite([]);
+        refreshGroups();
+      }
+
+      onSubmit();
+
+      if (group) {
+        router.push(`/groups/${group.id}`);
+        try {
+          const groups = await getGroups();
+          store.saveGroups(groups);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Format date for display
   const formatDate = (date: Date | undefined) => {
     if (!date) return "Not set";
 
@@ -30,17 +67,18 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   };
 
   return (
-    <View
-      className={`w-full pb-4 ${Platform.OS === "web" ? "max-w-[500px]" : ""}`}
-    >
-      {/* Group Members Card */}
-      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
+    <View className="w-full pb-4">
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
-          Group Members
+          Group Name
         </Text>
-        <View className="bg-gray-800 rounded-lg p-3">
-          <UserList group={group} />
-        </View>
+        <TextInput
+          className="bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 w-full"
+          onChangeText={setGroupName}
+          value={groupName}
+          placeholder="Enter group name"
+          placeholderTextColor="#6B7280"
+        />
       </View>
 
       {/* Event Schedule Card */}
@@ -101,33 +139,22 @@ const ChatSettingsMenu = (props: { group: Group }) => {
             placeholderText="Select friends to invite"
             userList={usersToInvite}
             setUserList={setUsersToInvite}
-            excludedUserList={excludedUserList}
+            excludedUserList={[self]}
           />
         </View>
       </View>
 
-      {usersToInvite.length > 0 && (
-        <View className="z-10">
-          <Button
-            border={false}
-            size="lg"
-            className="w-full bg-blue-600 rounded-lg"
-            textClassName="text-white font-medium"
-            text="Add New Users"
-            onPress={async () => {
-              try {
-                await inviteUsersToGroup(usersToInvite, group.id);
-                setUsersToInvite([]);
-                refreshGroups();
-              } catch (error) {
-                console.error(error);
-              }
-            }}
-          />
-        </View>
-      )}
+      <View className="z-10">
+        <Button
+          border={false}
+          size="lg"
+          className="w-full bg-blue-600 rounded-lg"
+          textClassName="text-white font-medium"
+          text={isLoading ? "Creating..." : "Create Group"}
+          onPress={handleCreateGroup}
+          disabled={isLoading || !groupName.trim()}
+        />
+      </View>
     </View>
   );
 };
-
-export default ChatSettingsMenu;

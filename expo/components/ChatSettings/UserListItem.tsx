@@ -1,45 +1,77 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import React, { useState } from "react";
 import { Group, GroupUser } from "@/types/types";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 
-const UserListItem = (props: { user: GroupUser; group: Group }) => {
-  const { user, group } = props;
+const UserListItem = (props: {
+  user: GroupUser;
+  group: Group;
+  index: number;
+}) => {
+  const { user, group, index } = props;
+
+  const [hidden, setHidden] = useState(false);
 
   const { removeUserFromGroup } = useWebSocket();
   const { user: self } = useGlobalStore();
 
+  const isAdmin = user.admin;
+  const isSelf = self?.id === user.id;
+  if (hidden) {
+    return <View />;
+  }
   return (
-    <View className="flex-row items-center px-[10]">
-      <View className="flex-1">
-        <Text numberOfLines={1} className="font-bold text-blue-950">
-          {user.username}
-        </Text>
-        <Text numberOfLines={1} ellipsizeMode="tail" className="text-sky-700">
-          {user.email}
-        </Text>
+    <View className={`${index !== 0 ? "border-t border-gray-700" : ""} w-full`}>
+      <View className="flex-row items-center px-4 py-3">
+        <View className="flex-1">
+          <View className="flex-row items-center">
+            <Text
+              numberOfLines={1}
+              className={`font-medium text-base ${isAdmin ? "text-blue-400" : "text-gray-200"}`}
+            >
+              {user.username}
+            </Text>
+            {isAdmin && (
+              <View className="ml-2 px-2 py-0.5 bg-blue-900/30 rounded-full">
+                <Text className="text-xs text-blue-400">Admin</Text>
+              </View>
+            )}
+            {isSelf && !isAdmin && (
+              <View className="ml-2 px-2 py-0.5 bg-gray-700 rounded-full">
+                <Text className="text-xs text-gray-400">You</Text>
+              </View>
+            )}
+          </View>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            className="text-sm text-gray-400"
+          >
+            {user.email}
+          </Text>
+        </View>
+        {!isAdmin && !isSelf && (
+          <Pressable
+            className="w-8 h-8 rounded-full items-center justify-center"
+            onPress={() => {
+              if (user && group) {
+                removeUserFromGroup(user.email, group.id);
+                setHidden(true);
+              }
+            }}
+          >
+            {({ pressed }) => (
+              <Ionicons
+                color={pressed ? "#4B5563" : "#9CA3AF"}
+                name={"close-circle-outline"}
+                size={22}
+              />
+            )}
+          </Pressable>
+        )}
       </View>
-      {!user.admin && self?.id != user.id && (
-        <Pressable
-          className="w-[30] h-full flex-row-reverse"
-          onPress={() => {
-            if (user && group) {
-              removeUserFromGroup(user.email, group.id);
-            }
-          }}
-        >
-          {({ pressed }) => (
-            <Ionicons
-              className="my-auto self-start"
-              color={pressed ? "gray" : "black"}
-              name={"close-circle-outline"}
-              size={20}
-            />
-          )}
-        </Pressable>
-      )}
     </View>
   );
 };

@@ -18,15 +18,10 @@ const ConnectionTesting = () => {
         text={"Load messages"}
         onPress={loadHistoricalMessages}
         size={"xl"}
+        className="min-w-[280]"
       />
     </View>
   );
 };
 
 export default ConnectionTesting;
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 200,
-  },
-});

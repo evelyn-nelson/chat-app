@@ -1,4 +1,10 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+  Platform,
+} from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Redirect, Stack, Tabs } from "expo-router";
 import { useAuthUtils } from "@/components/context/AuthUtilsContext";
@@ -7,6 +13,7 @@ import { useWebSocket } from "@/components/context/WebSocketContext";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { CanceledError } from "axios";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
@@ -14,6 +21,7 @@ const AppLayout = () => {
   const { store, refreshGroups } = useGlobalStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +65,7 @@ const AppLayout = () => {
     } catch (error) {
       if (!(error instanceof CanceledError)) {
         try {
-          await store.loadGroups(); // this is just to test if store is working im thinking
+          await store.loadGroups();
         } catch (storeError) {
           console.error("Failed to load groups:", storeError);
         }
@@ -77,8 +85,8 @@ const AppLayout = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
+      <View className="flex-1 justify-center items-center bg-gray-900">
+        <ActivityIndicator size="large" color="#60A5FA" />
       </View>
     );
   }
@@ -86,10 +94,41 @@ const AppLayout = () => {
   if (!isLoading && !user) {
     return <Redirect href={"/signin"} />;
   }
+
+  const bottomPadding =
+    Platform.OS === "ios"
+      ? Math.max(insets.bottom, 16)
+      : Platform.OS === "android"
+        ? 16
+        : 20; // web
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarStyle: {
+          backgroundColor: "#1F2937", // gray-800
+          borderTopColor: "#374151", // gray-700
+          borderTopWidth: 1,
+          height: 60 + bottomPadding,
+          paddingBottom: bottomPadding,
+          paddingTop: 8,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
+        },
+        tabBarActiveTintColor: "#60A5FA", // blue-400
+        tabBarInactiveTintColor: "#9CA3AF", // gray-400
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500",
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: -2,
+        },
       }}
     >
       <Tabs.Screen
@@ -97,35 +136,31 @@ const AppLayout = () => {
         options={{
           title: "Home",
           tabBarLabel: "Home",
-          tabBarActiveBackgroundColor: "#60A5FA",
-          tabBarInactiveBackgroundColor: "#7faee3",
-          tabBarStyle: { backgroundColor: "#7faee3" },
-          tabBarLabelStyle: { color: "#1E3A8A" },
-          tabBarIcon: () => <Ionicons size={25} name="home-outline" />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              size={22}
+              name={focused ? "home" : "home-outline"}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="groups"
         options={{
           title: "Groups",
-          tabBarActiveBackgroundColor: "#60A5FA",
-          tabBarStyle: { backgroundColor: "#7faee3" },
-          tabBarInactiveBackgroundColor: "#7faee3",
           tabBarLabel: "Groups",
-          tabBarLabelStyle: { color: "#1E3A8A" },
-          tabBarIcon: () => <Ionicons size={25} name="chatbubbles-outline" />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              size={22}
+              name={focused ? "chatbubbles" : "chatbubbles-outline"}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>
   );
 };
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-});
 
 export default AppLayout;
