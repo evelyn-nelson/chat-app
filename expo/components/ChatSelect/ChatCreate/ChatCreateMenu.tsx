@@ -72,7 +72,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
         style={{ width: "100%" }}
         className="bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible"
       >
-        <Text className="text-sm font-medium text-gray-300 mb-1 ml-1">
+        <Text className="text-lg font-semibold text-blue-400 mb-3">
           Group Name
         </Text>
         <TextInput
