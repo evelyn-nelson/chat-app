@@ -12,7 +12,7 @@ const ChatCreateModal = () => {
   };
 
   return (
-    <View style={{ alignItems: "center", justifyContent: "center" }}>
+    <View className="items-center justify-center">
       <Button
         onPress={() => setIsChatCreateModalOpen(true)}
         text="Create New Group"

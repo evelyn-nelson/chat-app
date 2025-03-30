@@ -85,7 +85,7 @@ const AppLayout = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View className="flex-1 justify-center items-center bg-gray-900">
         <ActivityIndicator size="large" color="#60A5FA" />
       </View>
     );
@@ -95,7 +95,6 @@ const AppLayout = () => {
     return <Redirect href={"/signin"} />;
   }
 
-  // Calculate bottom padding based on platform and safe area
   const bottomPadding =
     Platform.OS === "ios"
       ? Math.max(insets.bottom, 16)
@@ -163,14 +162,5 @@ const AppLayout = () => {
     </Tabs>
   );
 };
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#111827", // gray-900
-  },
-});
 
 export default AppLayout;

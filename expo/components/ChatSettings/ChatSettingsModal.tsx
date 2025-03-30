@@ -19,7 +19,7 @@ const ChatSettingsModal = (props: { group: Group }) => {
   }
 
   return (
-    <View style={{ alignItems: "center", justifyContent: "center" }}>
+    <View className="justify-center items-center">
       <Pressable
         className="h-[40] w-[40] flex items-center justify-center"
         onPress={() => setIsChatSettingsModalOpen(!isChatSettingsModalOpen)}

@@ -34,10 +34,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       className={`w-full pb-4 ${Platform.OS === "web" ? "max-w-[500px]" : ""}`}
     >
       {/* Group Members Card */}
-      <View
-        style={{ width: "100%" }}
-        className="bg-gray-900 rounded-xl shadow-md p-4 mb-4"
-      >
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           Group Members
         </Text>
@@ -47,10 +44,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       </View>
 
       {/* Event Schedule Card */}
-      <View
-        style={{ width: "100%" }}
-        className="bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible"
-      >
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-lg font-semibold text-blue-400">
             Event Schedule
@@ -97,18 +91,12 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       </View>
 
       {/* User Invite Card */}
-      <View
-        style={{ width: "100%", zIndex: 50 }}
-        className="bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible"
-      >
+      <View className="w-full z-50 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           Invite Friends
         </Text>
 
-        <View
-          className="bg-gray-800 rounded-lg p-3 overflow-visible"
-          style={{ zIndex: 40 }}
-        >
+        <View className="z-40 bg-gray-800 rounded-lg p-3 overflow-visible">
           <UserInviteMultiselect
             placeholderText="Select friends to invite"
             userList={usersToInvite}
@@ -119,7 +107,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       </View>
 
       {usersToInvite.length > 0 && (
-        <View style={{ zIndex: 10 }}>
+        <View className="z-10">
           <Button
             border={false}
             size="lg"

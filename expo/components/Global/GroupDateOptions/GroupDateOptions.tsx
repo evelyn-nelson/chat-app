@@ -105,10 +105,7 @@ const GroupDateOptions = ({
   const endFormatted = formatDate(dateOptions?.endDate);
 
   return (
-    <View
-      style={{ width: "100%" }}
-      className="bg-gray-900 rounded-xl shadow-md p-4 mx-0 my-0 overflow-hidden"
-    >
+    <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mx-0 my-0 overflow-hidden">
       <View className="mb-4 w-full">
         <View className="flex flex-row mb-2 w-full">
           <Button
@@ -233,10 +230,7 @@ const GroupDateOptions = ({
         textClassName="text-white font-medium"
         border={false}
       />
-      <View
-        className="bg-gray-800 rounded-lg p-3 mb-2 w-full"
-        style={{ minHeight: 80 }}
-      >
+      <View className="bg-gray-800 rounded-lg p-3 mb-2 w-full h-min-[80]">
         <View className="mb-1">
           <Text className="text-sm text-gray-400 mb-1">Starts:</Text>
           <View className="flex flex-row">
@@ -328,14 +322,14 @@ const GroupDateOptions = ({
                 borderWidth: 1,
                 borderRadius: 8,
                 width: "100%",
-                maxWidth: "65%", // Add maxWidth to prevent overflow
+                maxWidth: "65%",
               }}
               activeColor="#1E293B"
               maxHeight={200}
               itemContainerStyle={{
                 width: "100%",
                 justifyContent: "space-between",
-                // paddingHorizontal: 8, // Add padding to match
+                paddingHorizontal: 8, // Add padding to match
               }}
             />
           </View>

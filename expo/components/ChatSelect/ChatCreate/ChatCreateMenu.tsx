@@ -68,10 +68,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
 
   return (
     <View className="w-full pb-4">
-      <View
-        style={{ width: "100%" }}
-        className="bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible"
-      >
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           Group Name
         </Text>
@@ -85,10 +82,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
       </View>
 
       {/* Event Schedule Card */}
-      <View
-        style={{ width: "100%" }}
-        className="bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible"
-      >
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-lg font-semibold text-blue-400">
             Event Schedule
@@ -135,18 +129,12 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
       </View>
 
       {/* User Invite Card */}
-      <View
-        style={{ width: "100%", zIndex: 50 }}
-        className="bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible"
-      >
+      <View className="w-full z-50 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           Invite Friends
         </Text>
 
-        <View
-          className="bg-gray-800 rounded-lg p-3 overflow-visible"
-          style={{ zIndex: 40 }}
-        >
+        <View className="z-40 bg-gray-800 rounded-lg p-3 overflow-visible">
           <UserInviteMultiselect
             placeholderText="Select friends to invite"
             userList={usersToInvite}
@@ -156,7 +144,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
         </View>
       </View>
 
-      <View style={{ zIndex: 10 }}>
+      <View className="z-10">
         <Button
           border={false}
           size="lg"
