@@ -2,14 +2,14 @@ package util
 
 import (
 	"chat-app-server/db"
-	"context"
 	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetUser(c *gin.Context, queries *db.Queries, ctx context.Context) (db.GetUserByIdRow, error) {
+func GetUser(c *gin.Context, queries *db.Queries) (db.GetUserByIdRow, error) {
+	ctx := c.Request.Context()
 	ID, exists := c.Get("userID")
 	if !exists {
 		return db.GetUserByIdRow{}, errors.New("UserID not found")

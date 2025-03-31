@@ -41,7 +41,7 @@ var upgrader = websocket.Upgrader{
 
 func (h *Handler) EstablishConnection(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -64,7 +64,7 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 
 func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -113,7 +113,7 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 
 func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -158,7 +158,7 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 
 func (h *Handler) CreateGroup(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -246,7 +246,7 @@ func (h *Handler) InitializeGroup(groupID int32, name string) {
 
 func (h *Handler) GetGroups(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -288,7 +288,7 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 
 func (h *Handler) LeaveGroup(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err})
@@ -392,7 +392,7 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 
 func (h *Handler) GetRelevantUsers(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -416,7 +416,7 @@ func (h *Handler) GetRelevantUsers(c *gin.Context) {
 
 func (h *Handler) GetRelevantMessages(c *gin.Context) {
 	ctx := c.Request.Context()
-	user, err := util.GetUser(c, h.db, ctx)
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})

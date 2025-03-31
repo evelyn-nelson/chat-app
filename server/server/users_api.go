@@ -48,8 +48,7 @@ func (api *API) GetUser(c *gin.Context) {
 }
 
 func (api *API) WhoAmI(c *gin.Context) {
-	ctx := c.Request.Context()
-	user, err := util.GetUser(c, api.db, ctx)
+	user, err := util.GetUser(c, api.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
