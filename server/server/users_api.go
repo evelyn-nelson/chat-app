@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (api *API) GetUsers(c *gin.Context) {
@@ -69,8 +70,23 @@ func (api *API) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	params := db.UpdateUserParams{
+		ID:       userID,
+		Username: pgtype.Text{},
+		Email:    pgtype.Text{},
+	}
 
-	user, err := api.db.UpdateUser(api.ctx, db.UpdateUserParams{Username: req.Username, Email: req.Email, ID: userID})
+	if req.Username != nil {
+		params.Username.String = *req.Username
+		params.Username.Valid = true
+	}
+
+	if req.Email != nil {
+		params.Email.String = *req.Email
+		params.Email.Valid = true
+	}
+
+	user, err := api.db.UpdateUser(api.ctx, params)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

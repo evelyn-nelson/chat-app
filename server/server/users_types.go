@@ -2,8 +2,6 @@ package server
 
 import (
 	"chat-app-server/db"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type GetUsersResponse struct {
@@ -15,8 +13,8 @@ type GetUserResponse struct {
 }
 
 type UpdateUserRequest struct {
-	Username pgtype.Text `json:"username,omitempty"`
-	Email    pgtype.Text `json:"email,omitempty"`
+	Username *string `json:"username,omitempty"`
+	Email    *string `json:"email,omitempty"`
 }
 
 type UpdateUserResponse struct {

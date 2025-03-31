@@ -4,13 +4,18 @@ import (
 	"chat-app-server/db"
 	"chat-app-server/util"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -161,18 +166,61 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	group, err := h.db.InsertGroup(h.ctx, req.Name)
+
+	if req.EndTime.Before(req.StartTime) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "End time must be after start time"})
+		return
+	}
+
+	if req.StartTime.Before(time.Now().Add(-1 * time.Minute)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Start time must be in the future"})
+		return
+	}
+
+	tx, err := h.conn.Begin(h.ctx)
+
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("Failed to begin transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start database operation"})
+		return
+	}
+
+	defer tx.Rollback(h.ctx)
+
+	qtx := h.db.WithTx(tx)
+
+	params := db.InsertGroupParams{
+		Name: req.Name,
+		StartTime: pgtype.Timestamp{
+			Time:  req.StartTime,
+			Valid: true,
+		},
+		EndTime: pgtype.Timestamp{
+			Time:  req.EndTime,
+			Valid: true,
+		},
+	}
+	group, err := qtx.InsertGroup(h.ctx, params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = qtx.InsertUserGroup(h.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: group.ID, Valid: true}, Admin: true})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = tx.Commit(h.ctx)
+
+	if err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize group creation"})
 		return
 	}
 
 	h.InitializeGroup(group.ID, group.Name)
-	_, err = h.db.InsertUserGroup(h.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: group.ID, Valid: true}, Admin: true})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
 
 	if client, ok := h.hub.Clients[user.ID]; ok {
 		h.hub.AddClientToGroup(client, group.ID)
@@ -200,7 +248,7 @@ func (h *Handler) GetGroups(c *gin.Context) {
 	}
 	groups, err := h.db.GetGroupsForUser(h.ctx, user.ID)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			groups = make([]db.GetGroupsForUserRow, 0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
@@ -259,7 +307,7 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 
 	remaining_ug, err := h.db.GetAllUserGroupsForGroup(h.ctx, pgtype.Int4{Int32: groupID, Valid: true})
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			_, err2 := h.db.DeleteGroup(h.ctx, groupID)
 			if err2 != nil {
 				c.JSON(http.StatusInternalServerError, err2)
@@ -310,7 +358,7 @@ func (h *Handler) GetRelevantUsers(c *gin.Context) {
 	users, err := h.db.GetRelevantUsers(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			users = make([]db.GetRelevantUsersRow, 0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error retrieving users: %v\n", err)
@@ -333,7 +381,7 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 	dbMessages, err := h.db.GetRelevantMessages(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			dbMessages = make([]db.GetRelevantMessagesRow, 0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error retrieving messages: %v\n", err)

@@ -16,9 +16,16 @@ DELETE FROM groups
 WHERE id = $1 RETURNING "id", "name", "created_at", "updated_at"
 `
 
-func (q *Queries) DeleteGroup(ctx context.Context, id int32) (Group, error) {
+type DeleteGroupRow struct {
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) DeleteGroup(ctx context.Context, id int32) (DeleteGroupRow, error) {
 	row := q.db.QueryRow(ctx, deleteGroup, id)
-	var i Group
+	var i DeleteGroupRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -29,21 +36,32 @@ func (q *Queries) DeleteGroup(ctx context.Context, id int32) (Group, error) {
 }
 
 const getAllGroups = `-- name: GetAllGroups :many
-SELECT "id", "name", "created_at", "updated_at" FROM groups
+SELECT "id", "name", "start_time", "end_time", "created_at", "updated_at" FROM groups
 `
 
-func (q *Queries) GetAllGroups(ctx context.Context) ([]Group, error) {
+type GetAllGroupsRow struct {
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	StartTime pgtype.Timestamp `json:"start_time"`
+	EndTime   pgtype.Timestamp `json:"end_time"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetAllGroups(ctx context.Context) ([]GetAllGroupsRow, error) {
 	rows, err := q.db.Query(ctx, getAllGroups)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Group
+	var items []GetAllGroupsRow
 	for rows.Next() {
-		var i Group
+		var i GetAllGroupsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.StartTime,
+			&i.EndTime,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -58,15 +76,26 @@ func (q *Queries) GetAllGroups(ctx context.Context) ([]Group, error) {
 }
 
 const getGroupById = `-- name: GetGroupById :one
-SELECT "id", "name", "created_at", "updated_at" FROM groups WHERE id = $1
+SELECT "id", "name",  "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1
 `
 
-func (q *Queries) GetGroupById(ctx context.Context, id int32) (Group, error) {
+type GetGroupByIdRow struct {
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	StartTime pgtype.Timestamp `json:"start_time"`
+	EndTime   pgtype.Timestamp `json:"end_time"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetGroupById(ctx context.Context, id int32) (GetGroupByIdRow, error) {
 	row := q.db.QueryRow(ctx, getGroupById, id)
-	var i Group
+	var i GetGroupByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.StartTime,
+		&i.EndTime,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -74,7 +103,7 @@ func (q *Queries) GetGroupById(ctx context.Context, id int32) (Group, error) {
 }
 
 const getGroupsForUser = `-- name: GetGroupsForUser :many
-SELECT groups.id, groups.name, groups.created_at, ug.admin, groups.updated_at,
+SELECT groups.id, groups.name, groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
 json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin))::text AS group_users 
 FROM groups
 JOIN user_groups ug ON ug.group_id = groups.id
@@ -88,6 +117,8 @@ GROUP BY groups.id, ug.id, u.id
 type GetGroupsForUserRow struct {
 	ID         int32            `json:"id"`
 	Name       string           `json:"name"`
+	StartTime  pgtype.Timestamp `json:"start_time"`
+	EndTime    pgtype.Timestamp `json:"end_time"`
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 	Admin      bool             `json:"admin"`
 	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
@@ -106,6 +137,8 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsFo
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.StartTime,
+			&i.EndTime,
 			&i.CreatedAt,
 			&i.Admin,
 			&i.UpdatedAt,
@@ -122,17 +155,25 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsFo
 }
 
 const insertGroup = `-- name: InsertGroup :one
-INSERT INTO groups ("name") VALUES ($1) RETURNING id, name, created_at, updated_at
+INSERT INTO groups ("name", "start_time", "end_time") VALUES ($1, $2, $3) RETURNING id, name, created_at, updated_at, start_time, end_time
 `
 
-func (q *Queries) InsertGroup(ctx context.Context, name string) (Group, error) {
-	row := q.db.QueryRow(ctx, insertGroup, name)
+type InsertGroupParams struct {
+	Name      string           `json:"name"`
+	StartTime pgtype.Timestamp `json:"start_time"`
+	EndTime   pgtype.Timestamp `json:"end_time"`
+}
+
+func (q *Queries) InsertGroup(ctx context.Context, arg InsertGroupParams) (Group, error) {
+	row := q.db.QueryRow(ctx, insertGroup, arg.Name, arg.StartTime, arg.EndTime)
 	var i Group
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StartTime,
+		&i.EndTime,
 	)
 	return i, err
 }
@@ -140,22 +181,40 @@ func (q *Queries) InsertGroup(ctx context.Context, name string) (Group, error) {
 const updateGroup = `-- name: UpdateGroup :one
 UPDATE groups
 SET
-    "name" = $2
+    "name" = coalesce($2, "name"),
+    "start_time" = coalesce($3, "start_time"),
+    "end_time" = coalesce($4, "end_time")
 WHERE id = $1
-RETURNING "id", "name", "created_at", "updated_at"
+RETURNING "id", "name", "start_time", "end_time" "created_at", "updated_at"
 `
 
 type UpdateGroupParams struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID        int32            `json:"id"`
+	Name      pgtype.Text      `json:"name"`
+	StartTime pgtype.Timestamp `json:"start_time"`
+	EndTime   pgtype.Timestamp `json:"end_time"`
 }
 
-func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group, error) {
-	row := q.db.QueryRow(ctx, updateGroup, arg.ID, arg.Name)
-	var i Group
+type UpdateGroupRow struct {
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	StartTime pgtype.Timestamp `json:"start_time"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (UpdateGroupRow, error) {
+	row := q.db.QueryRow(ctx, updateGroup,
+		arg.ID,
+		arg.Name,
+		arg.StartTime,
+		arg.EndTime,
+	)
+	var i UpdateGroupRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.StartTime,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
