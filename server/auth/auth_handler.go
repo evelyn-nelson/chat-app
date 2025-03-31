@@ -29,6 +29,7 @@ func NewAuthHandler(db *db.Queries, ctx context.Context, conn *pgxpool.Pool) *Au
 }
 
 func (h *AuthHandler) Signup(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
@@ -42,7 +43,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
-	user, err := h.db.InsertUser(h.ctx, db.InsertUserParams{Username: req.Username, Email: req.Email, Password: pgtype.Text{String: string(hash), Valid: true}})
+	user, err := h.db.InsertUser(ctx, db.InsertUserParams{Username: req.Username, Email: req.Email, Password: pgtype.Text{String: string(hash), Valid: true}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Signup failed"})
 		return
@@ -63,13 +64,14 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
 		return
 	}
-	user, err := h.db.GetUserByEmailInternal(h.ctx, req.Email)
+	user, err := h.db.GetUserByEmailInternal(ctx, req.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed"})
 		return

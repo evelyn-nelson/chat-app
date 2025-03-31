@@ -11,7 +11,8 @@ import (
 )
 
 func (api *API) GetUsers(c *gin.Context) {
-	users, err := api.db.GetAllUsers(api.ctx)
+	ctx := c.Request.Context()
+	users, err := api.db.GetAllUsers(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -25,6 +26,7 @@ func (api *API) GetUsers(c *gin.Context) {
 }
 
 func (api *API) GetUser(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -32,7 +34,7 @@ func (api *API) GetUser(c *gin.Context) {
 	}
 	userID := int32(ID)
 
-	user, err := api.db.GetUserById(api.ctx, userID)
+	user, err := api.db.GetUserById(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -46,7 +48,8 @@ func (api *API) GetUser(c *gin.Context) {
 }
 
 func (api *API) WhoAmI(c *gin.Context) {
-	user, err := util.GetUser(c, api.db, api.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, api.db, ctx)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -58,6 +61,7 @@ func (api *API) WhoAmI(c *gin.Context) {
 }
 
 func (api *API) UpdateUser(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -86,7 +90,7 @@ func (api *API) UpdateUser(c *gin.Context) {
 		params.Email.Valid = true
 	}
 
-	user, err := api.db.UpdateUser(api.ctx, params)
+	user, err := api.db.UpdateUser(ctx, params)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -101,6 +105,7 @@ func (api *API) UpdateUser(c *gin.Context) {
 }
 
 func (api *API) DeleteUser(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -108,7 +113,7 @@ func (api *API) DeleteUser(c *gin.Context) {
 	}
 	userID := int32(ID)
 
-	user, err := api.db.DeleteUser(api.ctx, userID)
+	user, err := api.db.DeleteUser(ctx, userID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

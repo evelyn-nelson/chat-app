@@ -14,6 +14,7 @@ import (
 )
 
 func (api *API) CreateGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req CreateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -30,7 +31,7 @@ func (api *API) CreateGroup(c *gin.Context) {
 		return
 	}
 
-	group, err := api.db.InsertGroup(api.ctx, db.InsertGroupParams{Name: req.Name, StartTime: pgtype.Timestamp{Time: req.StartTime, Valid: true}, EndTime: pgtype.Timestamp{Time: req.EndTime, Valid: true}})
+	group, err := api.db.InsertGroup(ctx, db.InsertGroupParams{Name: req.Name, StartTime: pgtype.Timestamp{Time: req.StartTime, Valid: true}, EndTime: pgtype.Timestamp{Time: req.EndTime, Valid: true}})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -45,7 +46,8 @@ func (api *API) CreateGroup(c *gin.Context) {
 }
 
 func (api *API) GetGroups(c *gin.Context) {
-	groups, err := api.db.GetAllGroups(api.ctx)
+	ctx := c.Request.Context()
+	groups, err := api.db.GetAllGroups(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -59,6 +61,7 @@ func (api *API) GetGroups(c *gin.Context) {
 }
 
 func (api *API) GetGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -66,7 +69,7 @@ func (api *API) GetGroup(c *gin.Context) {
 	}
 	GroupID := int32(ID)
 
-	group, err := api.db.GetGroupById(api.ctx, GroupID)
+	group, err := api.db.GetGroupById(ctx, GroupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -80,6 +83,7 @@ func (api *API) GetGroup(c *gin.Context) {
 }
 
 func (api *API) UpdateGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -93,7 +97,7 @@ func (api *API) UpdateGroup(c *gin.Context) {
 		return
 	}
 
-	oldGroup, err := api.db.GetGroupById(api.ctx, GroupID)
+	oldGroup, err := api.db.GetGroupById(ctx, GroupID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "New start time is after existing end time"})
@@ -140,7 +144,7 @@ func (api *API) UpdateGroup(c *gin.Context) {
 		params.EndTime.Valid = !params.EndTime.Time.IsZero()
 	}
 
-	group, err := api.db.UpdateGroup(api.ctx, params)
+	group, err := api.db.UpdateGroup(ctx, params)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -155,6 +159,7 @@ func (api *API) UpdateGroup(c *gin.Context) {
 }
 
 func (api *API) DeleteGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -162,7 +167,7 @@ func (api *API) DeleteGroup(c *gin.Context) {
 	}
 	GroupID := int32(ID)
 
-	group, err := api.db.DeleteGroup(api.ctx, GroupID)
+	group, err := api.db.DeleteGroup(ctx, GroupID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
