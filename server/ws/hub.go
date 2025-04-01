@@ -109,11 +109,9 @@ func (h *Hub) broadcastMessage(message *Message, queries *db.Queries, ctx contex
 		return
 	}
 
-	// Update message ID from database
 	message.ID = savedMessage.ID
 	message.Timestamp = savedMessage.CreatedAt
 
-	// Broadcast to connected clients in the group
 	h.mutex.RLock()
 	group, exists := h.Groups[message.GroupID]
 	h.mutex.RUnlock()
