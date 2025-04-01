@@ -46,7 +46,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	// UserGroup CRUD routes
 	apiRoutes.GET("/user_groups", api.GetUserGroups)
 	apiRoutes.GET("/user_groups/:userID/:groupID", api.GetUserGroup)
-	apiRoutes.POST("/user_groups", api.CreateGroup)
+	apiRoutes.POST("/user_groups", api.CreateUserGroup)
 	apiRoutes.PUT("/user_groups/:userID/:groupID", api.UpdateUserGroup)
 	apiRoutes.DELETE("/user_groups/:userID/:groupID", api.DeleteUserGroup)
 

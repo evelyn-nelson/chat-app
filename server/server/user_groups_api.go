@@ -10,13 +10,14 @@ import (
 )
 
 func (api *API) CreateUserGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req CreateUserGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user_group, err := api.db.InsertUserGroup(api.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: int32(req.UserID), Valid: true}, GroupID: pgtype.Int4{Int32: int32(req.GroupId), Valid: true}, Admin: req.Admin})
+	user_group, err := api.db.InsertUserGroup(ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: int32(req.UserID), Valid: true}, GroupID: pgtype.Int4{Int32: int32(req.GroupId), Valid: true}, Admin: req.Admin})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -31,7 +32,8 @@ func (api *API) CreateUserGroup(c *gin.Context) {
 }
 
 func (api *API) GetUserGroups(c *gin.Context) {
-	user_groups, err := api.db.GetAllUserGroups(api.ctx)
+	ctx := c.Request.Context()
+	user_groups, err := api.db.GetAllUserGroups(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -45,6 +47,7 @@ func (api *API) GetUserGroups(c *gin.Context) {
 }
 
 func (api *API) GetUserGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -58,7 +61,7 @@ func (api *API) GetUserGroup(c *gin.Context) {
 		return
 	}
 	groupID32 := int32(groupID)
-	user_group, err := api.db.GetUserGroupByGroupIDAndUserID(api.ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
+	user_group, err := api.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -72,6 +75,7 @@ func (api *API) GetUserGroup(c *gin.Context) {
 }
 
 func (api *API) UpdateUserGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -92,7 +96,7 @@ func (api *API) UpdateUserGroup(c *gin.Context) {
 		return
 	}
 
-	user_group, err := api.db.UpdateUserGroup(api.ctx, db.UpdateUserGroupParams{Admin: req.Admin, UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
+	user_group, err := api.db.UpdateUserGroup(ctx, db.UpdateUserGroupParams{Admin: req.Admin, UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -107,6 +111,7 @@ func (api *API) UpdateUserGroup(c *gin.Context) {
 }
 
 func (api *API) DeleteUserGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -121,7 +126,7 @@ func (api *API) DeleteUserGroup(c *gin.Context) {
 	}
 	groupID32 := int32(groupID)
 
-	user_group, err := api.db.DeleteUserGroup(api.ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
+	user_group, err := api.db.DeleteUserGroup(ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: userID32, Valid: true}, GroupID: pgtype.Int4{Int32: groupID32, Valid: true}})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

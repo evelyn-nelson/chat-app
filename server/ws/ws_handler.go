@@ -4,13 +4,19 @@ import (
 	"chat-app-server/db"
 	"chat-app-server/util"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -35,10 +41,10 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *Handler) EstablishConnection(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
-
+	user, err := util.GetUser(c, h.db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		log.Printf("Error getting user for WebSocket connection: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or unauthorized"})
 		return
 	}
 
@@ -49,18 +55,30 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 	}
 
 	client := NewClient(conn, user)
+	log.Printf("Client %d (%s) connected.", client.User.ID, client.User.Username)
 
 	h.hub.Register <- client
 
+	defer func() {
+		log.Printf("Initiating cleanup for client %d (%s).", client.User.ID, client.User.Username)
+		h.hub.Unregister <- client
+		client.cancel()
+		err := client.conn.Close()
+		if err != nil {
+			log.Printf("Error closing connection for client %d: %v", client.User.ID, err)
+		}
+		log.Printf("Cleanup finished for client %d.", client.User.ID)
+	}()
+
 	go client.WriteMessage()
-	client.ReadMessage(h.hub, h.db, h.ctx)
+	client.ReadMessage(h.hub, h.db)
 }
 
 func (h *Handler) InviteUsersToGroup(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
-
+	ctx := c.Request.Context()
+	invitingUser, err := util.GetUser(c, h.db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or unauthorized"})
 		return
 	}
 
@@ -70,42 +88,92 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 		return
 	}
 
-	UserGroup, err := h.db.GetUserGroupByGroupIDAndUserID(h.ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true}})
+	inviterUserGroup, err := h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
+		UserID:  pgtype.Int4{Int32: invitingUser.ID, Valid: true},
+		GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+	})
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Inviting user not part of the group"})
+		} else {
+			log.Printf("Error checking inviter admin status: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user permissions"})
+		}
+		return
+	}
+	if !inviterUserGroup.Admin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "User does not have admin privileges for this group"})
 		return
 	}
 
-	if !UserGroup.Admin {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not admin"})
-		return
-	}
-
-	users, err := h.db.GetUsersByEmails(h.ctx, req.Emails)
+	usersToInvite, err := h.db.GetUsersByEmails(ctx, req.Emails)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var user_groups []db.UserGroup
 
-	for _, user := range users {
-		user_group, err := h.db.InsertUserGroup(h.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true}, Admin: false})
+	if len(usersToInvite) == 0 {
+		c.JSON(http.StatusOK, []db.UserGroup{})
+		return
+	}
+
+	tx, err := h.conn.Begin(ctx)
+
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start database operation"})
+		return
+	}
+
+	defer tx.Rollback(ctx)
+
+	qtx := h.db.WithTx(tx)
+
+	var successfulInvites []db.UserGroup
+	var invitedUserIDs []int32
+
+	for _, user := range usersToInvite {
+		userGroup, err := qtx.InsertUserGroup(ctx, db.InsertUserGroupParams{
+			UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+			GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+			Admin:   false,
+		})
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				log.Printf("User %d already in group %d, skipping invite.", user.ID, req.GroupID)
+				continue
+			} else {
+				log.Printf("Error inserting user_group for user %d: %v", user.ID, err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add one or more users to the group"})
+				return
+			}
 		}
-		user_groups = append(user_groups, user_group)
-		if client, ok := h.hub.Clients[user.ID]; ok {
+		successfulInvites = append(successfulInvites, userGroup)
+		invitedUserIDs = append(invitedUserIDs, user.ID)
+	}
+
+	err = tx.Commit(ctx)
+
+	if err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize group creation"})
+		return
+	}
+
+	for _, userID := range invitedUserIDs {
+		if client, ok := h.hub.Clients[userID]; ok {
 			h.hub.AddClientToGroup(client, req.GroupID)
 			client.AddGroup(req.GroupID)
 		}
 	}
 
-	c.JSON(http.StatusOK, user_groups)
+	c.JSON(http.StatusOK, successfulInvites)
 }
 
 func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -118,7 +186,10 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 		return
 	}
 
-	UserGroup, err := h.db.GetUserGroupByGroupIDAndUserID(h.ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true}})
+	UserGroup, err := h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
+		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+		GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+	})
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
@@ -129,17 +200,31 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 		return
 	}
 
-	userToKick, err := h.db.GetUserByEmail(h.ctx, req.Email)
+	userToKick, err := h.db.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User specified for removal not found"})
+		} else {
+			log.Printf("Error fetching user to remove %s: %v", req.Email, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user information"})
+		}
 		return
 	}
 
-	user_group, err := h.db.DeleteUserGroup(h.ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: userToKick.ID, Valid: true}, GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true}})
+	user_group, err := h.db.DeleteUserGroup(ctx, db.DeleteUserGroupParams{
+		UserID:  pgtype.Int4{Int32: userToKick.ID, Valid: true},
+		GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User was not found in the group for removal"})
+		} else {
+			log.Printf("Error removing user %d from group %d: %v", userToKick.ID, req.GroupID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user from group"})
+		}
 		return
 	}
+
 	if client, ok := h.hub.Clients[userToKick.ID]; ok {
 		h.hub.RemoveClientFromGroup(client, req.GroupID)
 		client.RemoveGroup(req.GroupID)
@@ -149,7 +234,8 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 }
 
 func (h *Handler) CreateGroup(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -161,18 +247,65 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	group, err := h.db.InsertGroup(h.ctx, req.Name)
+
+	if req.EndTime.Before(req.StartTime) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "End time must be after start time"})
+		return
+	}
+
+	if req.StartTime.Before(time.Now().Add(-1 * time.Minute)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Start time must be in the future"})
+		return
+	}
+
+	tx, err := h.conn.Begin(ctx)
+
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("Failed to begin transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start database operation"})
+		return
+	}
+
+	defer tx.Rollback(ctx)
+
+	qtx := h.db.WithTx(tx)
+
+	params := db.InsertGroupParams{
+		Name: req.Name,
+		StartTime: pgtype.Timestamp{
+			Time:  req.StartTime,
+			Valid: true,
+		},
+		EndTime: pgtype.Timestamp{
+			Time:  req.EndTime,
+			Valid: true,
+		},
+	}
+	group, err := qtx.InsertGroup(ctx, params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = qtx.InsertUserGroup(ctx, db.InsertUserGroupParams{
+		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+		GroupID: pgtype.Int4{Int32: group.ID, Valid: true},
+		Admin:   true,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = tx.Commit(ctx)
+
+	if err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize group creation"})
 		return
 	}
 
 	h.InitializeGroup(group.ID, group.Name)
-	_, err = h.db.InsertUserGroup(h.ctx, db.InsertUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: group.ID, Valid: true}, Admin: true})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
 
 	if client, ok := h.hub.Clients[user.ID]; ok {
 		h.hub.AddClientToGroup(client, group.ID)
@@ -183,28 +316,33 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 }
 
 func (h *Handler) InitializeGroup(groupID int32, name string) {
+	h.hub.mutex.Lock()
+	defer h.hub.mutex.Unlock()
+
 	if _, ok := h.hub.Groups[groupID]; !ok {
 		h.hub.Groups[groupID] = &Group{
 			ID:      groupID,
 			Name:    name,
 			Clients: make(map[int32]*Client),
 		}
+		log.Printf("Initialized hub group structure for group %d", groupID)
 	}
 }
 
 func (h *Handler) GetGroups(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	groups, err := h.db.GetGroupsForUser(h.ctx, user.ID)
+	groups, err := h.db.GetGroupsForUser(ctx, user.ID)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			groups = make([]db.GetGroupsForUserRow, 0)
 		} else {
-			fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
-			c.JSON(http.StatusInternalServerError, err)
+			log.Printf("Error retrieving data [groups]: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve data"})
 			return
 		}
 	}
@@ -215,6 +353,7 @@ func (h *Handler) GetGroups(c *gin.Context) {
 }
 
 func (h *Handler) GetUsersInGroup(c *gin.Context) {
+	ctx := c.Request.Context()
 	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -222,7 +361,7 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 	}
 	groupID := int32(ID)
 
-	users, err := h.db.GetAllUsersInGroup(h.ctx, groupID)
+	users, err := h.db.GetAllUsersInGroup(ctx, groupID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -233,7 +372,8 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 }
 
 func (h *Handler) LeaveGroup(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err})
@@ -247,74 +387,114 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 	}
 	groupID := int32(ID)
 
-	user_group, err := h.db.DeleteUserGroup(h.ctx, db.DeleteUserGroupParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: groupID, Valid: true}})
+	tx, err := h.conn.Begin(ctx)
+
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("Failed to begin transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start database operation"})
 		return
 	}
+
+	defer tx.Rollback(ctx)
+
+	qtx := h.db.WithTx(tx)
+
+	deleteParams := db.DeleteUserGroupParams{
+		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+		GroupID: pgtype.Int4{Int32: groupID, Valid: true},
+	}
+
+	deletedUserGroup, err := qtx.DeleteUserGroup(ctx, deleteParams)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User is not a member of this group"})
+		} else {
+			log.Printf("Error deleting user_group link: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user from group"})
+		}
+		return
+	}
+
+	remainingUserGroups, err := qtx.GetAllUserGroupsForGroup(ctx, pgtype.Int4{Int32: groupID, Valid: true})
+	groupIsEmpty := false
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			groupIsEmpty = true
+			err = nil
+		} else {
+			log.Printf("Error retrieving remaining user_groups: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check group status"})
+			return
+		}
+	} else if len(remainingUserGroups) == 0 {
+		groupIsEmpty = true
+	}
+
+	if groupIsEmpty {
+		_, err = qtx.DeleteGroup(ctx, groupID)
+		if err != nil {
+			log.Printf("Error deleting empty group %d: %v", groupID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clean up empty group"})
+			return
+		}
+	} else {
+		if deletedUserGroup.Admin {
+			anyAdmin := false
+			for _, ug := range remainingUserGroups {
+				if ug.Admin {
+					anyAdmin = true
+					break
+				}
+			}
+			if !anyAdmin && len(remainingUserGroups) > 0 {
+				promoteParams := db.UpdateUserGroupParams{
+					UserID:  remainingUserGroups[0].UserID,
+					GroupID: remainingUserGroups[0].GroupID,
+					Admin:   true,
+				}
+				_, err = qtx.UpdateUserGroup(ctx, promoteParams)
+				if err != nil {
+					log.Printf("Error promoting new admin for group %d: %v", groupID, err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign new admin"})
+					return
+				}
+			}
+		}
+	}
+
+	err = tx.Commit(ctx)
+
+	if err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize group creation"})
+		return
+	}
+
 	if client, ok := h.hub.Clients[user.ID]; ok {
 		h.hub.RemoveClientFromGroup(client, groupID)
 		client.RemoveGroup(groupID)
 	}
 
-	remaining_ug, err := h.db.GetAllUserGroupsForGroup(h.ctx, pgtype.Int4{Int32: groupID, Valid: true})
-	if err != nil {
-		if err.Error() == "no rows in result set" {
-			_, err2 := h.db.DeleteGroup(h.ctx, groupID)
-			if err2 != nil {
-				c.JSON(http.StatusInternalServerError, err2)
-				return
-			}
-		} else {
-			fmt.Fprintf(os.Stderr, "Error retrieving groups: %v\n", err)
-			c.JSON(http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	if len(remaining_ug) == 0 {
-		_, err := h.db.DeleteGroup(h.ctx, groupID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	if user_group.Admin {
-		any_admin := false
-		for _, ug := range remaining_ug {
-			if ug.Admin {
-				any_admin = true
-			}
-		}
-		if !any_admin {
-			_, err = h.db.UpdateUserGroup(h.ctx, db.UpdateUserGroupParams{UserID: remaining_ug[0].UserID, GroupID: remaining_ug[0].GroupID, Admin: true})
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, err)
-				return
-			}
-		}
-	}
-
-	c.JSON(http.StatusOK, user_group)
+	c.JSON(http.StatusOK, deletedUserGroup)
 }
 
 func (h *Handler) GetRelevantUsers(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
 
-	users, err := h.db.GetRelevantUsers(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+	users, err := h.db.GetRelevantUsers(ctx, pgtype.Int4{Int32: user.ID, Valid: true})
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			users = make([]db.GetRelevantUsersRow, 0)
 		} else {
-			fmt.Fprintf(os.Stderr, "Error retrieving users: %v\n", err)
-			c.JSON(http.StatusInternalServerError, err)
+			log.Printf("Error retrieving data [messages]: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve data"})
 			return
 		}
 	}
@@ -323,17 +503,18 @@ func (h *Handler) GetRelevantUsers(c *gin.Context) {
 }
 
 func (h *Handler) GetRelevantMessages(c *gin.Context) {
-	user, err := util.GetUser(c, h.db, h.ctx)
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
 
-	dbMessages, err := h.db.GetRelevantMessages(h.ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+	dbMessages, err := h.db.GetRelevantMessages(ctx, pgtype.Int4{Int32: user.ID, Valid: true})
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			dbMessages = make([]db.GetRelevantMessagesRow, 0)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error retrieving messages: %v\n", err)

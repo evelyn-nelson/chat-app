@@ -1,7 +1,11 @@
 package ws
 
+import "time"
+
 type CreateGroupRequest struct {
-	Name string `json:"name"`
+	Name      string    `json:"name" binding:"required"`
+	StartTime time.Time `json:"start_time" binding:"required"`
+	EndTime   time.Time `json:"end_time" binding:"required"`
 }
 
 type JoinGroupRequest struct {
