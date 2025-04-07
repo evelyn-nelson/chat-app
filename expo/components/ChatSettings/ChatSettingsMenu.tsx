@@ -13,11 +13,25 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   const { inviteUsersToGroup } = useWebSocket();
   const { refreshGroups } = useGlobalStore();
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
-  const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
+  const parseDate = (dateString: string | null | undefined) => {
+    if (!dateString) {
+      return null;
+    }
+    var timestamp = Date.parse(dateString);
+
+    if (isNaN(timestamp) == false) {
+      return new Date(timestamp);
+    }
+    return null;
+  };
+  const [dateOptions, setDateOptions] = useState<DateOptions>({
+    startTime: parseDate(group.start_time),
+    endTime: parseDate(group.end_time),
+  });
   const [showDateOptions, setShowDateOptions] = useState(false);
   const excludedUserList = group.group_users;
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | null) => {
     if (!date) return "Not set";
 
     return date.toLocaleDateString(undefined, {
@@ -64,13 +78,13 @@ const ChatSettingsMenu = (props: { group: Group }) => {
             <View className="mb-1">
               <Text className="text-sm text-gray-400 mb-1">Starts:</Text>
               <Text className="text-base font-medium text-gray-200">
-                {formatDate(dateOptions.startDate)}
+                {formatDate(dateOptions.startTime)}
               </Text>
             </View>
             <View>
               <Text className="text-sm text-gray-400 mb-1">Ends:</Text>
               <Text className="text-base font-medium text-gray-200">
-                {formatDate(dateOptions.endDate)}
+                {formatDate(dateOptions.endTime)}
               </Text>
             </View>
           </View>

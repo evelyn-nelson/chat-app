@@ -12,7 +12,10 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   const { user: self, store, refreshGroups } = useGlobalStore();
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
-  const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
+  const [dateOptions, setDateOptions] = useState<DateOptions>({
+    startTime: null,
+    endTime: null,
+  });
   const { createGroup, inviteUsersToGroup, getGroups } = useWebSocket();
   const [isLoading, setIsLoading] = useState(false);
   const [showDateOptions, setShowDateOptions] = useState(false);
@@ -54,7 +57,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   };
 
   // Format date for display
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | null) => {
     if (!date) return "Not set";
 
     return date.toLocaleDateString(undefined, {
@@ -102,13 +105,13 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
             <View className="mb-1">
               <Text className="text-sm text-gray-400 mb-1">Starts:</Text>
               <Text className="text-base font-medium text-gray-200">
-                {formatDate(dateOptions.startDate)}
+                {formatDate(dateOptions.startTime)}
               </Text>
             </View>
             <View>
               <Text className="text-sm text-gray-400 mb-1">Ends:</Text>
               <Text className="text-base font-medium text-gray-200">
-                {formatDate(dateOptions.endDate)}
+                {formatDate(dateOptions.endTime)}
               </Text>
             </View>
           </View>
