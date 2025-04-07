@@ -77,7 +77,7 @@ const ChatAppModal = ({
                     className="w-[30px] h-[30px] rounded-full bg-gray-700 items-center justify-center"
                     onPress={closeModal}
                   >
-                    <Text className="text-white text-base">×</Text>
+                    <Text className="text-center text-white text-base">×</Text>
                   </Pressable>
                 </View>
 
