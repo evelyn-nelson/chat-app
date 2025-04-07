@@ -25,11 +25,16 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   }
 
   const handleCreateGroup = async () => {
-    if (!groupName.trim()) return;
+    if (!groupName.trim() || !dateOptions.startTime || !dateOptions.endTime)
+      return;
 
     setIsLoading(true);
     try {
-      const group = await createGroup(groupName);
+      const group = await createGroup(
+        groupName,
+        dateOptions.startTime,
+        dateOptions.endTime
+      );
       setGroupName("");
 
       if (group && usersToInvite.length > 0) {
@@ -155,7 +160,12 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
           textClassName="text-white font-medium"
           text={isLoading ? "Creating..." : "Create Group"}
           onPress={handleCreateGroup}
-          disabled={isLoading || !groupName.trim()}
+          disabled={
+            isLoading ||
+            !groupName.trim() ||
+            !dateOptions.startTime ||
+            !dateOptions.endTime
+          }
         />
       </View>
     </View>

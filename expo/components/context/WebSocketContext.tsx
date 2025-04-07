@@ -17,7 +17,11 @@ interface WebSocketContextType {
   removeMessageHandler: (callback: (message: Message) => void) => void;
   establishConnection: () => Promise<void>;
   disconnect: () => void;
-  createGroup: (name: string) => Promise<Group | undefined>;
+  createGroup: (
+    name: string,
+    startTime: Date,
+    endTime: Date
+  ) => Promise<Group | undefined>;
   inviteUsersToGroup: (emails: string[], group_id: number) => void;
   removeUserFromGroup: (email: string, group_id: number) => void;
   leaveGroup: (group_id: number) => void;
@@ -38,12 +42,18 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
   const isReconnecting = useRef(false);
 
-  const createGroup = async (name: string): Promise<Group | undefined> => {
+  const createGroup = async (
+    name: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<Group | undefined> => {
     const httpURL = `http://${baseURL}/createGroup`;
 
     const group = http
       .post(httpURL, {
         name: name,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
       })
       .then((response) => {
         const { data } = response;
