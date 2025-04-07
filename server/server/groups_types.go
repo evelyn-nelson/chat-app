@@ -7,8 +7,8 @@ import (
 
 type CreateGroupRequest struct {
 	Name      string    `json:"name" binding:"required"`
-	StartTime time.Time `json:"start_time" binding:"required"`
-	EndTime   time.Time `json:"end_time" binding:"required"`
+	StartTime time.Time `json:"start_time" binding:"required" time_format:"2006-01-02T15:04:05.000Z" time_utc:"true"`
+	EndTime   time.Time `json:"end_time" binding:"required" time_format:"2006-01-02T15:04:05.000Z" time_utc:"true"`
 }
 
 type CreateGroupResponse struct {
