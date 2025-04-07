@@ -36,6 +36,8 @@ type Group = {
   created_at: string;
   updated_at: string;
   admin: boolean;
+  start_time: string;
+  end_time: string;
   group_users: GroupUser[];
 };
 
@@ -49,8 +51,8 @@ type UserGroup = {
 };
 
 type DateOptions = {
-  startDate: Date;
-  endDate: Date;
+  startTime: Date | null;
+  endTime: Date | null;
 };
 
 export {
