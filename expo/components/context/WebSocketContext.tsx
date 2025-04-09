@@ -83,13 +83,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     updateParams: UpdateGroupParams
   ): Promise<Group | undefined> => {
     const httpURL = `${httpBaseURL}/updateGroup/${id}`;
-    console.log(!!updateParams.name);
-    console.log(!!updateParams.start_time);
-    console.log(!!updateParams.end_time);
     if (
       !(updateParams.name || updateParams.start_time || updateParams.end_time)
     ) {
-      console.error("Invalid input", updateParams);
+      console.error("Invalid input");
       return undefined;
     }
     const group = http
