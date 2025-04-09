@@ -10,7 +10,8 @@ import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 
 const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
-  const { inviteUsersToGroup } = useWebSocket();
+  const { inviteUsersToGroup, updateGroup } = useWebSocket();
+  const [isLoading, setIsLoading] = useState(false);
   const { refreshGroups } = useGlobalStore();
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
   const parseDate = (dateString: string | null | undefined) => {
@@ -30,6 +31,24 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   });
   const [showDateOptions, setShowDateOptions] = useState(false);
   const excludedUserList = group.group_users;
+
+  const handleUpdateGroup = async () => {
+    setIsLoading(true);
+    if (
+      dateOptions.startTime &&
+      dateOptions.endTime &&
+      ((dateOptions.startTime ?? new Date()).getTime() !=
+        (parseDate(group.start_time) ?? new Date()).getTime() ||
+        (dateOptions.endTime ?? new Date()).getTime() !=
+          (parseDate(group.end_time) ?? new Date()).getTime())
+    ) {
+      await updateGroup(group.id, {
+        start_time: dateOptions.startTime.toISOString(),
+        end_time: dateOptions.endTime.toISOString(),
+      });
+    }
+    setIsLoading(false);
+  };
 
   const formatDate = (date: Date | null) => {
     if (!date) return "Not set";
@@ -140,6 +159,23 @@ const ChatSettingsMenu = (props: { group: Group }) => {
           />
         </View>
       )}
+      <View className="z-10">
+        <Button
+          border={false}
+          size="lg"
+          className="w-full bg-blue-600 rounded-lg"
+          textClassName="text-white font-medium"
+          text={isLoading ? "Updating..." : "Update Group"}
+          onPress={handleUpdateGroup}
+          disabled={
+            isLoading ||
+            ((dateOptions.startTime ?? new Date()).getTime() ===
+              (parseDate(group.start_time) ?? new Date()).getTime() &&
+              (dateOptions.endTime ?? new Date()).getTime() ===
+                (parseDate(group.end_time) ?? new Date()).getTime())
+          }
+        />
+      </View>
     </View>
   );
 };

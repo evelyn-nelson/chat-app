@@ -41,6 +41,12 @@ type Group = {
   group_users: GroupUser[];
 };
 
+type UpdateGroupParams = {
+  name?: string;
+  start_time?: string;
+  end_time?: string;
+};
+
 type UserGroup = {
   id: number;
   user_id: number;
@@ -60,6 +66,7 @@ export {
   RawMessage,
   User,
   Group,
+  UpdateGroupParams,
   UserGroup,
   GroupAdminMap,
   GroupUser,

@@ -37,7 +37,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
     try {
       if (!user || forceRefresh) {
         const loggedInUser = await http
-          .get(`http://${process.env.EXPO_PUBLIC_HOST}/api/users/whoami`)
+          .get(`${process.env.EXPO_PUBLIC_HOST}/api/users/whoami`)
           .then((response) => {
             const { data } = response;
             setUser({
@@ -69,7 +69,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   const login = async (email: string, password: string): Promise<void> => {
     try {
       const response = await axios.post(
-        `http://${process.env.EXPO_PUBLIC_HOST}/auth/login`,
+        `${process.env.EXPO_PUBLIC_HOST}/auth/login`,
         {
           email: email,
           password: password,
@@ -96,7 +96,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
     password: string
   ): Promise<void> => {
     axios
-      .post(`http://${process.env.EXPO_PUBLIC_HOST}/auth/signup`, {
+      .post(`${process.env.EXPO_PUBLIC_HOST}/auth/signup`, {
         username: username,
         email: email,
         password: password,
