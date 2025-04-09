@@ -326,6 +326,7 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 
 	ID, err := strconv.Atoi(c.Param("groupID"))
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing params: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -62,7 +62,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	wsRoutes.Use(auth.JWTAuthMiddleware())
 
 	wsRoutes.POST("/createGroup", wsHandler.CreateGroup)
-	wsRoutes.PUT("/updateGroup", wsHandler.UpdateGroup)
+	wsRoutes.PUT("/updateGroup/:groupID", wsHandler.UpdateGroup)
 	wsRoutes.POST("/inviteUsersToGroup", wsHandler.InviteUsersToGroup)
 	wsRoutes.POST("/removeUserFromGroup", wsHandler.RemoveUserFromGroup)
 	wsRoutes.GET("/getGroups", wsHandler.GetGroups)
