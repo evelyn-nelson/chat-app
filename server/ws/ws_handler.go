@@ -315,6 +315,108 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, group)
 }
 
+func (h *Handler) UpdateGroup(c *gin.Context) {
+	ctx := c.Request.Context()
+	user, err := util.GetUser(c, h.db)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	ID, err := strconv.Atoi(c.Param("groupID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	GroupID := int32(ID)
+
+	var req UpdateGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	oldGroup, err := h.db.GetGroupById(ctx, GroupID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
+	}
+	userGroupParams := db.GetUserGroupByGroupIDAndUserIDParams{
+		GroupID: pgtype.Int4{Int32: GroupID, Valid: true},
+		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+	}
+	userGroup, err := h.db.GetUserGroupByGroupIDAndUserID(ctx, userGroupParams)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User does not belong to group"})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if !userGroup.Admin {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User is not group admin"})
+	}
+
+	if req.StartTime != nil && req.EndTime == nil && oldGroup.EndTime.Time.Before(*req.StartTime) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New start time is after existing end time"})
+		return
+	} else if req.StartTime == nil && req.EndTime != nil && req.EndTime.Before(oldGroup.StartTime.Time) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New end time is before existing start time"})
+		return
+	} else if req.StartTime != nil && req.EndTime != nil && req.EndTime.Before(*req.StartTime) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "End time must be before start time"})
+		return
+	}
+
+	if req.StartTime != nil && req.StartTime.Before(time.Now().Add(-1*time.Minute)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Start time must be in the future"})
+		return
+	}
+
+	params := db.UpdateGroupParams{
+		ID:        GroupID,
+		Name:      pgtype.Text{},
+		StartTime: pgtype.Timestamp{},
+		EndTime:   pgtype.Timestamp{},
+	}
+
+	if req.Name != nil {
+		params.Name.String = *req.Name
+		params.Name.Valid = true
+	}
+	if req.StartTime != nil {
+		params.StartTime.Time = *req.StartTime
+		params.StartTime.Valid = !params.StartTime.Time.IsZero()
+	}
+	if req.EndTime != nil {
+		params.EndTime.Time = *req.EndTime
+		params.EndTime.Valid = !params.EndTime.Time.IsZero()
+	}
+
+	group, err := h.db.UpdateGroup(ctx, params)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	res := &UpdateGroupResponse{
+		Group: group,
+	}
+
+	c.JSON(http.StatusOK, res)
+
+}
+
 func (h *Handler) InitializeGroup(groupID int32, name string) {
 	h.hub.mutex.Lock()
 	defer h.hub.mutex.Unlock()
