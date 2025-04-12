@@ -32,12 +32,11 @@ const GroupDateOptions = ({
   dateOptions,
   setDateOptions,
 }: GroupDateOptionsProps) => {
-  const [mode, setMode] = useState<DatePickerMode>("datetime");
   const [show, setShow] = useState(false);
   const [expirationInterval, setExpirationInterval] =
     useState<ExpirationOptions>(1);
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | null) => {
     if (!date) return { datePart: "Not set", timePart: "" };
 
     const datePart = date.toLocaleDateString(undefined, {
@@ -78,14 +77,28 @@ const GroupDateOptions = ({
     }
   };
 
-  const showMode = (currentMode: DatePickerMode) => {
-    setShow(true);
-    setMode(currentMode);
-  };
-
-  const showDatepicker = () => {
-    showMode("datetime");
-  };
+  useEffect(() => {
+    setDateOptions((prevState) => {
+      if (prevState.startTime && expirationInterval != "month") {
+        const expirationDate = new Date(prevState.startTime);
+        expirationDate.setDate(
+          expirationDate.getDate() + Number(expirationInterval)
+        );
+        return {
+          startTime: prevState.startTime,
+          endTime: expirationDate,
+        };
+      } else if (prevState.startTime) {
+        const expirationDate = new Date(prevState.startTime);
+        expirationDate.setMonth(expirationDate.getMonth() + 1);
+        return {
+          startTime: prevState.startTime,
+          endTime: expirationDate,
+        };
+      }
+      return prevState;
+    });
+  }, [expirationInterval]);
 
   const convertToDateTimeLocalString = (date: Date) => {
     const year = date.getFullYear();
@@ -259,8 +272,7 @@ const GroupDateOptions = ({
               <DateTimePicker
                 testID="dateTimePicker"
                 value={dateOptions?.startTime ?? new Date()}
-                mode={mode}
-                is24Hour={true}
+                mode={"datetime"}
                 onChange={onChange}
                 themeVariant="dark"
               />
