@@ -30,9 +30,9 @@ const MessageEntry = (props: { group_id: number }) => {
 
   return (
     <View className="flex-row items-center px-3 py-2 h-full">
-      <View className="flex-1 bg-gray-800 rounded-full border border-gray-700 flex-row items-center px-4 h-10">
+      <View className="flex-1 bg-gray-800 rounded-full border border-gray-700 flex-row items-center px-4 h-12">
         <TextInput
-          className="flex-1 text-gray-200 text-base h-full"
+          className="flex-1 text-gray-200 text-base"
           onChangeText={(event) => {
             if (user) {
               setMessage({
@@ -45,15 +45,13 @@ const MessageEntry = (props: { group_id: number }) => {
           onSubmitEditing={handleSubmit}
           style={{
             outline: "none",
-            textAlignVertical: "center",
-            paddingTop: 0,
-            paddingBottom: 0,
           }}
           value={message.content}
           blurOnSubmit={false}
           placeholder="Type a message..."
           placeholderTextColor="#9CA3AF"
           multiline={false}
+          returnKeyType="send"
         />
         <Pressable
           onPress={handleSubmit}

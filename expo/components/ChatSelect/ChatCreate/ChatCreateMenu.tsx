@@ -12,7 +12,10 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   const { user: self, store, refreshGroups } = useGlobalStore();
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
-  const [dateOptions, setDateOptions] = useState<DateOptions | undefined>();
+  const [dateOptions, setDateOptions] = useState<DateOptions>({
+    startTime: null,
+    endTime: null,
+  });
   const { createGroup, inviteUsersToGroup, getGroups } = useWebSocket();
   const [isLoading, setIsLoading] = useState(false);
   const [showDateOptions, setShowDateOptions] = useState(false);
@@ -21,40 +24,56 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
     return <View></View>;
   }
 
+  const fetchAndRefreshGroups = async () => {
+    try {
+      const updatedGroups = await getGroups();
+      await store.saveGroups(updatedGroups);
+      refreshGroups();
+    } catch (error) {
+      console.error("Failed to fetch and refresh groups:", error);
+    }
+  };
+
   const handleCreateGroup = async () => {
-    if (!groupName.trim()) return;
+    if (!groupName.trim() || !dateOptions.startTime || !dateOptions.endTime)
+      return;
 
     setIsLoading(true);
+    let createdGroup = null; // Keep track of the created group
+
     try {
-      const group = await createGroup(groupName);
-      setGroupName("");
+      createdGroup = await createGroup(
+        groupName,
+        dateOptions.startTime,
+        dateOptions.endTime
+      );
 
-      if (group && usersToInvite.length > 0) {
-        await inviteUsersToGroup(usersToInvite, group.id);
-        setUsersToInvite([]);
-        refreshGroups();
-      }
-
-      onSubmit();
-
-      if (group) {
-        router.push(`/groups/${group.id}`);
-        try {
-          const groups = await getGroups();
-          store.saveGroups(groups);
-        } catch (error) {
-          console.error(error);
+      if (createdGroup) {
+        if (usersToInvite.length > 0) {
+          await inviteUsersToGroup(usersToInvite, createdGroup.id);
         }
+
+        await fetchAndRefreshGroups();
+
+        setGroupName("");
+        setUsersToInvite([]);
+        setDateOptions({ startTime: null, endTime: null });
+
+        onSubmit();
+
+        router.push(`/groups/${createdGroup.id}`);
+      } else {
+        console.error("Group creation returned undefined.");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error during group creation process:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Format date for display
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | null) => {
     if (!date) return "Not set";
 
     return date.toLocaleDateString(undefined, {
@@ -102,13 +121,13 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
             <View className="mb-1">
               <Text className="text-sm text-gray-400 mb-1">Starts:</Text>
               <Text className="text-base font-medium text-gray-200">
-                {formatDate(dateOptions.startDate)}
+                {formatDate(dateOptions.startTime)}
               </Text>
             </View>
             <View>
               <Text className="text-sm text-gray-400 mb-1">Ends:</Text>
               <Text className="text-base font-medium text-gray-200">
-                {formatDate(dateOptions.endDate)}
+                {formatDate(dateOptions.endTime)}
               </Text>
             </View>
           </View>
@@ -152,7 +171,12 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
           textClassName="text-white font-medium"
           text={isLoading ? "Creating..." : "Create Group"}
           onPress={handleCreateGroup}
-          disabled={isLoading || !groupName.trim()}
+          disabled={
+            isLoading ||
+            !groupName.trim() ||
+            !dateOptions.startTime ||
+            !dateOptions.endTime
+          }
         />
       </View>
     </View>

@@ -8,8 +8,8 @@ import { Dropdown } from "react-native-element-dropdown";
 import Button from "../Button/Button";
 
 type GroupDateOptionsProps = {
-  dateOptions: DateOptions | undefined;
-  setDateOptions: React.Dispatch<React.SetStateAction<DateOptions | undefined>>;
+  dateOptions: DateOptions;
+  setDateOptions: React.Dispatch<React.SetStateAction<DateOptions>>;
 };
 
 type DatePickerMode = "date" | "time" | "datetime" | "countdown";
@@ -32,12 +32,11 @@ const GroupDateOptions = ({
   dateOptions,
   setDateOptions,
 }: GroupDateOptionsProps) => {
-  const [mode, setMode] = useState<DatePickerMode>("datetime");
   const [show, setShow] = useState(false);
   const [expirationInterval, setExpirationInterval] =
     useState<ExpirationOptions>(1);
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | null) => {
     if (!date) return { datePart: "Not set", timePart: "" };
 
     const datePart = date.toLocaleDateString(undefined, {
@@ -65,27 +64,41 @@ const GroupDateOptions = ({
         expirationDate.getDate() + Number(expirationInterval)
       );
       setDateOptions({
-        startDate: currentDate,
-        endDate: expirationDate,
+        startTime: currentDate,
+        endTime: expirationDate,
       });
     } else if (currentDate) {
       const expirationDate = new Date(currentDate);
       expirationDate.setMonth(expirationDate.getMonth() + 1);
       setDateOptions({
-        startDate: currentDate,
-        endDate: expirationDate,
+        startTime: currentDate,
+        endTime: expirationDate,
       });
     }
   };
 
-  const showMode = (currentMode: DatePickerMode) => {
-    setShow(true);
-    setMode(currentMode);
-  };
-
-  const showDatepicker = () => {
-    showMode("datetime");
-  };
+  useEffect(() => {
+    setDateOptions((prevState) => {
+      if (prevState.startTime && expirationInterval != "month") {
+        const expirationDate = new Date(prevState.startTime);
+        expirationDate.setDate(
+          expirationDate.getDate() + Number(expirationInterval)
+        );
+        return {
+          startTime: prevState.startTime,
+          endTime: expirationDate,
+        };
+      } else if (prevState.startTime) {
+        const expirationDate = new Date(prevState.startTime);
+        expirationDate.setMonth(expirationDate.getMonth() + 1);
+        return {
+          startTime: prevState.startTime,
+          endTime: expirationDate,
+        };
+      }
+      return prevState;
+    });
+  }, [expirationInterval]);
 
   const convertToDateTimeLocalString = (date: Date) => {
     const year = date.getFullYear();
@@ -101,8 +114,8 @@ const GroupDateOptions = ({
     setShow(!show);
   };
 
-  const startFormatted = formatDate(dateOptions?.startDate);
-  const endFormatted = formatDate(dateOptions?.endDate);
+  const startFormatted = formatDate(dateOptions?.startTime);
+  const endFormatted = formatDate(dateOptions?.endTime);
 
   return (
     <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mx-0 my-0 overflow-hidden">
@@ -115,8 +128,8 @@ const GroupDateOptions = ({
               tomorrow.setDate(tomorrow.getDate() + 1);
 
               setDateOptions({
-                startDate: new Date(),
-                endDate: tomorrow,
+                startTime: new Date(),
+                endTime: tomorrow,
               });
             }}
             text="Today"
@@ -134,8 +147,8 @@ const GroupDateOptions = ({
               nextDay.setDate(nextDay.getDate() + 2);
 
               setDateOptions({
-                startDate: tomorrow,
-                endDate: nextDay,
+                startTime: tomorrow,
+                endTime: nextDay,
               });
             }}
             text="Tomorrow"
@@ -147,73 +160,73 @@ const GroupDateOptions = ({
         <Button
           size="base"
           onPress={() => {
-            const startDate = new Date();
-            const endDate = new Date();
-            const dayOfWeek = startDate.getDay();
+            const startTime = new Date();
+            const endTime = new Date();
+            const dayOfWeek = startTime.getDay();
             switch (dayOfWeek) {
               case 0:
-                endDate.setDate(endDate.getDate() + 1);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 1);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
               case 1:
-                startDate.setDate(startDate.getDate() + 4);
-                startDate.setHours(18);
-                startDate.setMinutes(0);
-                startDate.setSeconds(0);
-                endDate.setDate(endDate.getDate() + 7);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                startTime.setDate(startTime.getDate() + 4);
+                startTime.setHours(18);
+                startTime.setMinutes(0);
+                startTime.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 7);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
               case 2:
-                startDate.setDate(startDate.getDate() + 3);
-                startDate.setHours(18);
-                startDate.setMinutes(0);
-                startDate.setSeconds(0);
-                endDate.setDate(endDate.getDate() + 6);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                startTime.setDate(startTime.getDate() + 3);
+                startTime.setHours(18);
+                startTime.setMinutes(0);
+                startTime.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 6);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
               case 3:
-                startDate.setDate(startDate.getDate() + 2);
-                startDate.setHours(18);
-                startDate.setMinutes(0);
-                startDate.setSeconds(0);
-                endDate.setDate(endDate.getDate() + 5);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                startTime.setDate(startTime.getDate() + 2);
+                startTime.setHours(18);
+                startTime.setMinutes(0);
+                startTime.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 5);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
               case 4:
-                startDate.setDate(startDate.getDate() + 1);
-                startDate.setHours(18);
-                startDate.setMinutes(0);
-                startDate.setSeconds(0);
-                endDate.setDate(endDate.getDate() + 4);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                startTime.setDate(startTime.getDate() + 1);
+                startTime.setHours(18);
+                startTime.setMinutes(0);
+                startTime.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 4);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
               case 5:
-                endDate.setDate(endDate.getDate() + 3);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 3);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
               case 6:
-                endDate.setDate(endDate.getDate() + 2);
-                endDate.setHours(9);
-                endDate.setMinutes(0);
-                endDate.setSeconds(0);
+                endTime.setDate(endTime.getDate() + 2);
+                endTime.setHours(9);
+                endTime.setMinutes(0);
+                endTime.setSeconds(0);
                 break;
             }
 
             setDateOptions({
-              startDate: startDate,
-              endDate: endDate,
+              startTime: startTime,
+              endTime: endTime,
             });
           }}
           text="This weekend"
@@ -258,9 +271,8 @@ const GroupDateOptions = ({
             <View className="w-full items-center">
               <DateTimePicker
                 testID="dateTimePicker"
-                value={dateOptions?.startDate ?? new Date()}
-                mode={mode}
-                is24Hour={true}
+                value={dateOptions?.startTime ?? new Date()}
+                mode={"datetime"}
                 onChange={onChange}
                 themeVariant="dark"
               />
@@ -271,7 +283,7 @@ const GroupDateOptions = ({
                 type={"datetime-local"}
                 className="p-2 bg-gray-700 text-white border border-gray-600 rounded-md w-full mb-3"
                 value={convertToDateTimeLocalString(
-                  dateOptions?.startDate ?? new Date()
+                  dateOptions?.startTime ?? new Date()
                 )}
                 onChange={(event) => {
                   onChange(

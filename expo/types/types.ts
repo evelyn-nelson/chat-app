@@ -36,7 +36,15 @@ type Group = {
   created_at: string;
   updated_at: string;
   admin: boolean;
+  start_time: string;
+  end_time: string;
   group_users: GroupUser[];
+};
+
+type UpdateGroupParams = {
+  name?: string;
+  start_time?: string;
+  end_time?: string;
 };
 
 type UserGroup = {
@@ -49,8 +57,8 @@ type UserGroup = {
 };
 
 type DateOptions = {
-  startDate: Date;
-  endDate: Date;
+  startTime: Date | null;
+  endTime: Date | null;
 };
 
 export {
@@ -58,6 +66,7 @@ export {
   RawMessage,
   User,
   Group,
+  UpdateGroupParams,
   UserGroup,
   GroupAdminMap,
   GroupUser,

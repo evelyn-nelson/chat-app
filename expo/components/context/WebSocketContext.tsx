@@ -1,4 +1,10 @@
-import { Message, Group, User, UserGroup } from "@/types/types";
+import {
+  Message,
+  Group,
+  User,
+  UserGroup,
+  UpdateGroupParams,
+} from "@/types/types";
 import React, {
   createContext,
   useCallback,
@@ -17,7 +23,15 @@ interface WebSocketContextType {
   removeMessageHandler: (callback: (message: Message) => void) => void;
   establishConnection: () => Promise<void>;
   disconnect: () => void;
-  createGroup: (name: string) => Promise<Group | undefined>;
+  createGroup: (
+    name: string,
+    startTime: Date,
+    endTime: Date
+  ) => Promise<Group | undefined>;
+  updateGroup: (
+    id: number,
+    updateParams: UpdateGroupParams
+  ) => Promise<Group | undefined>;
   inviteUsersToGroup: (emails: string[], group_id: number) => void;
   removeUserFromGroup: (email: string, group_id: number) => void;
   leaveGroup: (group_id: number) => void;
@@ -28,7 +42,8 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(
   undefined
 );
 
-const baseURL = `${process.env.EXPO_PUBLIC_HOST}/ws`;
+const httpBaseURL = `${process.env.EXPO_PUBLIC_HOST}/ws`;
+const wsBaseURL = `${process.env.EXPO_PUBLIC_WS_HOST}/ws`;
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -38,13 +53,44 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
   const isReconnecting = useRef(false);
 
-  const createGroup = async (name: string): Promise<Group | undefined> => {
-    const httpURL = `http://${baseURL}/createGroup`;
+  const createGroup = async (
+    name: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<Group | undefined> => {
+    const httpURL = `${httpBaseURL}/createGroup`;
 
     const group = http
       .post(httpURL, {
         name: name,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
       })
+      .then((response) => {
+        const { data } = response;
+        return data;
+      })
+      .catch((error) => {
+        console.error("error: ", error);
+        return;
+      });
+
+    return group;
+  };
+
+  const updateGroup = async (
+    id: number,
+    updateParams: UpdateGroupParams
+  ): Promise<Group | undefined> => {
+    const httpURL = `${httpBaseURL}/updateGroup/${id}`;
+    if (
+      !(updateParams.name || updateParams.start_time || updateParams.end_time)
+    ) {
+      console.error("Invalid input");
+      return undefined;
+    }
+    const group = http
+      .put(httpURL, updateParams)
       .then((response) => {
         const { data } = response;
         return data;
@@ -75,7 +121,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
       isReconnecting.current = true;
 
-      const wsURL = `ws://${baseURL}/establishConnection/${token}`;
+      const wsURL = `${wsBaseURL}/establishConnection/${token}`;
 
       let retryCount = 0;
       const MAX_RETRIES = 5;
@@ -158,7 +204,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const leaveGroup = async (group_id: number) => {
-    http.post(`http://${baseURL}/leaveGroup/${group_id}`).catch((error) => {
+    http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
       console.error(error);
     });
   };
@@ -171,7 +217,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const inviteUsersToGroup = async (emails: string[], group_id: number) => {
     http
-      .post(`http://${baseURL}/inviteUsersToGroup`, {
+      .post(`${httpBaseURL}/inviteUsersToGroup`, {
         group_id: group_id,
         emails: emails,
       })
@@ -182,7 +228,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const removeUserFromGroup = async (email: string, group_id: number) => {
     http
-      .post(`http://${baseURL}/removeUserFromGroup`, {
+      .post(`${httpBaseURL}/removeUserFromGroup`, {
         group_id: group_id,
         email: email,
       })
@@ -193,7 +239,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getGroups = async (): Promise<Group[]> => {
     const groups = http
-      .get(`http://${baseURL}/getGroups`)
+      .get(`${httpBaseURL}/getGroups`)
       .then((response) => {
         const { data } = response;
         return data;
@@ -251,6 +297,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         establishConnection,
         disconnect,
         createGroup,
+        updateGroup,
         leaveGroup,
         inviteUsersToGroup,
         removeUserFromGroup,

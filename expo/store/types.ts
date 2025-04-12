@@ -29,6 +29,8 @@ export interface GroupRow {
   group_users: string;
   created_at: string;
   updated_at: string;
+  start_time: string;
+  end_time: string;
 }
 
 export interface UserRow {
