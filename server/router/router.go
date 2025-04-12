@@ -16,7 +16,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	r = gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8081", "http://192.168.1.12:8081", "http://192.168.1.32:8081", "http://192.168.1.42:8081", "http://192.168.1.8:8081", "http://192.168.1.18:8081", "http://192.168.1.80:8081"},
+		AllowOrigins:     []string{"http://localhost:8081", "http://192.168.1.12:8081", "http://192.168.1.32:8081", "http://192.168.1.42:8081", "http://192.168.1.8:8081", "http://192.168.1.18:8081", "http://192.168.1.80:8081", "http://192.168.1.2:8081"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
