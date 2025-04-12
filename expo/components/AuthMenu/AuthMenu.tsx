@@ -61,11 +61,21 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
       </View>
 
       {/* Modals */}
-      <ChatAppModal visible={isSignupModalOpen} closeModal={closeModal}>
+      <ChatAppModal
+        visible={isSignupModalOpen}
+        closeModal={closeModal}
+        disableHide={true}
+        addedPadding={300}
+      >
         <SignupForm onSubmit={furtherOnSubmit} />
       </ChatAppModal>
 
-      <ChatAppModal visible={isLoginModalOpen} closeModal={closeModal}>
+      <ChatAppModal
+        visible={isLoginModalOpen}
+        closeModal={closeModal}
+        disableHide={true}
+        addedPadding={300}
+      >
         <LoginForm onSubmit={furtherOnSubmit} />
       </ChatAppModal>
     </View>

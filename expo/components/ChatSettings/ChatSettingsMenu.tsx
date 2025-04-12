@@ -1,5 +1,5 @@
 import { Platform, Text, View } from "react-native";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
@@ -10,21 +10,22 @@ import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 
 const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
-  const { inviteUsersToGroup, updateGroup } = useWebSocket();
-  const [isLoading, setIsLoading] = useState(false);
+  const { user: self, store } = useGlobalStore();
+  const user = group.group_users.find((member) => member.id === self?.id);
+  const { inviteUsersToGroup, updateGroup, getGroups } = useWebSocket();
+  const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
   const { refreshGroups } = useGlobalStore();
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
-  const parseDate = (dateString: string | null | undefined) => {
-    if (!dateString) {
-      return null;
-    }
-    var timestamp = Date.parse(dateString);
+  const parseDate = useCallback(
+    (dateString: string | null | undefined): Date | null => {
+      if (!dateString) return null;
+      const timestamp = Date.parse(dateString);
+      return isNaN(timestamp) ? null : new Date(timestamp);
+    },
+    []
+  );
 
-    if (isNaN(timestamp) == false) {
-      return new Date(timestamp);
-    }
-    return null;
-  };
   const [dateOptions, setDateOptions] = useState<DateOptions>({
     startTime: parseDate(group.start_time),
     endTime: parseDate(group.end_time),
@@ -32,22 +33,72 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   const [showDateOptions, setShowDateOptions] = useState(false);
   const excludedUserList = group.group_users;
 
+  const [hasDateChanges, setHasDateChanges] = useState(false);
+
+  useEffect(() => {
+    const groupStartTime = parseDate(group.start_time);
+    const groupEndTime = parseDate(group.end_time);
+
+    const startTimeChanged =
+      (dateOptions.startTime ?? null)?.getTime() !==
+      (groupStartTime ?? null)?.getTime();
+    const endTimeChanged =
+      (dateOptions.endTime ?? null)?.getTime() !==
+      (groupEndTime ?? null)?.getTime();
+
+    setHasDateChanges(startTimeChanged || endTimeChanged);
+  }, [dateOptions, group.start_time, group.end_time, parseDate]);
+
+  const fetchAndRefreshGroups = async () => {
+    try {
+      const updatedGroups = await getGroups();
+      await store.saveGroups(updatedGroups);
+      refreshGroups();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error("Failed to fetch and refresh groups:", error);
+    }
+  };
+
   const handleUpdateGroup = async () => {
-    setIsLoading(true);
-    if (
-      dateOptions.startTime &&
-      dateOptions.endTime &&
-      ((dateOptions.startTime ?? new Date()).getTime() !=
-        (parseDate(group.start_time) ?? new Date()).getTime() ||
-        (dateOptions.endTime ?? new Date()).getTime() !=
-          (parseDate(group.end_time) ?? new Date()).getTime())
-    ) {
-      await updateGroup(group.id, {
+    if (!hasDateChanges || !dateOptions.startTime || !dateOptions.endTime) {
+      return;
+    }
+
+    setIsLoadingUpdate(true);
+    setShowDateOptions(false);
+    try {
+      const updatedGroup = await updateGroup(group.id, {
         start_time: dateOptions.startTime.toISOString(),
         end_time: dateOptions.endTime.toISOString(),
       });
+
+      if (updatedGroup) {
+        await fetchAndRefreshGroups();
+      } else {
+        console.error("Group update returned undefined.");
+      }
+    } catch (error) {
+      console.error("Error updating group:", error);
+    } finally {
+      setIsLoadingUpdate(false);
     }
-    setIsLoading(false);
+  };
+  const handleInviteUsers = async () => {
+    if (usersToInvite.length === 0) return;
+
+    setIsLoadingInvite(true);
+    try {
+      await inviteUsersToGroup(usersToInvite, group.id);
+
+      await fetchAndRefreshGroups();
+
+      setUsersToInvite([]);
+    } catch (error) {
+      console.error("Error inviting users:", error);
+    } finally {
+      setIsLoadingInvite(false);
+    }
   };
 
   const formatDate = (date: Date | null) => {
@@ -61,6 +112,12 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       minute: "2-digit",
     });
   };
+
+  const isUpdateDisabled =
+    isLoadingUpdate ||
+    !hasDateChanges ||
+    !dateOptions.startTime ||
+    !dateOptions.endTime;
 
   return (
     <View
@@ -124,58 +181,49 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       </View>
 
       {/* User Invite Card */}
-      <View className="w-full z-50 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
-        <Text className="text-lg font-semibold text-blue-400 mb-3">
-          Invite Friends
-        </Text>
+      {user?.admin && (
+        <View className="w-full z-50 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
+          <Text className="text-lg font-semibold text-blue-400 mb-3">
+            Invite Friends
+          </Text>
 
-        <View className="z-40 bg-gray-800 rounded-lg p-3 overflow-visible">
-          <UserInviteMultiselect
-            placeholderText="Select friends to invite"
-            userList={usersToInvite}
-            setUserList={setUsersToInvite}
-            excludedUserList={excludedUserList}
+          <View className="z-40 bg-gray-800 rounded-lg p-3 overflow-visible">
+            <UserInviteMultiselect
+              placeholderText="Select friends to invite"
+              userList={usersToInvite}
+              setUserList={setUsersToInvite}
+              excludedUserList={excludedUserList}
+            />
+          </View>
+        </View>
+      )}
+
+      {usersToInvite.length > 0 && user?.admin && (
+        <View className="z-10 mb-3">
+          <Button
+            border={false}
+            size="lg"
+            className="w-full bg-blue-600 rounded-lg" // Changed color for distinction
+            textClassName="text-white font-medium"
+            text={isLoadingInvite ? "Inviting..." : "Add New Users"}
+            onPress={handleInviteUsers}
+            disabled={isLoadingInvite}
           />
         </View>
-      </View>
-
-      {usersToInvite.length > 0 && (
+      )}
+      {user?.admin && ( // Only show Update button if user is admin
         <View className="z-10">
           <Button
             border={false}
             size="lg"
             className="w-full bg-blue-600 rounded-lg"
             textClassName="text-white font-medium"
-            text="Add New Users"
-            onPress={async () => {
-              try {
-                await inviteUsersToGroup(usersToInvite, group.id);
-                setUsersToInvite([]);
-                refreshGroups();
-              } catch (error) {
-                console.error(error);
-              }
-            }}
+            text={"Update Group"}
+            onPress={handleUpdateGroup}
+            disabled={isUpdateDisabled}
           />
         </View>
       )}
-      <View className="z-10">
-        <Button
-          border={false}
-          size="lg"
-          className="w-full bg-blue-600 rounded-lg"
-          textClassName="text-white font-medium"
-          text={isLoading ? "Updating..." : "Update Group"}
-          onPress={handleUpdateGroup}
-          disabled={
-            isLoading ||
-            ((dateOptions.startTime ?? new Date()).getTime() ===
-              (parseDate(group.start_time) ?? new Date()).getTime() &&
-              (dateOptions.endTime ?? new Date()).getTime() ===
-                (parseDate(group.end_time) ?? new Date()).getTime())
-          }
-        />
-      </View>
     </View>
   );
 };

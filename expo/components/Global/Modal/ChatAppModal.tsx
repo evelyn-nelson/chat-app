@@ -18,6 +18,8 @@ type ChatAppModalProps = {
   closeModal: () => void;
   children: React.ReactNode;
   title?: string;
+  disableHide?: boolean;
+  addedPadding?: number;
 };
 
 const ChatAppModal = ({
@@ -25,6 +27,8 @@ const ChatAppModal = ({
   closeModal,
   children,
   title,
+  disableHide = false,
+  addedPadding = 0,
 }: ChatAppModalProps) => {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -42,6 +46,8 @@ const ChatAppModal = ({
   const availableHeight = windowHeight - topPadding - bottomMargin;
   const modalMaxHeight = Math.min(availableHeight, windowHeight * 0.8); // Reduced from 0.85 to 0.8
 
+  const containerBottomPadding = disableHide ? addedPadding : 0;
+
   return (
     <Modal
       visible={visible}
@@ -55,11 +61,13 @@ const ChatAppModal = ({
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1 }}
             keyboardVerticalOffset={Platform.OS === "ios" ? 30 : 20}
+            enabled={!disableHide}
           >
             <View
               className="flex-1 justify-center items-center px-4"
               style={{
                 paddingTop: topPadding,
+                paddingBottom: containerBottomPadding,
               }}
             >
               <View

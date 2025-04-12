@@ -10,7 +10,7 @@ const signin = () => {
     <View className="bg-blue-500">
       <AuthMenu
         onSubmit={async () => {
-          await whoami();
+          await whoami(true);
           router.replace("/");
         }}
       />
@@ -19,5 +19,3 @@ const signin = () => {
 };
 
 export default signin;
-
-

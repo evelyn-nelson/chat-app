@@ -24,38 +24,49 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
     return <View></View>;
   }
 
+  const fetchAndRefreshGroups = async () => {
+    try {
+      const updatedGroups = await getGroups();
+      await store.saveGroups(updatedGroups);
+      refreshGroups();
+    } catch (error) {
+      console.error("Failed to fetch and refresh groups:", error);
+    }
+  };
+
   const handleCreateGroup = async () => {
     if (!groupName.trim() || !dateOptions.startTime || !dateOptions.endTime)
       return;
 
     setIsLoading(true);
+    let createdGroup = null; // Keep track of the created group
+
     try {
-      const group = await createGroup(
+      createdGroup = await createGroup(
         groupName,
         dateOptions.startTime,
         dateOptions.endTime
       );
-      setGroupName("");
 
-      if (group && usersToInvite.length > 0) {
-        await inviteUsersToGroup(usersToInvite, group.id);
-        setUsersToInvite([]);
-        refreshGroups();
-      }
-
-      onSubmit();
-
-      if (group) {
-        router.push(`/groups/${group.id}`);
-        try {
-          const groups = await getGroups();
-          store.saveGroups(groups);
-        } catch (error) {
-          console.error(error);
+      if (createdGroup) {
+        if (usersToInvite.length > 0) {
+          await inviteUsersToGroup(usersToInvite, createdGroup.id);
         }
+
+        await fetchAndRefreshGroups();
+
+        setGroupName("");
+        setUsersToInvite([]);
+        setDateOptions({ startTime: null, endTime: null });
+
+        onSubmit();
+
+        router.push(`/groups/${createdGroup.id}`);
+      } else {
+        console.error("Group creation returned undefined.");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error during group creation process:", error);
     } finally {
       setIsLoading(false);
     }
