@@ -45,6 +45,13 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(
 const httpBaseURL = `${process.env.EXPO_PUBLIC_HOST}/ws`;
 const wsBaseURL = `${process.env.EXPO_PUBLIC_WS_HOST}/ws`;
 
+const MAX_RETRIES = 5;
+const INITIAL_RETRY_DELAY = 1000;
+const MAX_RETRY_DELAY = 30000;
+
+const CLOSE_CODE_AUTH_FAILED = 4001;
+const CLOSE_CODE_UNAUTHENTICATED = 4003;
+
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -104,101 +111,241 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const establishConnection = (): Promise<void> => {
+    let promiseSettled = false;
+    let preventRetries = false;
+
     return new Promise(async (resolve, reject) => {
       const token = await get("jwt");
       if (!token) {
+        console.error(
+          "No JWT token found, cannot establish WebSocket connection."
+        );
+        if (!promiseSettled) {
+          promiseSettled = true;
+          reject(new Error("Authentication token not found."));
+        }
         return;
       }
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        resolve();
+
+      if (socketRef.current?.readyState === WebSocket.OPEN && connected) {
+        console.log("WebSocket already open and connected.");
+        if (!promiseSettled) {
+          promiseSettled = true;
+          resolve();
+        }
         return;
       }
 
       if (isReconnecting.current) {
-        console.log("Already reconnecting, waiting for existing connection...");
+        console.log("Already attempting connection/reconnection, waiting...");
         return;
       }
 
+      console.log("Attempting to establish WebSocket connection...");
       isReconnecting.current = true;
+      preventRetries = false;
 
-      const wsURL = `${wsBaseURL}/establishConnection/${token}`;
+      const wsURL = `${wsBaseURL}/establishConnection`;
 
       let retryCount = 0;
-      const MAX_RETRIES = 5;
-      const INITIAL_RETRY_DELAY = 1000;
+      let isAuthenticated = false;
 
-      const cleanup = () => {
+      const cleanup = (reason?: string) => {
         if (socketRef.current) {
-          socketRef.current.onclose = null;
-          socketRef.current.onerror = null;
-          socketRef.current.onmessage = null;
-          socketRef.current.onopen = null;
-          socketRef.current.close(1000);
+          const ws = socketRef.current;
+          socketRef.current = null;
+          console.log(
+            `Cleaning up socket instance. Reason: ${reason || "N/A"}`
+          );
+          ws.onopen = null;
+          ws.onmessage = null;
+          ws.onclose = null;
+          ws.onerror = null;
+          if (
+            ws.readyState !== WebSocket.CLOSING &&
+            ws.readyState !== WebSocket.CLOSED
+          ) {
+            ws.close(1000, `Client cleanup: ${reason || "Normal"}`);
+          }
         }
+        isAuthenticated = false;
+        setConnected(false);
+      };
+
+      const safeReject = (error: Error) => {
+        if (!promiseSettled) {
+          promiseSettled = true;
+          reject(error);
+        }
+        isReconnecting.current = false;
+        preventRetries = true;
+        cleanup(error.message);
       };
 
       const connect = () => {
-        cleanup();
+        if (socketRef.current) {
+          cleanup("Starting new connection attempt");
+        }
 
+        console.log(`Connecting to ${wsURL}... (Attempt ${retryCount + 1})`);
         const socket = new WebSocket(wsURL);
         socketRef.current = socket;
 
         socket.onopen = () => {
-          console.log("WebSocket connected");
-          setConnected(true);
-          isReconnecting.current = false;
-          retryCount = 0;
-          resolve();
+          if (socketRef.current !== socket) {
+            console.warn(
+              "onopen triggered for an outdated socket instance. Ignoring."
+            );
+            return;
+          }
+          console.log(
+            "WebSocket connection opened. Sending authentication message..."
+          );
+          try {
+            socket.send(JSON.stringify({ type: "auth", token: token }));
+          } catch (error) {
+            console.error("Failed to send auth message:", error);
+            safeReject(new Error("Failed to send authentication message."));
+            socket.close(CLOSE_CODE_AUTH_FAILED, "Failed to send auth");
+          }
         };
 
         socket.onmessage = (event) => {
+          if (socketRef.current !== socket) {
+            console.warn(
+              "onmessage triggered for an outdated socket instance. Ignoring."
+            );
+            return;
+          }
           try {
             const parsedMessage = JSON.parse(event.data);
-            const currentHandlers = messageHandlersRef.current;
-            currentHandlers.forEach((handler, index) => {
-              try {
-                handler(parsedMessage);
-              } catch (handlerError) {
-                console.error(`Error in handler ${index}:`, handlerError);
+
+            if (!isAuthenticated) {
+              if (parsedMessage.type === "auth_success") {
+                console.log("WebSocket authenticated successfully.");
+                isAuthenticated = true;
+                setConnected(true);
+                isReconnecting.current = false;
+                retryCount = 0;
+                if (!promiseSettled) {
+                  promiseSettled = true;
+                  resolve();
+                }
+              } else if (parsedMessage.type === "auth_failure") {
+                console.error(
+                  "WebSocket authentication failed:",
+                  parsedMessage.error || "No reason provided."
+                );
+                preventRetries = true;
+                safeReject(
+                  new Error(
+                    `Authentication failed: ${parsedMessage.error || "Unknown reason"}`
+                  )
+                );
+                socket.close(CLOSE_CODE_AUTH_FAILED, "Authentication Failed");
+              } else {
+                console.error(
+                  "Received unexpected message before authentication:",
+                  parsedMessage
+                );
+                preventRetries = true;
+                safeReject(
+                  new Error(
+                    "Received unexpected message during authentication phase."
+                  )
+                );
+                socket.close(
+                  CLOSE_CODE_UNAUTHENTICATED,
+                  "Unexpected message pre-auth"
+                );
               }
-            });
+            } else {
+              messageHandlersRef.current.forEach((handler, index) => {
+                try {
+                  handler(parsedMessage);
+                } catch (handlerError) {
+                  console.error(
+                    `Error in message handler ${index}:`,
+                    handlerError
+                  );
+                }
+              });
+            }
           } catch (error) {
-            console.error("Error in onmessage:", error);
+            console.error(
+              "Error parsing WebSocket message or in handler:",
+              error
+            );
+            safeReject(new Error("Failed to process incoming message."));
+            socket.close(1011, "Message processing error");
           }
         };
 
         socket.onclose = (event) => {
-          console.log("WebSocket closed", event);
-          setConnected(false);
-
-          if (event.code === 1000 || event.code === 401) {
-            isReconnecting.current = false;
+          if (socketRef.current !== socket && socketRef.current !== null) {
+            console.warn(
+              `onclose triggered for an outdated socket instance (Code: ${event.code}). Ignoring.`
+            );
             return;
           }
 
+          console.log(
+            `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`
+          );
+          cleanup(`onclose event (Code: ${event.code})`);
+
+          if (preventRetries || event.code === 1000) {
+            console.log("Retries prevented or connection closed normally.");
+            isReconnecting.current = false;
+            if (!promiseSettled && !isAuthenticated && event.code !== 1000) {
+              safeReject(
+                new Error(
+                  `WebSocket closed unexpectedly (Code: ${event.code}) before authentication completed.`
+                )
+              );
+            } else if (!promiseSettled && event.code === 1000) {
+              safeReject(
+                new Error(
+                  `WebSocket closed normally (Code: 1000) before authentication completed.`
+                )
+              );
+            }
+            return;
+          }
+
+          // --- Retry Logic ---
           retryCount++;
-          if (retryCount < MAX_RETRIES) {
+          if (retryCount <= MAX_RETRIES) {
+            // Exponential backoff with jitter and cap
             const delay = Math.min(
-              INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1),
-              60000
+              INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1) +
+                Math.random() * 1000,
+              MAX_RETRY_DELAY
             );
             console.log(
-              `Retrying connection in ${delay} ms... (Attempt ${retryCount} of ${MAX_RETRIES})`
+              `Connection closed unexpectedly. Retrying connection in ${Math.round(delay)} ms... (Attempt ${retryCount} of ${MAX_RETRIES})`
             );
             setTimeout(connect, delay);
           } else {
-            console.error("Failed to establish connection after retries");
+            console.error("WebSocket connection failed after maximum retries.");
             isReconnecting.current = false;
-            reject(
+            safeReject(
               new Error("WebSocket connection failed after maximum retries")
             );
           }
         };
 
-        socket.onerror = (error) => {
-          console.log("WebSocket error: ", error);
+        socket.onerror = (event) => {
+          if (socketRef.current !== socket) {
+            console.warn(
+              "onerror triggered for an outdated socket instance. Ignoring."
+            );
+            return;
+          }
+          console.error("WebSocket error:", event);
         };
       };
+
       connect();
     });
   };
@@ -210,8 +357,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const disconnect = () => {
+    isReconnecting.current = false;
     if (socketRef.current) {
       socketRef.current.close(1000);
+      socketRef.current = null;
     }
   };
 
