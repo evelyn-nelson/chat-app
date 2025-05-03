@@ -1,13 +1,16 @@
 package ws
 
 import (
+	"chat-app-server/auth"
 	"chat-app-server/db"
 	"chat-app-server/util"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -40,17 +43,117 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (h *Handler) EstablishConnection(c *gin.Context) {
-	user, err := util.GetUser(c, h.db)
-	if err != nil {
-		log.Printf("Error getting user for WebSocket connection: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or unauthorized"})
-		return
-	}
+const (
+	authTimeout = 10 * time.Second
+)
 
+type AuthMessage struct {
+	Type  string `json:"type"`
+	Token string `json:"token"`
+}
+
+type ServerResponseMessage struct {
+	Type    string `json:"type"`
+	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func (h *Handler) EstablishConnection(c *gin.Context) {
+	ctx := c.Request.Context()
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Authentication Phase
+
+	var userID int32
+	var user *db.GetUserByIdRow
+	isAuthenticated := false
+
+	err = conn.SetReadDeadline(time.Now().Add(authTimeout))
+	if err != nil {
+		log.Printf("Error setting read deadline: %v", err)
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal error"))
+		return
+	}
+
+	messageType, messageBytes, err := conn.ReadMessage()
+
+	// Reset the read deadline after the first read attempt
+	conn.SetReadDeadline(time.Time{})
+
+	if err != nil {
+		log.Printf("Error reading auth message: %v", err)
+		closeCode := websocket.ClosePolicyViolation
+		errMsg := "Authentication error"
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			log.Printf("Client disconnected before authenticating: %v", err)
+			return
+		} else if e, ok := err.(*websocket.CloseError); ok {
+			log.Printf("Client sent close frame during auth phase: %v", e)
+			return
+		} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			log.Println("Authentication timeout")
+			errMsg = "Authentication timeout"
+			closeCode = websocket.ClosePolicyViolation
+		}
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(closeCode, errMsg))
+		return
+	}
+
+	if messageType == websocket.TextMessage {
+		var authMsg AuthMessage
+		if err := json.Unmarshal(messageBytes, &authMsg); err == nil && authMsg.Type == "auth" {
+			extractedUserID, validationErr := auth.ValidateToken(authMsg.Token)
+			if validationErr == nil {
+				fetchedUser, dbErr := h.db.GetUserById(ctx, extractedUserID)
+				if dbErr == nil {
+					userID = extractedUserID
+					user = &fetchedUser
+					isAuthenticated = true
+					log.Printf("User %d (%s) authenticated successfully via WebSocket.", userID, user.Username)
+					response := ServerResponseMessage{Type: "auth_success", Message: "Authentication successful"}
+					if err := conn.WriteJSON(response); err != nil {
+						log.Printf("Error sending auth_success to user %d: %v", userID, err)
+						response := ServerResponseMessage{Type: "auth_failure", Error: err.Error()}
+						conn.WriteJSON(response)
+						conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Authentication failed"))
+						return
+					}
+				} else {
+					log.Printf("Auth failed: could not fetch user data for ID %d: %v", extractedUserID, dbErr)
+					response := ServerResponseMessage{Type: "auth_failure", Error: "Authentication failed: User data unavailable."}
+					conn.WriteJSON(response) // Best effort to inform client
+					conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Authentication failed"))
+					return
+				}
+			} else {
+				log.Printf("Authentication failed (token validation): %v", validationErr)
+				response := ServerResponseMessage{Type: "auth_failure", Error: validationErr.Error()} // Send specific validation error message
+				conn.WriteJSON(response)
+				conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Authentication failed"))
+				return
+			}
+		} else {
+			log.Printf("Invalid or non-auth message received as first message. Type: %d, JSON Err: %v", messageType, err)
+			response := ServerResponseMessage{Type: "auth_failure", Error: "Invalid or missing authentication message."}
+			conn.WriteJSON(response)
+			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Authentication required"))
+			return
+		}
+	} else {
+		log.Printf("Received non-text message type (%d) during authentication phase.", messageType)
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Expected text message for authentication."))
+		return
+	}
+
+	// User is authenticated
+
+	if !isAuthenticated {
+		log.Println("Critical internal error: Authentication incomplete.")
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal authentication error."))
 		return
 	}
 
@@ -144,7 +247,7 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 				log.Printf("User %d already in group %d, skipping invite.", user.ID, req.GroupID)
 				continue
 			} else {
-				log.Printf("Error inserting user_group for user %d: %v", user.ID, err)
+				log.Printf("Error inserting user_group for user %d, group %d: %v", user.ID, req.GroupID, err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add one or more users to the group"})
 				return
 			}
@@ -152,7 +255,6 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 		successfulInvites = append(successfulInvites, userGroup)
 		invitedUserIDs = append(invitedUserIDs, user.ID)
 	}
-
 	err = tx.Commit(ctx)
 
 	if err != nil {
@@ -162,9 +264,14 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 	}
 
 	for _, userID := range invitedUserIDs {
-		if client, ok := h.hub.Clients[userID]; ok {
-			h.hub.AddClientToGroup(client, req.GroupID)
-			client.AddGroup(req.GroupID)
+		select {
+		case h.hub.AddUser <- &AddClientToGroupMsg{
+			UserID:  userID,
+			GroupID: req.GroupID,
+		}:
+			log.Printf("Sent request to hub to update state for user %d addition to group %d", userID, req.GroupID)
+		default:
+			log.Printf("Warning: Hub AddUser channel is full. Update for user %d group %d might be delayed.", userID, req.GroupID)
 		}
 	}
 
@@ -225,11 +332,15 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 		return
 	}
 
-	if client, ok := h.hub.Clients[userToKick.ID]; ok {
-		h.hub.RemoveClientFromGroup(client, req.GroupID)
-		client.RemoveGroup(req.GroupID)
+	select {
+	case h.hub.RemoveUser <- &RemoveClientFromGroupMsg{
+		UserID:  userToKick.ID,
+		GroupID: req.GroupID,
+	}:
+		log.Printf("Sent request to hub to update state for user %d removal from group %d", userToKick.ID, req.GroupID)
+	default:
+		log.Printf("Warning: Hub RemoveUser channel is full. Update for user %d group %d might be delayed.", userToKick.ID, req.GroupID)
 	}
-
 	c.JSON(http.StatusOK, user_group)
 }
 
@@ -305,11 +416,15 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		return
 	}
 
-	h.InitializeGroup(group.ID, group.Name)
-
-	if client, ok := h.hub.Clients[user.ID]; ok {
-		h.hub.AddClientToGroup(client, group.ID)
-		client.AddGroup(group.ID)
+	select {
+	case h.hub.InitGroup <- &InitializeGroupMsg{
+		GroupID: group.ID,
+		Name:    group.Name,
+		AdminID: user.ID,
+	}:
+		log.Printf("Sent request to hub to initialize group %d and add admin %d", group.ID, user.ID)
+	default:
+		log.Printf("Warning: Hub InitGroup channel full for group %d", group.ID)
 	}
 
 	c.JSON(http.StatusOK, group)
@@ -573,9 +688,23 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 		return
 	}
 
-	if client, ok := h.hub.Clients[user.ID]; ok {
-		h.hub.RemoveClientFromGroup(client, groupID)
-		client.RemoveGroup(groupID)
+	select {
+	case h.hub.RemoveUser <- &RemoveClientFromGroupMsg{
+		UserID:  user.ID,
+		GroupID: groupID,
+	}:
+		log.Printf("Sent request to hub to remove client %d from group %d state", user.ID, groupID)
+	default:
+		log.Printf("Warning: Hub RemoveUser channel full for user %d group %d", user.ID, groupID)
+	}
+
+	if groupIsEmpty { 
+		select {
+		case h.hub.DeleteGroup <- &DeleteHubGroupMsg{GroupID: groupID}:
+			log.Printf("Sent request to hub to delete empty group %d state", groupID)
+		default:
+			log.Printf("Warning: Hub DeleteGroup channel full for group %d", groupID)
+		}
 	}
 
 	c.JSON(http.StatusOK, deletedUserGroup)

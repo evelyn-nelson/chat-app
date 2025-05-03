@@ -17,7 +17,7 @@ type Client struct {
 	conn    *websocket.Conn
 	Message chan *Message
 	Groups  map[int32]bool
-	User    db.GetUserByIdRow `json:"user"`
+	User    *db.GetUserByIdRow `json:"user"`
 	mutex   sync.RWMutex
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -49,7 +49,7 @@ const (
 	maxMessageSize = 1024
 )
 
-func NewClient(conn *websocket.Conn, user db.GetUserByIdRow) *Client {
+func NewClient(conn *websocket.Conn, user *db.GetUserByIdRow) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Client{
 		conn:    conn,
