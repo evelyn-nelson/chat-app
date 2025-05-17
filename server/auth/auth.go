@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"fmt"
+	"errors"
+	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,92 +14,64 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Authorization header required"})
-			c.Abort()
-			return
-		}
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Bearer token required"})
-			c.Abort()
-			return
-		}
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method %v", token.Header["alg"])
-			}
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token"})
-			c.Abort()
-			return
-		}
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			userID := claims["userID"]
-			switch v := userID.(type) {
-			case float64:
-				c.Set("userID", int32(v))
-			case int32:
-				c.Set("userID", v)
-			default:
-				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid userID type in token"})
-				c.Abort()
-				return
-			}
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid token claims"})
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "Authorization header required"},
+			)
 			c.Abort()
 			return
 		}
 
-		c.Next()
-	}
-}
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "Authorization header format must be Bearer {token}"},
+			)
+			c.Abort()
+			return
+		}
 
-func WebsocketSubprotocolAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenString := c.Param("token")
+		tokenString := parts[1]
 		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Authorization parameter required"})
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "Bearer token is missing"},
+			)
 			c.Abort()
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method %v", token.Header["alg"])
+		userID, err := ValidateToken(tokenString)
+
+		if err != nil {
+			var statusCode int
+			var clientMessage string
+
+			if errors.Is(err, jwt.ErrTokenMalformed) {
+				statusCode = http.StatusUnauthorized
+				clientMessage = "Invalid token format."
+			} else if errors.Is(err, jwt.ErrTokenExpired) {
+				statusCode = http.StatusUnauthorized
+				clientMessage = "Token has expired."
+			} else if errors.Is(err, jwt.ErrTokenNotValidYet) {
+				statusCode = http.StatusUnauthorized
+				clientMessage = "Token not yet valid."
+			} else if errors.Is(err, jwt.ErrTokenSignatureInvalid) {
+				statusCode = http.StatusUnauthorized
+				clientMessage = "Invalid token signature."
+			} else {
+				statusCode = http.StatusUnauthorized
+				clientMessage = "Invalid token."
+				log.Printf("Token validation failed with unexpected error: %v", err)
 			}
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
 
-		if err != nil || !token.Valid {
-			fmt.Println("err", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid or expired token"})
+			c.JSON(statusCode, gin.H{"error": clientMessage})
 			c.Abort()
 			return
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			fmt.Println("claims", claims)
-			userID := claims["userID"]
-			switch v := userID.(type) {
-			case float64:
-				c.Set("userID", int32(v))
-			case int32:
-				c.Set("userID", v)
-			default:
-				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid userID type in token"})
-				c.Abort()
-				return
-			}
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid token claims"})
-			c.Abort()
-			return
-		}
+		c.Set("userID", userID)
 
 		c.Next()
 	}

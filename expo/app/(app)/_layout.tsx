@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
-  const { getGroups } = useWebSocket();
+  const { getGroups, disconnect } = useWebSocket();
   const { store, refreshGroups } = useGlobalStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,6 +25,7 @@ const AppLayout = () => {
 
   useEffect(() => {
     let isMounted = true;
+    console.log("yay");
 
     const initialize = async () => {
       try {
@@ -49,6 +50,7 @@ const AppLayout = () => {
 
     return () => {
       isMounted = false;
+      disconnect();
     };
   }, []);
 

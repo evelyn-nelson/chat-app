@@ -71,7 +71,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	wsRoutes.GET("/relevantUsers", wsHandler.GetRelevantUsers)
 	wsRoutes.GET("/relevantMessages", wsHandler.GetRelevantMessages)
 
-	r.GET("/ws/establishConnection/:token", auth.WebsocketSubprotocolAuthMiddleware(), wsHandler.EstablishConnection)
+	r.GET("/ws/establishConnection", wsHandler.EstablishConnection)
 }
 
 func Start(addr string) error {
