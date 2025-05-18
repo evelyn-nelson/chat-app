@@ -12,28 +12,38 @@ export class Store implements IStore {
   private groups: Group[] = [];
   private users: User[] = [];
 
-  async saveMessages(messages: Message[]): Promise<void> {
-    const existingMessageIds = new Set(this.messages.map((m) => m.id));
-    const newMessages = messages.filter((m) => !existingMessageIds.has(m.id));
+  async saveMessages(
+    messagesToSave: Message[],
+    clearFirst: boolean = false
+  ): Promise<void> {
+    if (clearFirst) {
+      this.messages = [...messagesToSave]; // Replace all, ensure it's a new array
+      return;
+    }
 
-    this.messages = this.messages
-      .map((existingMsg) => {
-        const updatedMsg = messages.find((m) => m.id === existingMsg.id);
-        return updatedMsg || existingMsg;
-      })
-      .concat(newMessages);
+    // Merge logic: update existing, add new
+    const messageMap = new Map<number, Message>(
+      this.messages.map((m) => [m.id, m])
+    );
+    for (const message of messagesToSave) {
+      messageMap.set(message.id, message); // Add or update
+    }
+    this.messages = Array.from(messageMap.values());
   }
 
   async loadMessages(): Promise<Message[]> {
-    return [...this.messages];
+    return this.messages.map((message) => ({ ...message })); // Return a copy
   }
 
   async clearMessages(): Promise<void> {
     this.messages = [];
   }
 
-  async saveGroups(groups: Group[]): Promise<void> {
-    this.groups = groups.map((group) => {
+  async saveGroups(
+    groupsToSave: Group[],
+    clearFirstAndPrune: boolean = true
+  ): Promise<void> {
+    const processedGroups = groupsToSave.map((group) => {
       let parsedGroupUsers: GroupUser[] = [];
       if (typeof group.group_users === "string") {
         try {
@@ -54,20 +64,34 @@ export class Store implements IStore {
       }
       return { ...group, group_users: parsedGroupUsers };
     });
+
+    if (clearFirstAndPrune) {
+      this.groups = processedGroups;
+    } else {
+      const groupMap = new Map<number, Group>(
+        this.groups.map((g) => [g.id, g])
+      );
+      for (const group of processedGroups) {
+        groupMap.set(group.id, group);
+      }
+      this.groups = Array.from(groupMap.values());
+    }
   }
 
   async loadGroups(): Promise<Group[]> {
-    return this.groups.map((group) => ({ ...group }));
+    return this.groups.map((group) => ({
+      ...group,
+      group_users: group.group_users.map((gu) => ({ ...gu })),
+    }));
   }
 
   async clearGroups(): Promise<void> {
     this.groups = [];
   }
 
-  async saveUsers(users: User[]): Promise<void> {
-    this.users = users.map((user) => {
+  async saveUsers(usersToSave: User[]): Promise<void> {
+    const processedUsers = usersToSave.map((user) => {
       let finalGroupAdminMap: GroupAdminMap | undefined = undefined;
-
       const sourceMapData = user.group_admin_map;
 
       if (typeof sourceMapData === "string") {
@@ -84,18 +108,9 @@ export class Store implements IStore {
                 const numKey = Number(key);
                 if (!isNaN(numKey) && typeof parsedJson[key] === "boolean") {
                   finalGroupAdminMap.set(numKey, parsedJson[key]);
-                } else {
-                  console.warn(
-                    `Invalid key-value pair in parsed group_admin_map for user ${user.id}: key='${key}', value='${parsedJson[key]}'`
-                  );
                 }
               }
             }
-          } else {
-            console.warn(
-              `user.group_admin_map string for user ${user.id} did not parse to a map-like object:`,
-              sourceMapData
-            );
           }
         } catch (e) {
           console.error(
@@ -111,17 +126,13 @@ export class Store implements IStore {
         !Array.isArray(sourceMapData)
       ) {
         finalGroupAdminMap = new Map<number, boolean>();
-        const plainObjectSource = sourceMapData as Record<string, unknown>; // Type assertion
+        const plainObjectSource = sourceMapData as Record<string, unknown>;
         for (const key in plainObjectSource) {
           if (Object.prototype.hasOwnProperty.call(plainObjectSource, key)) {
             const numKey = Number(key);
-            const value = plainObjectSource[key]; // value is unknown here
+            const value = plainObjectSource[key];
             if (!isNaN(numKey) && typeof value === "boolean") {
               finalGroupAdminMap.set(numKey, value);
-            } else {
-              console.warn(
-                `Invalid key-value pair in object group_admin_map for user ${user.id}: key='${key}', value='${value}'`
-              );
             }
           }
         }
@@ -130,19 +141,20 @@ export class Store implements IStore {
         typeof sourceMapData === "undefined"
       ) {
         finalGroupAdminMap = undefined;
-      } else {
-        console.warn(
-          `user.group_admin_map for user ${user.id} was an unexpected type: ${typeof sourceMapData}`,
-          sourceMapData
-        );
       }
 
       return { ...user, group_admin_map: finalGroupAdminMap };
     });
+    this.users = processedUsers;
   }
 
   async loadUsers(): Promise<User[]> {
-    return this.users.map((user) => ({ ...user }));
+    return this.users.map((user) => ({
+      ...user,
+      group_admin_map: user.group_admin_map
+        ? new Map(user.group_admin_map)
+        : undefined,
+    }));
   }
 
   async clearUsers(): Promise<void> {
