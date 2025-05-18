@@ -17,22 +17,21 @@ export class Store implements IStore {
     clearFirst: boolean = false
   ): Promise<void> {
     if (clearFirst) {
-      this.messages = [...messagesToSave]; // Replace all, ensure it's a new array
+      this.messages = [...messagesToSave];
       return;
     }
 
-    // Merge logic: update existing, add new
     const messageMap = new Map<number, Message>(
       this.messages.map((m) => [m.id, m])
     );
     for (const message of messagesToSave) {
-      messageMap.set(message.id, message); // Add or update
+      messageMap.set(message.id, message);
     }
     this.messages = Array.from(messageMap.values());
   }
 
   async loadMessages(): Promise<Message[]> {
-    return this.messages.map((message) => ({ ...message })); // Return a copy
+    return this.messages.map((message) => ({ ...message }));
   }
 
   async clearMessages(): Promise<void> {
