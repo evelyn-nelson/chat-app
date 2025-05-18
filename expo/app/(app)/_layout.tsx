@@ -14,11 +14,13 @@ import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { CanceledError } from "axios";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMessageStore } from "@/components/context/MessageStoreContext";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
   const { getGroups, disconnect } = useWebSocket();
   const { store, refreshGroups } = useGlobalStore();
+  const { loadHistoricalMessages } = useMessageStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const insets = useSafeAreaInsets();
@@ -79,9 +81,13 @@ const AppLayout = () => {
   useEffect(() => {
     fetchGroups();
 
-    const intervalId = setInterval(fetchGroups, 5000);
+    const groupIntervalId = setInterval(fetchGroups, 5000);
+    const messagesIntervalId = setInterval(loadHistoricalMessages, 5000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(groupIntervalId);
+      clearInterval(messagesIntervalId);
+    };
   }, []);
 
   if (isLoading) {
