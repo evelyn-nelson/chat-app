@@ -1,22 +1,33 @@
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
   useWindowDimensions,
   Animated,
   Pressable,
-  InteractionManager,
+  LayoutAnimation,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
+import { Message } from "@/types/types";
 
 const SCROLL_THRESHOLD = 200;
+
+// Define a type for our bubble items
+type BubbleItem = {
+  id: number | null;
+  user: any; // Replace with your actual user type
+  text: string;
+  align: "left" | "right";
+};
 
 export default function ChatBox({ group_id }: { group_id: number }) {
   const { user } = useGlobalStore();
@@ -24,17 +35,19 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   const groupMessages = getMessagesForGroup(group_id);
   const { height: windowHeight } = useWindowDimensions();
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList<BubbleItem> | null>(null);
   const lastCountRef = useRef(groupMessages.length);
-  const scrollHandle = useRef<any>(null);
+  const scrollHandle = useRef<number | null>(null);
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const bubbles = useMemo(
+  // prepare bubbles
+  const bubbles = useMemo<BubbleItem[]>(
     () =>
-      groupMessages.map((m) => ({
+      [...groupMessages].reverse().map((m) => ({
         id: m.id,
         user: m.user,
         text: m.content,
@@ -43,66 +56,76 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     [groupMessages, user?.id]
   );
 
-  const messageAreaHeight = windowHeight - (Platform.OS === "web" ? 75 : 155);
-
+  // Simplified scroll to end
   const scrollToBottom = (animated = true) => {
     if (scrollHandle.current) {
-      if (typeof scrollHandle.current.cancel === "function") {
-        scrollHandle.current.cancel();
-      } else {
-        clearTimeout(scrollHandle.current);
-      }
+      clearTimeout(scrollHandle.current);
     }
-    scrollHandle.current = InteractionManager.runAfterInteractions(() => {
-      scrollViewRef.current?.scrollToEnd({ animated });
-      requestAnimationFrame(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: false });
-      });
-    });
+
+    scrollHandle.current = setTimeout(() => {
+      if (flatListRef.current && bubbles.length > 0) {
+        flatListRef.current.scrollToIndex({
+          index: 0,
+          animated,
+        });
+      }
+    }, 50);
   };
 
-  // on mount, hook up keyboard events
   useEffect(() => {
-    // initial
-    scrollToBottom(false);
-
-    let willShowSub: any, didShowSub: any, didHideSub: any;
-
+    // Configure iOS layout animations
     if (Platform.OS === "ios") {
-      // jump as soon as the keyboard **starts** to open
-      willShowSub = Keyboard.addListener("keyboardWillShow", () => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      });
-      // then lock in once it has fully opened
-      didShowSub = Keyboard.addListener("keyboardDidShow", () => {
-        scrollToBottom(true);
-      });
-    } else {
-      // on Android just do both on DidShow
-      didShowSub = Keyboard.addListener("keyboardDidShow", () => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-        scrollToBottom(true);
+      LayoutAnimation.configureNext({
+        duration: 300,
+        create: { type: "linear", property: "opacity" },
+        update: { type: "spring", springDamping: 0.7 },
+        delete: { type: "linear", property: "opacity" },
       });
     }
 
-    // always re-lock when it closes
-    didHideSub = Keyboard.addListener("keyboardDidHide", () => {
-      scrollToBottom(true);
-    });
+    // For iOS, use keyboardWillShow/Hide for smoother transitions
+    const keyboardShowListener =
+      Platform.OS === "ios"
+        ? Keyboard.addListener("keyboardWillShow", (event) => {
+            setKeyboardVisible(true);
+            if (isNearBottom) {
+              LayoutAnimation.configureNext({
+                duration: event.duration || 250,
+                update: { type: "keyboard" },
+              });
+            }
+          })
+        : Keyboard.addListener("keyboardDidShow", () => {
+            setKeyboardVisible(true);
+            if (isNearBottom) {
+              // For Android, scroll after a small delay to ensure layout is updated
+              setTimeout(() => scrollToBottom(true), 100);
+            }
+          });
+
+    const keyboardHideListener =
+      Platform.OS === "ios"
+        ? Keyboard.addListener("keyboardWillHide", () => {
+            setKeyboardVisible(false);
+            if (isNearBottom) {
+              LayoutAnimation.configureNext({
+                duration: 250,
+                update: { type: "keyboard" },
+              });
+            }
+          })
+        : Keyboard.addListener("keyboardDidHide", () => {
+            setKeyboardVisible(false);
+          });
 
     return () => {
-      willShowSub?.remove();
-      didShowSub.remove();
-      didHideSub.remove();
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
       if (scrollHandle.current) {
-        if (typeof scrollHandle.current.cancel === "function") {
-          scrollHandle.current.cancel();
-        } else {
-          clearTimeout(scrollHandle.current);
-        }
+        clearTimeout(scrollHandle.current);
       }
     };
-  }, []);
+  }, [isNearBottom]);
 
   useEffect(() => {
     if (groupMessages.length > lastCountRef.current) {
@@ -130,59 +153,77 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     }).start();
   };
 
-  const handleScroll = (e: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-    const close =
-      layoutMeasurement.height + contentOffset.y >=
-      contentSize.height - SCROLL_THRESHOLD;
-    setIsNearBottom(close);
-    if (close) {
-      setHasNew(false);
-      fadeAnim.setValue(0);
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offset = e.nativeEvent.contentOffset.y;
+    // With FlatList, we're inverted so a low offset means near bottom
+    const close = offset < SCROLL_THRESHOLD;
+
+    if (close !== isNearBottom) {
+      setIsNearBottom(close);
+      if (close) {
+        setHasNew(false);
+        fadeAnim.setValue(0);
+      }
     }
   };
 
+  // This renders each chat bubble
+  const renderItem = ({ item, index }: { item: BubbleItem; index: number }) => (
+    <ChatBubble
+      key={item.id ?? index}
+      prevUserId={index < bubbles.length - 1 ? bubbles[index + 1].user.id : 0} // Note: index is inverted
+      user={item.user}
+      message={item.text}
+      align={item.align}
+    />
+  );
+
+  const keyExtractor = (item: BubbleItem, index: number) =>
+    item.id?.toString() || `message-${index}`;
+
   return (
     <KeyboardAvoidingView
-      className="flex-1"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90}
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      <View
-        className="flex-1 w-full bg-gray-900 px-2 pt-2"
-        style={{ height: windowHeight }}
-      >
-        <View
-          className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden"
-          style={{ height: messageAreaHeight }}
-        >
-          <ScrollView
-            ref={scrollViewRef}
-            className="flex-1"
+      <View className="flex-1 w-full bg-gray-900 px-2 pt-2">
+        <View className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden">
+          <FlatList
+            ref={flatListRef}
+            data={bubbles}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            inverted={true} // This is key for chat apps - newest messages at the bottom
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             contentContainerStyle={{
               flexGrow: 1,
               justifyContent: "flex-end",
               padding: 10,
+              paddingBottom: keyboardVisible ? 20 : 10,
             }}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onLayout={() => scrollToBottom(false)}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              autoscrollToTopThreshold: 10,
+            }}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={21} // Affects performance and how many items are rendered
+            onLayout={() => {
+              if (isNearBottom && bubbles.length > 0) {
+                scrollToBottom(false);
+              }
+            }}
             onContentSizeChange={() => {
-              if (isNearBottom) scrollToBottom(false);
+              if (isNearBottom && bubbles.length > 0) {
+                scrollToBottom(false);
+              }
             }}
-          >
-            {bubbles.map((b, i) => (
-              <ChatBubble
-                key={b.id ?? i}
-                prevUserId={i > 0 ? bubbles[i - 1].user.id : 0}
-                user={b.user}
-                message={b.text}
-                align={b.align}
-              />
-            ))}
-          </ScrollView>
+          />
         </View>
 
         {hasNew && (
@@ -203,16 +244,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
           </Animated.View>
         )}
 
-        <View
-          className="h-[60px] absolute bottom-0 w-full pb-1 bg-gray-900"
-          style={{
-            shadowColor: "black",
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
-        >
+        <View className="h-[60px] absolute bottom-0 w-full pb-1 bg-gray-900">
           <MessageEntry group_id={group_id} />
         </View>
       </View>
