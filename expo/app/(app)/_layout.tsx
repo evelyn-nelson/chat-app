@@ -36,6 +36,7 @@ const AppLayout = () => {
           setUser(loggedInUser);
           if (loggedInUser) {
             await fetchGroups();
+            await loadHistoricalMessages();
           }
         }
       } catch (err) {

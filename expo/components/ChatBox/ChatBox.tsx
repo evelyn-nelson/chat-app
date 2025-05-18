@@ -8,92 +8,108 @@ import {
   useWindowDimensions,
   Animated,
   Pressable,
+  InteractionManager,
 } from "react-native";
-import ChatBubble from "./ChatBubble";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
-import { Message } from "@/types/types";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
 
-export type BubbleProps = {
-  message: Message;
-  align: string;
-};
-
 const SCROLL_THRESHOLD = 200;
-const isIOS = Platform.OS === "ios";
 
-const ChatBox = (props: { group_id: number }) => {
-  const { group_id } = props;
+export default function ChatBox({ group_id }: { group_id: number }) {
   const { user } = useGlobalStore();
-  const { getMessagesForGroup, loading } = useMessageStore();
+  const { getMessagesForGroup } = useMessageStore();
+  const groupMessages = getMessagesForGroup(group_id);
   const { height: windowHeight } = useWindowDimensions();
 
-  const groupMessages = getMessagesForGroup(group_id);
-  const lastMessageRef = useRef(groupMessages.length);
   const scrollViewRef = useRef<ScrollView>(null);
+  const lastCountRef = useRef(groupMessages.length);
+  const scrollHandle = useRef<any>(null);
+
   const [isNearBottom, setIsNearBottom] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
-  const [hideMessages, setHideMessages] = useState(true);
+  const [hasNew, setHasNew] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scrollTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const bubbles = useMemo(
     () =>
-      groupMessages.map((message) => ({
-        message,
-        align: message.user.id === user?.id ? "right" : "left",
+      groupMessages.map((m) => ({
+        id: m.id,
+        user: m.user,
+        text: m.content,
+        align: m.user.id === user?.id ? "right" : "left",
       })),
     [groupMessages, user?.id]
   );
 
-  const scrollToBottom = (animated = true) => {
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
+  const messageAreaHeight = windowHeight - (Platform.OS === "web" ? 75 : 155);
 
-    scrollTimeout.current = setTimeout(() => {
+  const scrollToBottom = (animated = true) => {
+    if (scrollHandle.current) {
+      if (typeof scrollHandle.current.cancel === "function") {
+        scrollHandle.current.cancel();
+      } else {
+        clearTimeout(scrollHandle.current);
+      }
+    }
+    scrollHandle.current = InteractionManager.runAfterInteractions(() => {
       scrollViewRef.current?.scrollToEnd({ animated });
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         scrollViewRef.current?.scrollToEnd({ animated: false });
-      }, 100);
-    }, 0);
+      });
+    });
   };
 
+  // on mount, hook up keyboard events
   useEffect(() => {
+    // initial
     scrollToBottom(false);
-    setHideMessages(false);
 
-    const keyboardWillShow = Keyboard.addListener(
-      isIOS ? "keyboardWillShow" : "keyboardDidShow",
-      (event) => {
-        scrollToBottom(true);
-      }
-    );
+    let willShowSub: any, didShowSub: any, didHideSub: any;
 
-    const keyboardWillHide = Keyboard.addListener(
-      isIOS ? "keyboardWillHide" : "keyboardDidHide",
-      () => {
+    if (Platform.OS === "ios") {
+      // jump as soon as the keyboard **starts** to open
+      willShowSub = Keyboard.addListener("keyboardWillShow", () => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      });
+      // then lock in once it has fully opened
+      didShowSub = Keyboard.addListener("keyboardDidShow", () => {
         scrollToBottom(true);
-      }
-    );
+      });
+    } else {
+      // on Android just do both on DidShow
+      didShowSub = Keyboard.addListener("keyboardDidShow", () => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+        scrollToBottom(true);
+      });
+    }
+
+    // always re-lock when it closes
+    didHideSub = Keyboard.addListener("keyboardDidHide", () => {
+      scrollToBottom(true);
+    });
 
     return () => {
-      keyboardWillShow.remove();
-      keyboardWillHide.remove();
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
+      willShowSub?.remove();
+      didShowSub.remove();
+      didHideSub.remove();
+      if (scrollHandle.current) {
+        if (typeof scrollHandle.current.cancel === "function") {
+          scrollHandle.current.cancel();
+        } else {
+          clearTimeout(scrollHandle.current);
+        }
       }
     };
   }, []);
 
   useEffect(() => {
-    if (groupMessages.length > lastMessageRef.current) {
+    if (groupMessages.length > lastCountRef.current) {
       if (isNearBottom) {
         scrollToBottom(true);
       } else {
-        setHasNewMessages(true);
+        setHasNew(true);
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 100,
@@ -101,11 +117,11 @@ const ChatBox = (props: { group_id: number }) => {
         }).start();
       }
     }
-    lastMessageRef.current = groupMessages.length;
+    lastCountRef.current = groupMessages.length;
   }, [groupMessages.length, isNearBottom]);
 
-  const handleNewMessagePress = () => {
-    setHasNewMessages(false);
+  const handleNewPress = () => {
+    setHasNew(false);
     scrollToBottom(true);
     Animated.timing(fadeAnim, {
       toValue: 0,
@@ -114,26 +130,22 @@ const ChatBox = (props: { group_id: number }) => {
     }).start();
   };
 
-  const handleScroll = (event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const paddingToBottom = 20;
-    const isCloseToBottom =
+  const handleScroll = (e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const close =
       layoutMeasurement.height + contentOffset.y >=
-      contentSize.height - paddingToBottom - SCROLL_THRESHOLD;
-
-    setIsNearBottom(isCloseToBottom);
-    if (isCloseToBottom) {
-      setHasNewMessages(false);
+      contentSize.height - SCROLL_THRESHOLD;
+    setIsNearBottom(close);
+    if (close) {
+      setHasNew(false);
       fadeAnim.setValue(0);
     }
   };
 
-  const messageAreaHeight = windowHeight - (Platform.OS === "web" ? 75 : 155);
-
   return (
     <KeyboardAvoidingView
       className="flex-1"
-      behavior={isIOS ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
       <View
@@ -141,50 +153,39 @@ const ChatBox = (props: { group_id: number }) => {
         style={{ height: windowHeight }}
       >
         <View
-          className="flex-1 mb-[60px] pb-1 bg-gray-900 rounded-t-xl overflow-hidden"
-          style={{
-            height: messageAreaHeight,
-          }}
+          className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden"
+          style={{ height: messageAreaHeight }}
         >
           <ScrollView
+            ref={scrollViewRef}
             className="flex-1"
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{
               flexGrow: 1,
               justifyContent: "flex-end",
               padding: 10,
             }}
-            ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
+            onLayout={() => scrollToBottom(false)}
             onContentSizeChange={() => {
-              if (isNearBottom) {
-                scrollToBottom(false);
-              }
-            }}
-            onLayout={() => {
-              scrollToBottom(false);
+              if (isNearBottom) scrollToBottom(false);
             }}
           >
-            {bubbles.map((bubble, index) => (
-              <View
-                key={`${bubble.message.id || index}`}
-                style={hideMessages ? { display: "none" } : {}}
-              >
-                <ChatBubble
-                  prevUserId={
-                    index != 0 ? bubbles[index - 1].message.user.id : 0
-                  }
-                  user={bubble.message.user}
-                  message={bubble.message.content}
-                  align={bubble.align}
-                />
-              </View>
+            {bubbles.map((b, i) => (
+              <ChatBubble
+                key={b.id ?? i}
+                prevUserId={i > 0 ? bubbles[i - 1].user.id : 0}
+                user={b.user}
+                message={b.text}
+                align={b.align}
+              />
             ))}
           </ScrollView>
         </View>
-        {hasNewMessages && (
+
+        {hasNew && (
           <Animated.View
             className="absolute bottom-20 self-center bg-blue-600 px-5 py-2.5 rounded-full"
             style={{
@@ -196,11 +197,12 @@ const ChatBox = (props: { group_id: number }) => {
               elevation: 5,
             }}
           >
-            <Pressable onPress={handleNewMessagePress}>
+            <Pressable onPress={handleNewPress}>
               <Text className="text-white font-semibold">New messages ↓</Text>
             </Pressable>
           </Animated.View>
         )}
+
         <View
           className="h-[60px] absolute bottom-0 w-full pb-1 bg-gray-900"
           style={{
@@ -216,6 +218,4 @@ const ChatBox = (props: { group_id: number }) => {
       </View>
     </KeyboardAvoidingView>
   );
-};
-
-export default ChatBox;
+}
