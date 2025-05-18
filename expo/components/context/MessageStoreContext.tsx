@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
 } from "react";
 import { useWebSocket } from "./WebSocketContext";
 import http from "@/util/custom-axios";
@@ -92,34 +93,53 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const { onMessage, removeMessageHandler } = useWebSocket();
   const { store } = useGlobalStore();
 
+  const isSyncingHistoricalMessagesRef = useRef(false);
+
   const loadHistoricalMessages = useCallback(async () => {
+    if (isSyncingHistoricalMessagesRef.current) {
+      console.log(
+        "loadHistoricalMessages: Sync already in progress. Skipping."
+      );
+      return;
+    }
+
+    isSyncingHistoricalMessagesRef.current = true;
     dispatch({ type: "SET_LOADING", payload: true });
+
     try {
       const response = await http.get(
         `${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
       );
-      await store.clearMessages();
-      await store.saveMessages(response.data);
+
+      await store.saveMessages(response.data, true);
+
       dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: response.data });
       dispatch({ type: "SET_ERROR", payload: null });
     } catch (error) {
+      console.error("loadHistoricalMessages: Error during sync:", error);
       if (!(error instanceof CanceledError)) {
         try {
           const messages = await store.loadMessages();
           dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: messages });
+          dispatch({
+            type: "SET_ERROR",
+            payload: "Failed to sync messages, showing local data.",
+          });
         } catch (storeError) {
-          console.error("Failed to load historical messages:", storeError);
+          console.error(
+            "loadHistoricalMessages: Failed to load messages from store after sync error:",
+            storeError
+          );
           dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
         }
+      } else {
+        console.log("loadHistoricalMessages: Sync operation was canceled.");
       }
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
+      isSyncingHistoricalMessagesRef.current = false;
     }
-  }, []);
-
-  useEffect(() => {
-    loadHistoricalMessages();
-  }, []);
+  }, [dispatch, store, http]);
 
   useEffect(() => {
     const handleMessage = async (message: Message) => {
