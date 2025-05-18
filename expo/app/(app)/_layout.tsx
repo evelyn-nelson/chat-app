@@ -25,7 +25,6 @@ const AppLayout = () => {
 
   useEffect(() => {
     let isMounted = true;
-    console.log("yay");
 
     const initialize = async () => {
       try {

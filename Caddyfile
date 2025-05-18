@@ -1,0 +1,14 @@
+# Caddyfile
+
+# Caddy listens on port 8080 (internally) for any hostname
+
+:8080 { # <--- Listen on port 8080 for any hostname
+
+    log {
+        output stdout
+        format console
+    }
+
+    reverse_proxy http://go-server:8080
+
+}
