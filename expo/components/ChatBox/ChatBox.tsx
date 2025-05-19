@@ -18,7 +18,7 @@ import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
-import { MessageUser } from "@/types/types"; // Assuming Message type is also here or not needed directly
+import { MessageUser } from "@/types/types";
 
 const SCROLL_THRESHOLD = 200;
 
@@ -29,7 +29,6 @@ type BubbleItem = {
   align: "left" | "right";
 };
 
-// A more generic KeyboardEvent type if not importing a specific one
 interface RNKeyboardEvent {
   endCoordinates: {
     screenX: number;
@@ -53,7 +52,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false); // Track keyboard state
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const bubbles = useMemo<BubbleItem[]>(
@@ -84,7 +83,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
           }
         },
         Platform.OS === "ios" ? 70 : 100
-      ); // Slightly longer delay
+      );
     },
     [bubbles.length]
   );
@@ -100,12 +99,10 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       (event) => {
         setIsKeyboardVisible(true);
         if (isNearBottom) {
-          // Use event.duration on iOS for smoother timing with KAV
-          const rnEvent = event as RNKeyboardEvent; // Cast for type safety
+          const rnEvent = event as RNKeyboardEvent;
           const delay =
             Platform.OS === "ios" && rnEvent.duration ? rnEvent.duration : 150; // Android or fallback
 
-          // Schedule scroll to occur after KAV has likely finished its animation/adjustment
           setTimeout(() => {
             scrollToBottom(true);
           }, delay);
@@ -117,10 +114,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       keyboardHideListenerEvent,
       () => {
         setIsKeyboardVisible(false);
-        // Optional: if near bottom, ensure it's still scrolled correctly after keyboard hides
-        // if (isNearBottom && bubbles.length > 0) {
-        //   setTimeout(() => scrollToBottom(true), 50);
-        // }
       }
     );
 
@@ -131,14 +124,11 @@ export default function ChatBox({ group_id }: { group_id: number }) {
         clearTimeout(scrollHandle.current);
       }
     };
-  }, [isNearBottom, scrollToBottom, bubbles.length]); // Added bubbles.length
+  }, [isNearBottom, scrollToBottom, bubbles.length]);
 
   useEffect(() => {
     if (groupMessages.length > lastCountRef.current) {
       if (isNearBottom) {
-        // When a new message arrives and we're at the bottom, scroll.
-        // The keyboard listener will also handle scrolling if keyboard is open.
-        // This ensures scroll even if keyboard isn't involved.
         scrollToBottom(true);
       } else {
         setHasNew(true);
@@ -153,13 +143,13 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   }, [groupMessages.length, isNearBottom, scrollToBottom, fadeAnim]);
 
   const handleNewPress = () => {
-    setHasNew(false); // Set immediately to allow UI to update if needed
+    setHasNew(false);
     scrollToBottom(true);
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 200,
       useNativeDriver: true,
-    }).start(); // No need to setHasNew(false) in callback if already set
+    }).start();
   };
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -207,30 +197,21 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             onScroll={handleScroll}
             scrollEventThrottle={16}
             contentContainerStyle={{
-              flexGrow: 1, // Important for short content to be at the bottom
-              justifyContent: "flex-end", // Works with inverted to push to visual bottom
+              flexGrow: 1,
+              justifyContent: "flex-end",
               paddingHorizontal: 10,
-              paddingVertical: 10, // Static padding
+              paddingVertical: 10,
             }}
-            // STEP 2: Temporarily comment out maintainVisibleContentPosition
-            // maintainVisibleContentPosition={{
-            //   minIndexForVisible: 0,
-            //   autoscrollToTopThreshold: 10, // Pixels from "top" (visual bottom for inverted)
-            // }}
             showsVerticalScrollIndicator={false}
-            initialNumToRender={15} // Or a number appropriate for your average screen
+            initialNumToRender={25}
             maxToRenderPerBatch={10}
             windowSize={21}
             onLayout={() => {
-              // Scroll on initial layout only if keyboard is not visible
-              // and we are already determined to be "near bottom" (which is true initially)
               if (isNearBottom && bubbles.length > 0 && !isKeyboardVisible) {
-                scrollToBottom(false); // Non-animated for initial setup
+                scrollToBottom(false);
               }
             }}
             onContentSizeChange={() => {
-              // Scroll on content size changes (e.g., initial messages load)
-              // only if keyboard is not visible.
               if (isNearBottom && bubbles.length > 0 && !isKeyboardVisible) {
                 scrollToBottom(false);
               }
