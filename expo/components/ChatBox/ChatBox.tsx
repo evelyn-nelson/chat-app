@@ -17,14 +17,14 @@ import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
-import { Message } from "@/types/types";
+import { Message, MessageUser } from "@/types/types";
 
 const SCROLL_THRESHOLD = 200;
 
 // Define a type for our bubble items
 type BubbleItem = {
   id: number | null;
-  user: any; // Replace with your actual user type
+  user: MessageUser;
   text: string;
   align: "left" | "right";
 };
@@ -155,7 +155,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offset = e.nativeEvent.contentOffset.y;
-    // With FlatList, we're inverted so a low offset means near bottom
     const close = offset < SCROLL_THRESHOLD;
 
     if (close !== isNearBottom) {
@@ -194,7 +193,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             data={bubbles}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
-            inverted={true} // This is key for chat apps - newest messages at the bottom
+            inverted
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
             onScroll={handleScroll}
@@ -212,7 +211,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             showsVerticalScrollIndicator={false}
             initialNumToRender={15}
             maxToRenderPerBatch={10}
-            windowSize={21} // Affects performance and how many items are rendered
+            windowSize={21}
             onLayout={() => {
               if (isNearBottom && bubbles.length > 0) {
                 scrollToBottom(false);
