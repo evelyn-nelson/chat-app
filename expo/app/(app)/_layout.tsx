@@ -40,7 +40,7 @@ const AppLayout = () => {
           }
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error loading data: ", err);
       } finally {
         if (isMounted) {
           setIsLoading(false);
