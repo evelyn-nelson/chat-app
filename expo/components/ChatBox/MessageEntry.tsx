@@ -1,24 +1,11 @@
-import {
-  Pressable,
-  View,
-  TextInput,
-  Platform,
-  NativeSyntheticEvent,
-  TextInputKeyPressEventData,
-} from "react-native";
-import { useState } from "react";
-
+import React, { useState } from "react";
+import { Pressable, View, TextInput } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { RawMessage } from "@/types/types";
-import Ionicons from "@expo/vector-icons/Ionicons";
 
-interface WebTextInputKeyPressEventData extends TextInputKeyPressEventData {
-  shiftKey?: boolean;
-}
-
-const MessageEntry = (props: { group_id: number }) => {
-  const { group_id } = props;
+const MessageEntry = ({ group_id }: { group_id: number }) => {
   const { user } = useGlobalStore();
   const { sendMessage, connected } = useWebSocket();
 
@@ -29,67 +16,43 @@ const MessageEntry = (props: { group_id: number }) => {
   });
 
   const handleSubmit = () => {
-    const trimmedContent = message.content.trim();
-    if (!trimmedContent || !user) {
-      if (!trimmedContent && user) {
+    const trimmed = message.content.trim();
+    if (!trimmed || !user) {
+      if (!trimmed && user) {
         setMessage({ sender_id: user.id, content: "", group_id });
       }
       return;
     }
     if (connected) {
       try {
-        sendMessage(JSON.stringify({ ...message, content: trimmedContent }));
+        sendMessage(JSON.stringify({ ...message, content: trimmed }));
       } catch (err) {
         console.error("Error sending message:", err);
       }
     }
-
     setMessage({ sender_id: user.id, content: "", group_id });
-  };
-
-  const handleKeyPress = (
-    e: NativeSyntheticEvent<TextInputKeyPressEventData>
-  ) => {
-    if (Platform.OS === "web") {
-      const webEvent = e.nativeEvent as WebTextInputKeyPressEventData;
-      if (webEvent.key === "Enter" && !webEvent.shiftKey) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    }
   };
 
   return (
     <View className="flex-row items-center px-3 py-2">
       <View className="flex-1 flex-row items-center bg-gray-800 rounded-full border border-gray-700 px-4">
         <TextInput
-          autoCorrect={true}
-          spellCheck={true}
+          autoCorrect
+          spellCheck
           keyboardType="default"
-          className={`
-            flex-1 text-base text-gray-200 px-0
-            min-h-[40px] py-2
-            ${Platform.OS === "android" ? "py-2" : "py-2.5"}
-            ${Platform.OS === "web" ? "outline-0" : ""}
-          `}
+          className="flex-1 text-base text-gray-200 px-0 py-2 outline-0"
           style={{ height: 40 }}
+          value={message.content}
           onChangeText={(text) => {
             if (user) {
-              setMessage({
-                sender_id: user.id,
-                content: text,
-                group_id: group_id,
-              });
+              setMessage({ sender_id: user.id, content: text, group_id });
             }
           }}
-          value={message.content}
           placeholder="Type a message..."
           placeholderTextColor="#9CA3AF"
-          multiline
           blurOnSubmit={false}
-          returnKeyType={Platform.OS === "ios" ? "send" : "default"}
-          onSubmitEditing={Platform.OS !== "web" ? handleSubmit : undefined}
-          onKeyPress={handleKeyPress}
+          returnKeyType="send"
+          onSubmitEditing={handleSubmit}
         />
         <Pressable
           onPress={handleSubmit}
