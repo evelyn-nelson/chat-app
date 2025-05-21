@@ -5,13 +5,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  // useWindowDimensions, // Not currently used
   Animated,
   Pressable,
-  // LayoutAnimation, // Keep for potential item animations, but not for keyboard
   NativeSyntheticEvent,
   NativeScrollEvent,
-  KeyboardEvent, // Import this if you have it defined, or use any
 } from "react-native";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import ChatBubble from "./ChatBubble";
@@ -71,7 +68,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       if (scrollHandle.current) {
         clearTimeout(scrollHandle.current);
       }
-      // Increased delay slightly to give more time for layout to settle
       scrollHandle.current = setTimeout(
         () => {
           if (flatListRef.current && bubbles.length > 0) {
@@ -87,44 +83,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     },
     [bubbles.length]
   );
-
-  useEffect(() => {
-    const keyboardShowListenerEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const keyboardHideListenerEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const keyboardShowListener = Keyboard.addListener(
-      keyboardShowListenerEvent,
-      (event) => {
-        setIsKeyboardVisible(true);
-        if (isNearBottom) {
-          const rnEvent = event as RNKeyboardEvent;
-          const delay =
-            Platform.OS === "ios" && rnEvent.duration ? rnEvent.duration : 150; // Android or fallback
-
-          setTimeout(() => {
-            scrollToBottom(true);
-          }, delay);
-        }
-      }
-    );
-
-    const keyboardHideListener = Keyboard.addListener(
-      keyboardHideListenerEvent,
-      () => {
-        setIsKeyboardVisible(false);
-      }
-    );
-
-    return () => {
-      keyboardShowListener.remove();
-      keyboardHideListener.remove();
-      if (scrollHandle.current) {
-        clearTimeout(scrollHandle.current);
-      }
-    };
-  }, [isNearBottom, scrollToBottom, bubbles.length]);
 
   useEffect(() => {
     if (groupMessages.length > lastCountRef.current) {
@@ -165,16 +123,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     }
   };
 
-  const renderItem = ({ item, index }: { item: BubbleItem; index: number }) => (
-    <ChatBubble
-      key={item.id ?? `bubble-${index}`}
-      prevUserId={index < bubbles.length - 1 ? bubbles[index + 1].user.id : 0}
-      user={item.user}
-      message={item.text}
-      align={item.align}
-    />
-  );
-
   const keyExtractor = (item: BubbleItem, index: number) =>
     item.id?.toString() || `message-${index}`;
 
@@ -182,14 +130,30 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0} // CRITICAL: Ensure this is correct for your app
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <View className="flex-1 w-full bg-gray-900 px-2 pt-2">
         <View className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden">
           <FlatList
             ref={flatListRef}
             data={bubbles}
-            renderItem={renderItem}
+            renderItem={({
+              item,
+              index,
+            }: {
+              item: BubbleItem;
+              index: number;
+            }) => (
+              <ChatBubble
+                key={item.id ?? `bubble-${index}`}
+                prevUserId={
+                  index < bubbles.length - 1 ? bubbles[index + 1].user.id : 0
+                }
+                user={item.user}
+                message={item.text}
+                align={item.align}
+              />
+            )}
             keyExtractor={keyExtractor}
             inverted
             keyboardDismissMode="interactive"
@@ -237,7 +201,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
           </Animated.View>
         )}
 
-        <View className="h-[60px] absolute bottom-0 left-0 right-0 bg-gray-900 px-2 pb-1">
+        <View className="h-[60px] absolute bottom-0 left-0 right-0 bg-gray-900 px-2 pb-1 my-2">
           <MessageEntry group_id={group_id} />
         </View>
       </View>
