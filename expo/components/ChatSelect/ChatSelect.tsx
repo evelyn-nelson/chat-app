@@ -63,7 +63,7 @@ export const ChatSelect = () => {
         <View className="items-center justify-center">
           <Button
             onPress={() => {
-              router.push("/groups/ChatCreateModalLayout");
+              router.push("/groups/chat-create");
             }}
             text="Create New Group"
             size="base"

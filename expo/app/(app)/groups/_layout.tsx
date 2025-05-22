@@ -128,7 +128,7 @@ export default function GroupLayout() {
         }}
       />
       <Stack.Screen
-        name="ChatCreateModalLayout"
+        name="chat-create"
         options={{
           presentation: "modal",
           headerShown: false,

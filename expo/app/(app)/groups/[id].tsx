@@ -18,7 +18,7 @@ const GroupPage = () => {
   }, [groupsRefreshKey]);
 
   if (!user) {
-    return <Redirect href={"/signin"} />;
+    return <Redirect href={"/(auth)"} />;
   }
 
   return (

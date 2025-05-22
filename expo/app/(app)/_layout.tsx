@@ -100,7 +100,7 @@ const AppLayout = () => {
   }
 
   if (!isLoading && !user) {
-    return <Redirect href={"/signin"} />;
+    return <Redirect href={"/(auth)"} />;
   }
 
   const bottomPadding =

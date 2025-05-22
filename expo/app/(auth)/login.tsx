@@ -1,15 +1,15 @@
-// app/groups/chat-create-modal.tsx
 import React from "react";
 import { ChatCreateMenu } from "@/components/ChatSelect/ChatCreate/ChatCreateMenu";
 import { router } from "expo-router";
 import ExpoRouterModal from "@/components/Global/Modal/ExpoRouterModal";
+import LoginForm from "@/components/AuthMenu/LoginForm";
 
-const ChatCreateModalLayout = () => {
+const Login = () => {
   return (
-    <ExpoRouterModal title="Create Group">
-      <ChatCreateMenu onSubmit={() => router.back()} isModal={true} />
+    <ExpoRouterModal title="Welcome Back">
+      <LoginForm />
     </ExpoRouterModal>
   );
 };
 
-export default ChatCreateModalLayout;
+export default Login;

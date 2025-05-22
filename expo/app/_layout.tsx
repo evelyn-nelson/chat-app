@@ -15,7 +15,7 @@ export default function RootLayout() {
           <MessageStoreProvider>
             <AuthUtilsProvider>
               <Stack>
-                <Stack.Screen name="signin" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
               </Stack>
             </AuthUtilsProvider>
