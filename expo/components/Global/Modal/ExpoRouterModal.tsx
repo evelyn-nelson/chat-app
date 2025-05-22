@@ -36,11 +36,9 @@ const ExpoRouterModal = ({
     router.back();
   };
 
-  // Calculate modal height
   const availableHeight = windowHeight - insets.top - 20;
   const modalMaxHeight = Math.min(availableHeight, windowHeight * 0.9);
 
-  // Fixed keyboard offset
   const keyboardOffset = 130;
 
   return (
@@ -53,41 +51,45 @@ const ExpoRouterModal = ({
         >
           <View
             style={{
-              paddingTop: 10, // Just the safe area inset
+              paddingTop: 10,
               paddingHorizontal: 16,
               flex: 1,
             }}
           >
-            <View
-              className="w-full max-w-[500px] bg-gray-800 rounded-xl overflow-hidden border border-blue-600/30 mx-auto"
-              style={{
-                maxHeight: modalMaxHeight,
-              }}
-            >
-              {/* Header */}
-              <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-700">
-                <Text className="text-lg font-bold text-blue-400">{title}</Text>
-                <Pressable
-                  className="w-[30px] h-[30px] rounded-full bg-gray-700 items-center justify-center"
-                  onPress={dismissKeyboardAndClose}
-                >
-                  <Text className="text-center text-white text-base">×</Text>
-                </Pressable>
-              </View>
-
-              {/* Content */}
-              <ScrollView
-                ref={scrollViewRef}
-                className="px-4 py-4"
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={true}
-                nestedScrollEnabled={true}
-                contentContainerStyle={{ paddingBottom: 16 }}
-                keyboardDismissMode="interactive"
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View
+                className="w-full max-w-[500px] bg-gray-800 rounded-xl overflow-hidden border border-blue-600/30 mx-auto"
+                style={{
+                  maxHeight: modalMaxHeight,
+                }}
               >
-                {children}
-              </ScrollView>
-            </View>
+                {/* Header */}
+                <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-700">
+                  <Text className="text-lg font-bold text-blue-400">
+                    {title}
+                  </Text>
+                  <Pressable
+                    className="w-[30px] h-[30px] rounded-full bg-gray-700 items-center justify-center"
+                    onPress={dismissKeyboardAndClose}
+                  >
+                    <Text className="text-center text-white text-base">×</Text>
+                  </Pressable>
+                </View>
+
+                {/* Content */}
+                <ScrollView
+                  ref={scrollViewRef}
+                  className="px-4 py-4"
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  contentContainerStyle={{ paddingBottom: 16 }}
+                  keyboardDismissMode="interactive"
+                >
+                  {children}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
         </KeyboardAvoidingView>
       </View>
