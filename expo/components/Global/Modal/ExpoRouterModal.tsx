@@ -1,4 +1,3 @@
-// components/Global/Modal/ExpoRouterModal.tsx
 import React, { useRef } from "react";
 import {
   View,
@@ -38,9 +37,11 @@ const ExpoRouterModal = ({
   };
 
   // Calculate modal height
-  const topPadding = Math.max(insets.top, 20);
-  const availableHeight = windowHeight - topPadding - 40;
-  const modalMaxHeight = Math.min(availableHeight, windowHeight * 0.8);
+  const availableHeight = windowHeight - insets.top - 20;
+  const modalMaxHeight = Math.min(availableHeight, windowHeight * 0.9);
+
+  // Fixed keyboard offset
+  const keyboardOffset = 130;
 
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboardAndClose}>
@@ -48,9 +49,15 @@ const ExpoRouterModal = ({
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 110 : 30}
+          keyboardVerticalOffset={keyboardOffset}
         >
-          <View className="flex-1 justify-center px-4">
+          <View
+            style={{
+              paddingTop: 10, // Just the safe area inset
+              paddingHorizontal: 16,
+              flex: 1,
+            }}
+          >
             <View
               className="w-full max-w-[500px] bg-gray-800 rounded-xl overflow-hidden border border-blue-600/30 mx-auto"
               style={{
