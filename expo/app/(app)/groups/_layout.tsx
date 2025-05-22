@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { Pressable, View, Text, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Group } from "@/types/types";
-import ChatSettingsModal from "@/components/ChatSettings/ChatSettingsModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type GroupParams = {
@@ -86,7 +85,26 @@ export default function GroupLayout() {
             ),
             headerRight: () => {
               if (group) {
-                return <ChatSettingsModal group={group} />;
+                return (
+                  <View className="justify-center items-center">
+                    <Pressable
+                      className="h-[40] w-[40] flex items-center justify-center"
+                      onPress={() =>
+                        router.push(
+                          `/groups/chat-settings/${group.id.toString()}`
+                        )
+                      }
+                    >
+                      {({ pressed }) => (
+                        <Ionicons
+                          name={"ellipsis-horizontal-outline"}
+                          size={20}
+                          color={pressed ? "gray" : "white"}
+                        />
+                      )}
+                    </Pressable>
+                  </View>
+                );
               }
               return null;
             },
@@ -129,6 +147,15 @@ export default function GroupLayout() {
       />
       <Stack.Screen
         name="chat-create"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
+        name="chat-settings/[id]"
         options={{
           presentation: "modal",
           headerShown: false,

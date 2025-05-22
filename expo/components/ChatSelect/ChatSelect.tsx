@@ -11,7 +11,6 @@ import { ChatSelectBox } from "./ChatSelectBox";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { Group } from "@/types/types";
 import { useState, useEffect, useCallback } from "react";
-import ChatCreateModal from "./ChatCreate/ChatCreateModal";
 import { useWebSocket } from "../context/WebSocketContext";
 import { Link, router } from "expo-router";
 import Button from "../Global/Button/Button";

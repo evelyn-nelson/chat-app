@@ -1,9 +1,5 @@
-import { Pressable, Text, View, ImageBackground } from "react-native";
-import React, { useState } from "react";
-import LoginForm from "./LoginForm";
-import SignupForm from "./SignupForm";
+import { Text, View, ImageBackground } from "react-native";
 import Button from "../Global/Button/Button";
-import ChatAppModal from "../Global/Modal/ChatAppModal";
 import { router } from "expo-router";
 
 const AuthMenu = () => {
