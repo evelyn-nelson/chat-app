@@ -26,18 +26,6 @@ type BubbleItem = {
   align: "left" | "right";
 };
 
-interface RNKeyboardEvent {
-  endCoordinates: {
-    screenX: number;
-    screenY: number;
-    width: number;
-    height: number;
-  };
-  duration?: number;
-  easing?: string;
-  isEventFromThisApp?: boolean;
-}
-
 export default function ChatBox({ group_id }: { group_id: number }) {
   const { user } = useGlobalStore();
   const { getMessagesForGroup } = useMessageStore();
@@ -49,7 +37,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const bubbles = useMemo<BubbleItem[]>(
@@ -145,7 +132,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
               index: number;
             }) => (
               <ChatBubble
-                key={item.id ?? `bubble-${index}`}
                 prevUserId={
                   index < bubbles.length - 1 ? bubbles[index + 1].user.id : 0
                 }
@@ -171,12 +157,12 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             maxToRenderPerBatch={10}
             windowSize={21}
             onLayout={() => {
-              if (isNearBottom && bubbles.length > 0 && !isKeyboardVisible) {
+              if (isNearBottom && bubbles.length > 0) {
                 scrollToBottom(false);
               }
             }}
             onContentSizeChange={() => {
-              if (isNearBottom && bubbles.length > 0 && !isKeyboardVisible) {
+              if (isNearBottom && bubbles.length > 0) {
                 scrollToBottom(false);
               }
             }}
