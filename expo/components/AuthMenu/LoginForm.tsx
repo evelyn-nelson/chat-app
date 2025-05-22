@@ -20,7 +20,7 @@ export default function LoginForm({ onSubmit }: { onSubmit: () => void }) {
         onSubmit();
       } catch (err) {
         setError("Login failed. Please check your credentials and try again.");
-        console.error(err);
+        console.error("Error logging in: ", err);
       } finally {
         setIsLoading(false);
       }

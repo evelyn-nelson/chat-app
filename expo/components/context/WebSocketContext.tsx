@@ -15,6 +15,7 @@ import React, {
 } from "react";
 import http from "../../util/custom-axios";
 import { get } from "@/util/custom-store";
+import { CanceledError } from "axios";
 
 interface WebSocketContextType {
   sendMessage: (msg: string) => void;
@@ -394,7 +395,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         return data;
       })
       .catch((error) => {
-        console.error(error);
+        if (!(error instanceof CanceledError)) {
+          console.error("Error loading groups:", error);
+        }
         return [];
       });
     return groups;

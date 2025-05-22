@@ -1,51 +1,66 @@
-import { MessageUser } from "@/types/types";
-import { Text, View } from "react-native";
+import React from "react";
+import { View, Text } from "react-native";
+import type { MessageUser } from "@/types/types";
 
-const ChatBubble = (props: {
+export interface ChatBubbleProps {
   prevUserId: number;
   user: MessageUser;
   message: string;
-  align: string;
-}) => {
-  const { align, user, prevUserId, message } = props;
-  const isOwnMessage = align === "right";
+  align: "left" | "right";
+}
 
-  return (
-    <View
-      className={`py-1 ${
-        isOwnMessage ? "ml-auto mr-2 items-end" : "ml-2 items-start"
-      }`}
-    >
-      {prevUserId != user.id && (
-        <Text
-          className={`text-xs mb-1 ${
-            isOwnMessage
-              ? "text-blue-400 text-right mr-2"
-              : "text-gray-400 ml-2"
-          }`}
-        >
-          {user.username}
-        </Text>
-      )}
+const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
+  ({ prevUserId, user, message, align }) => {
+    const isOwn = align === "right";
+
+    return (
       <View
-        className={`rounded-2xl px-3 py-2 max-w-[80%] ${
-          isOwnMessage
-            ? "bg-blue-600 rounded-tr-none"
-            : "bg-gray-700 rounded-tl-none"
-        }`}
-        style={{ alignSelf: isOwnMessage ? "flex-end" : "flex-start" }}
+        className={`
+          mb-2
+          flex-col
+          ${isOwn ? "items-end pr-4" : "items-start pl-4"}
+        `}
       >
-        <Text
-          selectable={true}
-          className={`text-base ${
-            isOwnMessage ? "text-white" : "text-gray-200"
-          }`}
+        {prevUserId !== user.id && (
+          <Text
+            className={`
+              text-xs
+              mb-1
+              ${isOwn ? "text-blue-200 text-right" : "text-gray-400 text-left"}
+            `}
+          >
+            {user.username}
+          </Text>
+        )}
+
+        <View
+          className={`
+            px-4
+            py-2
+            rounded-2xl
+            w-fit
+            max-w-[80%]
+            web:max-w-[60vw]
+            md:web:max-w-[50vw]
+            flex-shrink-0
+            break-words
+            ${
+              isOwn
+                ? "bg-blue-600 self-end rounded-tr-none"
+                : "bg-gray-700 self-start rounded-tl-none"
+            }
+          `}
         >
-          {message}
-        </Text>
+          <Text
+            selectable
+            className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
+          >
+            {message}
+          </Text>
+        </View>
       </View>
-    </View>
-  );
-};
+    );
+  }
+);
 
 export default ChatBubble;

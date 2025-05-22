@@ -14,7 +14,7 @@ const GroupPage = () => {
     store
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
-      .catch((error) => console.error(error));
+      .catch((error) => console.error("Error loading groups: ", error));
   }, [groupsRefreshKey]);
 
   if (!user) {

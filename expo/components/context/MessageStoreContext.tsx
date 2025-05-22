@@ -116,7 +116,6 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
       dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: response.data });
       dispatch({ type: "SET_ERROR", payload: null });
     } catch (error) {
-      console.error("loadHistoricalMessages: Error during sync:", error);
       if (!(error instanceof CanceledError)) {
         try {
           const messages = await store.loadMessages();
