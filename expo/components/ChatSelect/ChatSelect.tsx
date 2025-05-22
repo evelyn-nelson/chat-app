@@ -13,6 +13,8 @@ import { Group } from "@/types/types";
 import { useState, useEffect, useCallback } from "react";
 import ChatCreateModal from "./ChatCreate/ChatCreateModal";
 import { useWebSocket } from "../context/WebSocketContext";
+import { Link, router } from "expo-router";
+import Button from "../Global/Button/Button";
 
 export const ChatSelect = () => {
   const { store, groupsRefreshKey, refreshGroups } = useGlobalStore();
@@ -42,7 +44,6 @@ export const ChatSelect = () => {
       .catch((error) => console.error(error));
   }, [groupsRefreshKey]);
 
-  // Get status bar height for proper padding
   const statusBarHeight = StatusBar.currentHeight || 0;
   const topPadding = Platform.OS === "ios" ? 50 : statusBarHeight + 16;
 
@@ -59,7 +60,17 @@ export const ChatSelect = () => {
         <Text className="text-xl font-semibold text-blue-400 mb-3 px-1">
           Your Groups
         </Text>
-        <ChatCreateModal />
+        <View className="items-center justify-center">
+          <Button
+            onPress={() => {
+              router.push("/groups/ChatCreateModalLayout");
+            }}
+            text="Create New Group"
+            size="base"
+            variant="secondary"
+            className="mt-3"
+          />
+        </View>
       </View>
 
       <ScrollView

@@ -127,6 +127,15 @@ export default function GroupLayout() {
           };
         }}
       />
+      <Stack.Screen
+        name="ChatCreateModalLayout"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
     </Stack>
   );
 }

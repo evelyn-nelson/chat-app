@@ -29,10 +29,3 @@ const GroupPage = () => {
 };
 
 export default GroupPage;
-
-const styles = StyleSheet.create({
-  chatBoxContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-});
