@@ -31,7 +31,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
   }) => {
     const isOwn = align === "right";
 
-    // Simplified timestamp formatting - just time since date is shown in separators
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);
       if (isNaN(messageDate.getTime())) {
@@ -148,7 +147,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
       </View>
     );
   },
-  // Custom comparison function for better memoization
   (prevProps, nextProps) => {
     return (
       prevProps.prevUserId === nextProps.prevUserId &&

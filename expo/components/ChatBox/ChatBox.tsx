@@ -59,7 +59,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   const swipeX = useSharedValue(0);
   const hapticTriggered = useSharedValue(false);
 
-  // Group messages by date and create date separators
   const bubblesWithDates = useMemo<BubbleItem[]>(() => {
     const reversedMessages = [...groupMessages].reverse();
     const result: BubbleItem[] = [];
@@ -74,7 +73,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
         day: "numeric",
       });
 
-      // Add the message first
       result.push({
         id: m.id,
         user: m.user,
@@ -84,13 +82,10 @@ export default function ChatBox({ group_id }: { group_id: number }) {
         type: "message",
       });
 
-      // Check if the NEXT message (or end of array) has a different date
-      // If so, add a date separator AFTER this message
       const nextMessage = reversedMessages[index + 1];
       let shouldAddSeparator = false;
 
       if (!nextMessage) {
-        // This is the last (oldest) message, always add a date separator
         shouldAddSeparator = true;
       } else {
         const nextMessageDate = new Date(nextMessage.timestamp);
@@ -119,7 +114,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     return result;
   }, [groupMessages, user?.id]);
 
-  // Memoize the FlatList props
   const flatListProps = useMemo(
     () => ({
       inverted: true,
@@ -242,7 +236,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     []
   );
 
-  // Optimize the date separator rendering
   const renderDateSeparator = useCallback(
     (dateString: string, index: number) => (
       <View key={`date-${index}`} className="my-4 items-center">
