@@ -6,7 +6,7 @@ import { MessageStoreProvider } from "@/components/context/MessageStoreContext";
 
 import "../styles/global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import * as SystemUI from "expo-system-ui";
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { useEffect } from "react";
 
 export default function RootLayout() {
@@ -17,18 +17,23 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <GlobalStoreProvider>
-        <WebSocketProvider>
-          <MessageStoreProvider>
-            <AuthUtilsProvider>
-              <Stack>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(app)" options={{ headerShown: false }} />
-              </Stack>
-            </AuthUtilsProvider>
-          </MessageStoreProvider>
-        </WebSocketProvider>
-      </GlobalStoreProvider>
+      <ActionSheetProvider>
+        <GlobalStoreProvider>
+          <WebSocketProvider>
+            <MessageStoreProvider>
+              <AuthUtilsProvider>
+                <Stack>
+                  <Stack.Screen
+                    name="(auth)"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                </Stack>
+              </AuthUtilsProvider>
+            </MessageStoreProvider>
+          </WebSocketProvider>
+        </GlobalStoreProvider>
+      </ActionSheetProvider>
     </SafeAreaProvider>
   );
 }
