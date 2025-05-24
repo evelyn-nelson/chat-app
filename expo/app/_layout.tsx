@@ -6,8 +6,15 @@ import { MessageStoreProvider } from "@/components/context/MessageStoreContext";
 
 import "../styles/global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as SystemUI from "expo-system-ui";
+import { useEffect } from "react";
 
 export default function RootLayout() {
+  useEffect(() => {
+    console.log("here");
+    // SystemUI.setBackgroundColorAsync("#111827");
+  }, []);
+
   return (
     <SafeAreaProvider>
       <GlobalStoreProvider>

@@ -5,12 +5,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Animated,
   Pressable,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Animated,
 } from "react-native";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import ReanimatedAnimated, {
+  useSharedValue,
+  withSpring,
+  runOnJS,
+} from "react-native-reanimated";
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
 import { useGlobalStore } from "../context/GlobalStoreContext";
@@ -18,12 +29,16 @@ import { useMessageStore } from "../context/MessageStoreContext";
 import { MessageUser } from "@/types/types";
 
 const SCROLL_THRESHOLD = 200;
+const HAPTIC_THRESHOLD = -40;
 
 type BubbleItem = {
   id: number | null;
   user: MessageUser;
   text: string;
   align: "left" | "right";
+  timestamp: string;
+  type: "message" | "date-separator";
+  dateString?: string;
 };
 
 export default function ChatBox({ group_id }: { group_id: number }) {
@@ -34,21 +49,124 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   const flatListRef = useRef<FlatList<BubbleItem> | null>(null);
   const lastCountRef = useRef(groupMessages.length);
   const scrollHandle = useRef<number | null>(null);
+  const hasInitiallyScrolled = useRef(false);
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
+  const [isActivelySwipping, setIsActivelySwipping] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const bubbles = useMemo<BubbleItem[]>(
-    () =>
-      [...groupMessages].reverse().map((m) => ({
+  const swipeX = useSharedValue(0);
+  const hapticTriggered = useSharedValue(false);
+
+  const bubblesWithDates = useMemo<BubbleItem[]>(() => {
+    const reversedMessages = [...groupMessages].reverse();
+    const result: BubbleItem[] = [];
+    let currentDate = "";
+
+    reversedMessages.forEach((m, index) => {
+      const messageDate = new Date(m.timestamp);
+      const dateString = messageDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      result.push({
         id: m.id,
         user: m.user,
         text: m.content,
         align: m.user.id === user?.id ? "right" : "left",
-      })),
-    [groupMessages, user?.id]
+        timestamp: m.timestamp,
+        type: "message",
+      });
+
+      const nextMessage = reversedMessages[index + 1];
+      let shouldAddSeparator = false;
+
+      if (!nextMessage) {
+        shouldAddSeparator = true;
+      } else {
+        const nextMessageDate = new Date(nextMessage.timestamp);
+        const nextDateString = nextMessageDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+        shouldAddSeparator = dateString !== nextDateString;
+      }
+
+      if (shouldAddSeparator) {
+        result.push({
+          id: null,
+          user: m.user,
+          text: "",
+          align: "left",
+          timestamp: m.timestamp,
+          type: "date-separator",
+          dateString,
+        });
+      }
+    });
+
+    return result;
+  }, [groupMessages, user?.id]);
+
+  const flatListProps = useMemo(
+    () => ({
+      inverted: true,
+      keyboardDismissMode: "interactive" as const,
+      keyboardShouldPersistTaps: "handled" as const,
+      scrollEventThrottle: 16,
+      showsVerticalScrollIndicator: false,
+      initialNumToRender: 15,
+      maxToRenderPerBatch: 8,
+      windowSize: 10,
+      removeClippedSubviews: true,
+      updateCellsBatchingPeriod: 100,
+    }),
+    []
   );
+
+  const contentContainerStyle = useMemo(
+    () => ({
+      flexGrow: 1,
+      justifyContent: "flex-end" as const,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+    }),
+    []
+  );
+
+  const triggerHapticFeedback = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(setIsActivelySwipping)(true);
+      hapticTriggered.value = false;
+    })
+    .onUpdate((event) => {
+      const clampedX = Math.max(-80, Math.min(0, event.translationX));
+      swipeX.value = clampedX;
+
+      if (clampedX <= HAPTIC_THRESHOLD && !hapticTriggered.value) {
+        hapticTriggered.value = true;
+        runOnJS(triggerHapticFeedback)();
+      }
+    })
+    .onEnd(() => {
+      swipeX.value = withSpring(0, {
+        damping: 15,
+        stiffness: 150,
+      });
+
+      runOnJS(setIsActivelySwipping)(false);
+      hapticTriggered.value = false;
+    });
 
   const scrollToBottom = useCallback(
     (animated = true) => {
@@ -57,18 +175,18 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       }
       scrollHandle.current = setTimeout(
         () => {
-          if (flatListRef.current && bubbles.length > 0) {
+          if (flatListRef.current && bubblesWithDates.length > 0) {
             flatListRef.current.scrollToIndex({
               index: 0,
               animated,
-              viewPosition: 0, // For inverted, 0 index at viewPosition 0 should be bottom
+              viewPosition: 0,
             });
           }
         },
         Platform.OS === "ios" ? 70 : 100
       );
     },
-    [bubbles.length]
+    [bubblesWithDates.length]
   );
 
   useEffect(() => {
@@ -86,7 +204,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     }
     lastCountRef.current = groupMessages.length;
   }, [groupMessages.length, isNearBottom, scrollToBottom, fadeAnim]);
-
   const handleNewPress = () => {
     setHasNew(false);
     scrollToBottom(true);
@@ -110,8 +227,52 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     }
   };
 
-  const keyExtractor = (item: BubbleItem, index: number) =>
-    item.id?.toString() || `message-${index}`;
+  const keyExtractor = useCallback(
+    (item: BubbleItem, index: number) =>
+      item.type === "date-separator"
+        ? `date-${index}`
+        : item.id?.toString() || `message-${index}`,
+    []
+  );
+
+  const renderDateSeparator = useCallback(
+    (dateString: string, index: number) => (
+      <View key={`date-${index}`} className="my-4 items-center">
+        <View className="bg-gray-800 px-3 py-1 rounded-full">
+          <Text className="text-gray-400 text-xs font-medium">
+            {dateString}
+          </Text>
+        </View>
+      </View>
+    ),
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: BubbleItem; index: number }) => {
+      if (item.type === "date-separator") {
+        return renderDateSeparator(item.dateString!, index);
+      }
+
+      return (
+        <ChatBubble
+          prevUserId={
+            index < bubblesWithDates.length - 1 &&
+            bubblesWithDates[index + 1].type === "message"
+              ? bubblesWithDates[index + 1].user.id
+              : 0
+          }
+          user={item.user}
+          message={item.text}
+          align={item.align}
+          timestamp={item.timestamp}
+          swipeX={swipeX}
+          showTimestamp={isActivelySwipping}
+        />
+      );
+    },
+    [bubblesWithDates, isActivelySwipping, swipeX, renderDateSeparator]
+  );
 
   return (
     <KeyboardAvoidingView
@@ -120,54 +281,26 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <View className="flex-1 w-full bg-gray-900 px-2 pt-2">
-        <View className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden">
-          <FlatList
-            ref={flatListRef}
-            data={bubbles}
-            renderItem={({
-              item,
-              index,
-            }: {
-              item: BubbleItem;
-              index: number;
-            }) => (
-              <ChatBubble
-                prevUserId={
-                  index < bubbles.length - 1 ? bubbles[index + 1].user.id : 0
-                }
-                user={item.user}
-                message={item.text}
-                align={item.align}
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <GestureDetector gesture={panGesture}>
+            <ReanimatedAnimated.View className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden relative">
+              <FlatList
+                ref={flatListRef}
+                data={bubblesWithDates}
+                renderItem={renderItem}
+                keyExtractor={keyExtractor}
+                onScroll={handleScroll}
+                contentContainerStyle={contentContainerStyle}
+                onLayout={() => {
+                  if (!hasInitiallyScrolled.current) {
+                    hasInitiallyScrolled.current = true;
+                  }
+                }}
+                {...flatListProps}
               />
-            )}
-            keyExtractor={keyExtractor}
-            inverted
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={{
-              flexGrow: 1,
-              justifyContent: "flex-end",
-              paddingHorizontal: 10,
-              paddingVertical: 10,
-            }}
-            showsVerticalScrollIndicator={false}
-            initialNumToRender={25}
-            maxToRenderPerBatch={10}
-            windowSize={21}
-            onLayout={() => {
-              if (isNearBottom && bubbles.length > 0) {
-                scrollToBottom(false);
-              }
-            }}
-            onContentSizeChange={() => {
-              if (isNearBottom && bubbles.length > 0) {
-                scrollToBottom(false);
-              }
-            }}
-          />
-        </View>
+            </ReanimatedAnimated.View>
+          </GestureDetector>
+        </GestureHandlerRootView>
 
         {hasNew && (
           <Animated.View
