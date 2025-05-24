@@ -34,6 +34,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   const flatListRef = useRef<FlatList<BubbleItem> | null>(null);
   const lastCountRef = useRef(groupMessages.length);
   const scrollHandle = useRef<number | null>(null);
+  const hasInitiallyScrolled = useRef(false);
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
@@ -61,7 +62,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             flatListRef.current.scrollToIndex({
               index: 0,
               animated,
-              viewPosition: 0, // For inverted, 0 index at viewPosition 0 should be bottom
+              viewPosition: 0,
             });
           }
         },
@@ -157,12 +158,17 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             maxToRenderPerBatch={10}
             windowSize={21}
             onLayout={() => {
-              if (isNearBottom && bubbles.length > 0) {
+              if (!hasInitiallyScrolled.current && bubbles.length > 0) {
+                hasInitiallyScrolled.current = true;
                 scrollToBottom(false);
               }
             }}
             onContentSizeChange={() => {
-              if (isNearBottom && bubbles.length > 0) {
+              if (
+                hasInitiallyScrolled.current &&
+                isNearBottom &&
+                bubbles.length > 0
+              ) {
                 scrollToBottom(false);
               }
             }}
