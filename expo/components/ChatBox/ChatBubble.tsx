@@ -147,6 +147,18 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
         </View>
       </View>
     );
+  },
+  // Custom comparison function for better memoization
+  (prevProps, nextProps) => {
+    return (
+      prevProps.prevUserId === nextProps.prevUserId &&
+      prevProps.user.id === nextProps.user.id &&
+      prevProps.user.username === nextProps.user.username &&
+      prevProps.message === nextProps.message &&
+      prevProps.align === nextProps.align &&
+      prevProps.timestamp === nextProps.timestamp &&
+      prevProps.showTimestamp === nextProps.showTimestamp
+    );
   }
 );
 

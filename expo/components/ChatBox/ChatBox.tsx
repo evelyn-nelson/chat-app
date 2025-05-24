@@ -50,7 +50,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   const lastCountRef = useRef(groupMessages.length);
   const scrollHandle = useRef<number | null>(null);
   const hasInitiallyScrolled = useRef(false);
-  const hapticTriggered = useRef(false);
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
@@ -58,6 +57,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const swipeX = useSharedValue(0);
+  const hapticTriggered = useSharedValue(false);
 
   // Group messages by date and create date separators
   const bubblesWithDates = useMemo<BubbleItem[]>(() => {
@@ -119,23 +119,48 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     return result;
   }, [groupMessages, user?.id]);
 
+  // Memoize the FlatList props
+  const flatListProps = useMemo(
+    () => ({
+      inverted: true,
+      keyboardDismissMode: "interactive" as const,
+      keyboardShouldPersistTaps: "handled" as const,
+      scrollEventThrottle: 16,
+      showsVerticalScrollIndicator: false,
+      initialNumToRender: 15,
+      maxToRenderPerBatch: 8,
+      windowSize: 10,
+      removeClippedSubviews: true,
+      updateCellsBatchingPeriod: 100,
+    }),
+    []
+  );
+
+  const contentContainerStyle = useMemo(
+    () => ({
+      flexGrow: 1,
+      justifyContent: "flex-end" as const,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+    }),
+    []
+  );
+
   const triggerHapticFeedback = useCallback(() => {
-    if (!hapticTriggered.current) {
-      hapticTriggered.current = true;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
       runOnJS(setIsActivelySwipping)(true);
-      hapticTriggered.current = false;
+      hapticTriggered.value = false;
     })
     .onUpdate((event) => {
       const clampedX = Math.max(-80, Math.min(0, event.translationX));
       swipeX.value = clampedX;
 
-      if (clampedX <= HAPTIC_THRESHOLD && !hapticTriggered.current) {
+      if (clampedX <= HAPTIC_THRESHOLD && !hapticTriggered.value) {
+        hapticTriggered.value = true;
         runOnJS(triggerHapticFeedback)();
       }
     })
@@ -146,7 +171,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       });
 
       runOnJS(setIsActivelySwipping)(false);
-      hapticTriggered.current = false;
+      hapticTriggered.value = false;
     });
 
   const scrollToBottom = useCallback(
@@ -217,18 +242,24 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     []
   );
 
+  // Optimize the date separator rendering
+  const renderDateSeparator = useCallback(
+    (dateString: string, index: number) => (
+      <View key={`date-${index}`} className="my-4 items-center">
+        <View className="bg-gray-800 px-3 py-1 rounded-full">
+          <Text className="text-gray-400 text-xs font-medium">
+            {dateString}
+          </Text>
+        </View>
+      </View>
+    ),
+    []
+  );
+
   const renderItem = useCallback(
     ({ item, index }: { item: BubbleItem; index: number }) => {
       if (item.type === "date-separator") {
-        return (
-          <View className="my-4 items-center">
-            <View className="bg-gray-800 px-3 py-1 rounded-full">
-              <Text className="text-gray-400 text-xs font-medium">
-                {item.dateString}
-              </Text>
-            </View>
-          </View>
-        );
+        return renderDateSeparator(item.dateString!, index);
       }
 
       return (
@@ -248,7 +279,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
         />
       );
     },
-    [bubblesWithDates, isActivelySwipping, swipeX]
+    [bubblesWithDates, isActivelySwipping, swipeX, renderDateSeparator]
   );
 
   return (
@@ -266,22 +297,8 @@ export default function ChatBox({ group_id }: { group_id: number }) {
                 data={bubblesWithDates}
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
-                inverted
-                keyboardDismissMode="interactive"
-                keyboardShouldPersistTaps="handled"
                 onScroll={handleScroll}
-                scrollEventThrottle={16}
-                contentContainerStyle={{
-                  flexGrow: 1,
-                  justifyContent: "flex-end",
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
-                }}
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={20}
-                maxToRenderPerBatch={10}
-                windowSize={15}
-                removeClippedSubviews={true}
+                contentContainerStyle={contentContainerStyle}
                 onLayout={() => {
                   if (
                     !hasInitiallyScrolled.current &&
@@ -300,6 +317,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
                     scrollToBottom(false);
                   }
                 }}
+                {...flatListProps}
               />
             </ReanimatedAnimated.View>
           </GestureDetector>
