@@ -53,13 +53,25 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
     });
 
     const messageAnimatedStyle = useAnimatedStyle(() => {
-      return {
-        transform: [
-          {
-            translateX: isOwn && swipeX ? swipeX.value : 0,
-          },
-        ],
-      };
+      if (!swipeX) return {};
+
+      if (isOwn) {
+        // Own messages move with the full swipe distance
+        return {
+          transform: [{ translateX: swipeX.value }],
+        };
+      } else {
+        // Other users' messages move left slightly (about 25% of the swipe)
+        const otherUserOffset = interpolate(
+          swipeX.value,
+          [-80, 0],
+          [-20, 0],
+          Extrapolation.CLAMP
+        );
+        return {
+          transform: [{ translateX: otherUserOffset }],
+        };
+      }
     });
 
     const timestampAnimatedStyle = useAnimatedStyle(() => {
