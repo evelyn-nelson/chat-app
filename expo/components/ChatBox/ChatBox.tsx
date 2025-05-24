@@ -204,7 +204,6 @@ export default function ChatBox({ group_id }: { group_id: number }) {
     }
     lastCountRef.current = groupMessages.length;
   }, [groupMessages.length, isNearBottom, scrollToBottom, fadeAnim]);
-
   const handleNewPress = () => {
     setHasNew(false);
     scrollToBottom(true);
@@ -293,21 +292,8 @@ export default function ChatBox({ group_id }: { group_id: number }) {
                 onScroll={handleScroll}
                 contentContainerStyle={contentContainerStyle}
                 onLayout={() => {
-                  if (
-                    !hasInitiallyScrolled.current &&
-                    bubblesWithDates.length > 0
-                  ) {
+                  if (!hasInitiallyScrolled.current) {
                     hasInitiallyScrolled.current = true;
-                    scrollToBottom(false);
-                  }
-                }}
-                onContentSizeChange={() => {
-                  if (
-                    hasInitiallyScrolled.current &&
-                    isNearBottom &&
-                    bubblesWithDates.length > 0
-                  ) {
-                    scrollToBottom(false);
                   }
                 }}
                 {...flatListProps}
