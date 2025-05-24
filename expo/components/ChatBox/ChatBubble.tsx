@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, Animated } from "react-native";
+import { View, Text } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  SharedValue,
+  useDerivedValue,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
 import type { MessageUser } from "@/types/types";
 
 export interface ChatBubbleProps {
@@ -8,7 +15,7 @@ export interface ChatBubbleProps {
   message: string;
   align: "left" | "right";
   timestamp: string;
-  swipeAnim?: Animated.Value;
+  swipeX?: SharedValue<number>;
   showTimestamp?: boolean;
 }
 
@@ -19,10 +26,38 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
     message,
     align,
     timestamp,
-    swipeAnim,
+    swipeX,
     showTimestamp = false,
   }) => {
     const isOwn = align === "right";
+
+    // Determine if this is a long message (rough estimate)
+    const isLongMessage = message.length > 50;
+
+    // Each message calculates its own timestamp opacity based on the shared swipeX
+    const timestampOpacity = useDerivedValue(() => {
+      if (!showTimestamp || !swipeX) return 0;
+
+      const swipeValue = Math.abs(swipeX.value);
+      return interpolate(swipeValue, [20, 60], [0, 1], Extrapolation.CLAMP);
+    });
+
+    // Animated styles
+    const messageAnimatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          {
+            translateX: isOwn && swipeX ? swipeX.value : 0,
+          },
+        ],
+      };
+    });
+
+    const timestampAnimatedStyle = useAnimatedStyle(() => {
+      return {
+        opacity: timestampOpacity.value,
+      };
+    });
 
     const formatTimestamp = (
       isoString: string
@@ -64,14 +99,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
         <View className="flex-row items-end relative">
           {/* Animated part: Username and Bubble slide together */}
           <Animated.View
-            style={{
-              transform: [
-                {
-                  translateX: isOwn && swipeAnim ? swipeAnim : 0,
-                },
-              ],
-              width: "100%", // Takes full width to allow justify-end/start
-            }}
+            style={[messageAnimatedStyle, { width: "100%" }]}
             className={`
               flex-row
               ${isOwn ? "justify-end pr-4" : "justify-start pl-4"}
@@ -127,15 +155,26 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
             </View>
           </Animated.View>
 
-          {/* Timestamp - positioned absolutely on the right */}
+          {/* Timestamp - positioned based on message length */}
           {showTimestamp && (
-            <View
-              style={{
-                position: "absolute",
-                right: 8,
-                bottom: 2,
-                alignItems: "flex-end",
-              }}
+            <Animated.View
+              style={[
+                timestampAnimatedStyle,
+                {
+                  position: "absolute",
+                  right: 8,
+                  // For long messages, center vertically. For short messages, align to bottom
+                  ...(isLongMessage
+                    ? {
+                        top: "50%",
+                        transform: [{ translateY: -12 }], // Half the height of timestamp text
+                      }
+                    : {
+                        bottom: 2,
+                      }),
+                  alignItems: "flex-end",
+                },
+              ]}
             >
               {formattedTimestamp.dateString && (
                 <Text className="text-xs text-gray-500">
@@ -145,7 +184,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
               <Text className="text-xs text-gray-500">
                 {formattedTimestamp.timeString}
               </Text>
-            </View>
+            </Animated.View>
           )}
         </View>
       </View>
