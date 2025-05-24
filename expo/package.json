@@ -5,8 +5,8 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint"
@@ -48,7 +48,8 @@
     "react-native-screens": "~4.10.0",
     "react-native-web": "^0.20.0",
     "uuid": "^10.0.0",
-    "websocket": "^1.0.35"
+    "websocket": "^1.0.35",
+    "expo-dev-client": "~5.1.8"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

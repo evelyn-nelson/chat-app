@@ -22,7 +22,7 @@ const GroupPage = () => {
   }
 
   return (
-    <View className="flex justify-end h-[100%]">
+    <View className="flex justify-end h-[100%] bg-gray-900">
       {user && <ChatBox group_id={Number(id)} />}
     </View>
   );
