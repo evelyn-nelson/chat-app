@@ -9,6 +9,9 @@ import {
   Pressable,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from "react-native";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import ChatBubble from "./ChatBubble";
@@ -24,6 +27,7 @@ type BubbleItem = {
   user: MessageUser;
   text: string;
   align: "left" | "right";
+  timestamp: string;
 };
 
 export default function ChatBox({ group_id }: { group_id: number }) {
@@ -38,7 +42,9 @@ export default function ChatBox({ group_id }: { group_id: number }) {
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNew, setHasNew] = useState(false);
+  const [isActivelySwipping, setIsActivelySwipping] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const swipeAnim = useRef(new Animated.Value(0)).current;
 
   const bubbles = useMemo<BubbleItem[]>(
     () =>
@@ -47,9 +53,49 @@ export default function ChatBox({ group_id }: { group_id: number }) {
         user: m.user,
         text: m.content,
         align: m.user.id === user?.id ? "right" : "left",
+        timestamp: m.timestamp,
       })),
     [groupMessages, user?.id]
   );
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (
+      _: GestureResponderEvent,
+      gestureState: PanResponderGestureState
+    ) => {
+      return Math.abs(gestureState.dx) > 10 && gestureState.dx < 0;
+    },
+    onPanResponderGrant: () => {
+      setIsActivelySwipping(true);
+    },
+    onPanResponderMove: (
+      _: GestureResponderEvent,
+      gestureState: PanResponderGestureState
+    ) => {
+      // Clamp the value between -80 and 0
+      const clampedValue = Math.max(-80, Math.min(0, gestureState.dx));
+      swipeAnim.setValue(clampedValue);
+    },
+    onPanResponderRelease: () => {
+      setIsActivelySwipping(false);
+      // Animate back to 0
+      Animated.spring(swipeAnim, {
+        toValue: 0,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 8,
+      }).start();
+    },
+    onPanResponderTerminate: () => {
+      setIsActivelySwipping(false);
+      Animated.spring(swipeAnim, {
+        toValue: 0,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 8,
+      }).start();
+    },
+  });
 
   const scrollToBottom = useCallback(
     (animated = true) => {
@@ -121,7 +167,10 @@ export default function ChatBox({ group_id }: { group_id: number }) {
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <View className="flex-1 w-full bg-gray-900 px-2 pt-2">
-        <View className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden">
+        <View
+          {...panResponder.panHandlers}
+          className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden relative"
+        >
           <FlatList
             ref={flatListRef}
             data={bubbles}
@@ -139,6 +188,9 @@ export default function ChatBox({ group_id }: { group_id: number }) {
                 user={item.user}
                 message={item.text}
                 align={item.align}
+                timestamp={item.timestamp}
+                swipeAnim={swipeAnim}
+                showTimestamp={isActivelySwipping}
               />
             )}
             keyExtractor={keyExtractor}

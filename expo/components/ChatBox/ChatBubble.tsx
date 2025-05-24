@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Animated } from "react-native";
 import type { MessageUser } from "@/types/types";
 
 export interface ChatBubbleProps {
@@ -7,56 +7,146 @@ export interface ChatBubbleProps {
   user: MessageUser;
   message: string;
   align: "left" | "right";
+  timestamp: string;
+  swipeAnim?: Animated.Value;
+  showTimestamp?: boolean;
 }
 
 const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
-  ({ prevUserId, user, message, align }) => {
+  ({
+    prevUserId,
+    user,
+    message,
+    align,
+    timestamp,
+    swipeAnim,
+    showTimestamp = false,
+  }) => {
     const isOwn = align === "right";
 
+    const formatTimestamp = (
+      isoString: string
+    ): { dateString?: string; timeString: string } => {
+      const messageDate = new Date(isoString);
+      if (isNaN(messageDate.getTime())) {
+        return { timeString: "Invalid time" };
+      }
+      const now = new Date();
+      const diffInMilliseconds = now.getTime() - messageDate.getTime();
+      const twentyFourHoursInMilliseconds = 24 * 60 * 60 * 1000;
+
+      const timeFormatOptions: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      };
+      const timeString = messageDate.toLocaleTimeString(
+        undefined,
+        timeFormatOptions
+      );
+
+      if (diffInMilliseconds > twentyFourHoursInMilliseconds) {
+        const month = (messageDate.getMonth() + 1).toString();
+        const day = messageDate.getDate().toString();
+        const year = messageDate.getFullYear().toString().slice(-2);
+        const dateString = `${month}/${day}/${year}`;
+        return { dateString, timeString };
+      } else {
+        return { timeString };
+      }
+    };
+
+    const formattedTimestamp = formatTimestamp(timestamp);
+
     return (
-      <View
-        className={`
-          mb-2
-          flex-col
-          ${isOwn ? "items-end pr-4" : "items-start pl-4"}
-        `}
-      >
-        {prevUserId !== user.id && (
-          <Text
+      <View className="mb-2 relative">
+        {/* Message container: holds the animated part and the timestamp */}
+        <View className="flex-row items-end relative">
+          {/* Animated part: Username and Bubble slide together */}
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  translateX: isOwn && swipeAnim ? swipeAnim : 0,
+                },
+              ],
+              width: "100%", // Takes full width to allow justify-end/start
+            }}
             className={`
-              text-xs
-              mb-1
-              ${isOwn ? "text-blue-200 text-right" : "text-gray-400 text-left"}
+              flex-row
+              ${isOwn ? "justify-end pr-4" : "justify-start pl-4"}
             `}
           >
-            {user.username}
-          </Text>
-        )}
+            {/* Inner container for vertical stacking, alignment, AND MAX-WIDTH */}
+            <View
+              className={`
+                flex-col
+                ${isOwn ? "items-end" : "items-start"}
+                max-w-[80%]
+                web:max-w-[60vw]
+                md:web:max-w-[50vw]
+              `}
+            >
+              {/* Username - slides with the bubble */}
+              {prevUserId !== user.id && (
+                <Text
+                  className={`
+                    text-xs
+                    mb-1
+                    ${
+                      isOwn
+                        ? "text-blue-200 text-right"
+                        : "text-gray-400 text-left"
+                    }
+                  `}
+                >
+                  {user.username}
+                </Text>
+              )}
 
-        <View
-          className={`
-            px-4
-            py-2
-            rounded-2xl
-            w-fit
-            max-w-[80%]
-            web:max-w-[60vw]
-            md:web:max-w-[50vw]
-            flex-shrink-0
-            break-words
-            ${
-              isOwn
-                ? "bg-blue-600 self-end rounded-tr-none"
-                : "bg-gray-700 self-start rounded-tl-none"
-            }
-          `}
-        >
-          <Text
-            selectable
-            className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
-          >
-            {message}
-          </Text>
+              {/* Message bubble - width determined by content, constrained by parent */}
+              <View
+                className={`
+                  px-4
+                  py-2
+                  rounded-2xl
+                  ${
+                    isOwn
+                      ? "bg-blue-600 rounded-tr-none"
+                      : "bg-gray-700 rounded-tl-none"
+                  }
+                `}
+              >
+                <Text
+                  selectable
+                  className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
+                >
+                  {message}
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Timestamp - positioned absolutely on the right */}
+          {showTimestamp && (
+            <View
+              style={{
+                position: "absolute",
+                right: 8,
+                bottom: 2,
+                alignItems: "flex-end",
+              }}
+            >
+              {formattedTimestamp.dateString && (
+                <Text className="text-xs text-gray-500">
+                  {formattedTimestamp.dateString}
+                </Text>
+              )}
+              <Text className="text-xs text-gray-500">
+                {formattedTimestamp.timeString}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     );
