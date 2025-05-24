@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
   Keyboard,
   Platform,
   useWindowDimensions,
@@ -42,58 +41,58 @@ const ExpoRouterModal = ({
   const keyboardOffset = 130;
 
   return (
-    <TouchableWithoutFeedback onPress={dismissKeyboardAndClose}>
-      <View className="flex-1 bg-black/70">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={keyboardOffset}
+    <View className="flex-1 bg-black/70">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={keyboardOffset}
+      >
+        <View
+          style={{
+            paddingTop: 10,
+            paddingHorizontal: 16,
+            flex: 1,
+          }}
         >
           <View
+            className="w-full max-w-[500px] bg-gray-800 rounded-xl overflow-hidden border border-blue-600/30 mx-auto"
             style={{
-              paddingTop: 10,
-              paddingHorizontal: 16,
-              flex: 1,
+              maxHeight: modalMaxHeight,
             }}
           >
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View
-                className="w-full max-w-[500px] bg-gray-800 rounded-xl overflow-hidden border border-blue-600/30 mx-auto"
-                style={{
-                  maxHeight: modalMaxHeight,
-                }}
-              >
-                {/* Header */}
-                <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-700">
-                  <Text className="text-lg font-bold text-blue-400">
-                    {title}
-                  </Text>
-                  <Pressable
-                    className="w-[30px] h-[30px] rounded-full bg-gray-700 items-center justify-center"
-                    onPress={dismissKeyboardAndClose}
-                  >
-                    <Text className="text-center text-white text-base">×</Text>
-                  </Pressable>
-                </View>
-
-                {/* Content */}
-                <ScrollView
-                  ref={scrollViewRef}
-                  className="px-4 py-4"
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={true}
-                  nestedScrollEnabled={true}
-                  contentContainerStyle={{ paddingBottom: 16 }}
-                  keyboardDismissMode="interactive"
-                >
-                  {children}
-                </ScrollView>
+            {/* Header */}
+            <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-700">
+              {/* Swipe indicator */}
+              <View className="absolute top-2 left-1/2 transform -translate-x-1/2">
+                <View className="w-8 h-1 bg-gray-600 rounded-full" />
               </View>
-            </TouchableWithoutFeedback>
+              <Text className="text-lg font-bold text-blue-400 mt-2">
+                {title}
+              </Text>
+              <Pressable
+                className="w-[30px] h-[30px] rounded-full bg-gray-700 items-center justify-center mt-2"
+                onPress={dismissKeyboardAndClose}
+              >
+                <Text className="text-center text-white text-base">×</Text>
+              </Pressable>
+            </View>
+
+            {/* Content */}
+            <ScrollView
+              ref={scrollViewRef}
+              className="px-4 py-4"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardDismissMode="interactive"
+            >
+              {children}
+            </ScrollView>
           </View>
-        </KeyboardAvoidingView>
-      </View>
-    </TouchableWithoutFeedback>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
