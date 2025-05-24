@@ -1,6 +1,12 @@
 import { DateOptions } from "@/types/types";
 import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import {
+  Text,
+  TextInput,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useWebSocket } from "../../context/WebSocketContext";
 import { router } from "expo-router";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
@@ -8,7 +14,13 @@ import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselec
 import Button from "@/components/Global/Button/Button";
 import GroupDateOptions from "@/components/Global/GroupDateOptions/GroupDateOptions";
 
-export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
+export const ChatCreateMenu = ({
+  onSubmit,
+  isModal = false,
+}: {
+  onSubmit: () => void;
+  isModal?: boolean;
+}) => {
   const { user: self, store, refreshGroups } = useGlobalStore();
   const [groupName, setGroupName] = useState<string>("");
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
@@ -86,7 +98,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   };
 
   return (
-    <View className="w-full pb-4">
+    <View className="w-full">
       <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           Group Name
@@ -133,7 +145,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
           </View>
         )}
 
-        {!showDateOptions && !dateOptions && (
+        {!showDateOptions && !dateOptions.startTime && !dateOptions.endTime && (
           <View className="bg-gray-800 rounded-lg p-3 mb-2">
             <Text className="text-base text-gray-400">No schedule set</Text>
           </View>
@@ -163,7 +175,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
         </View>
       </View>
 
-      <View className="z-10">
+      <View className="z-10 mb-4">
         <Button
           border={false}
           size="lg"

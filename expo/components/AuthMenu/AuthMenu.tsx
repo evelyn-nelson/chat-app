@@ -1,26 +1,8 @@
-import { Pressable, Text, View, ImageBackground } from "react-native";
-import React, { useState } from "react";
-import LoginForm from "./LoginForm";
-import SignupForm from "./SignupForm";
+import { Text, View, ImageBackground } from "react-native";
 import Button from "../Global/Button/Button";
-import ChatAppModal from "../Global/Modal/ChatAppModal";
+import { router } from "expo-router";
 
-const AuthMenu = (props: { onSubmit: () => void }) => {
-  const { onSubmit } = props;
-
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
-
-  const closeModal = () => {
-    setIsLoginModalOpen(false);
-    setIsSignupModalOpen(false);
-  };
-
-  const furtherOnSubmit = async () => {
-    closeModal();
-    await onSubmit();
-  };
-
+const AuthMenu = () => {
   return (
     <View className="h-full w-full bg-gray-900 flex items-center justify-center px-6">
       <View className="w-full max-w-md">
@@ -38,7 +20,9 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
         {/* Auth buttons */}
         <View className="w-full space-y-4">
           <Button
-            onPress={() => setIsSignupModalOpen(!isSignupModalOpen)}
+            onPress={() => {
+              router.push("/signup");
+            }}
             text="Create Account"
             size="lg"
             variant="primary"
@@ -46,7 +30,9 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
           />
 
           <Button
-            onPress={() => setIsLoginModalOpen(!isLoginModalOpen)}
+            onPress={() => {
+              router.push("/login");
+            }}
             text="Sign In"
             size="lg"
             variant="secondary"
@@ -59,25 +45,6 @@ const AuthMenu = (props: { onSubmit: () => void }) => {
           By signing up, you agree to our Terms of Service and Privacy Policy
         </Text>
       </View>
-
-      {/* Modals */}
-      <ChatAppModal
-        visible={isSignupModalOpen}
-        closeModal={closeModal}
-        disableHide={true}
-        addedPadding={300}
-      >
-        <SignupForm onSubmit={furtherOnSubmit} />
-      </ChatAppModal>
-
-      <ChatAppModal
-        visible={isLoginModalOpen}
-        closeModal={closeModal}
-        disableHide={true}
-        addedPadding={300}
-      >
-        <LoginForm onSubmit={furtherOnSubmit} />
-      </ChatAppModal>
     </View>
   );
 };

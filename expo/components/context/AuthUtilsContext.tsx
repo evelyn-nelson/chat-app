@@ -78,6 +78,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
       const { data } = response;
       await save("jwt", data.token);
       await whoami(true);
+      router.replace({ pathname: "/(app)" });
       await loadHistoricalMessages();
     } catch (error) {
       console.error("error signing in", error);
@@ -87,7 +88,7 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   const logout = async () => {
     await clear("jwt");
     await disconnect();
-    router.replace({ pathname: "/signin" });
+    router.replace({ pathname: "/(auth)" });
   };
 
   const signup = async (
@@ -104,8 +105,8 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
       .then(async (response) => {
         const { data } = response;
         await save("jwt", data.token);
-        await establishConnection();
         await whoami(true);
+        router.replace({ pathname: "/(app)" });
         await loadHistoricalMessages();
       })
       .catch((error) => {

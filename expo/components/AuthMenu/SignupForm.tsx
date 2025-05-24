@@ -3,7 +3,7 @@ import { Text, TextInput, View, Pressable } from "react-native";
 import { useAuthUtils } from "../context/AuthUtilsContext";
 import Button from "../Global/Button/Button";
 
-export default function SignupForm({ onSubmit }: { onSubmit: () => void }) {
+export default function SignupForm() {
   const { signup } = useAuthUtils();
 
   const [username, setUsername] = useState<string>("");
@@ -16,7 +16,6 @@ export default function SignupForm({ onSubmit }: { onSubmit: () => void }) {
       setIsLoading(true);
       try {
         await signup(username, email, password);
-        onSubmit();
       } catch (error) {
         console.error(error);
       } finally {
@@ -27,10 +26,6 @@ export default function SignupForm({ onSubmit }: { onSubmit: () => void }) {
 
   return (
     <View className="w-full">
-      <Text className="text-2xl font-bold text-blue-400 mb-6">
-        Create Account
-      </Text>
-
       <View className="space-y-4 mb-6">
         <View>
           <Text className="text-sm font-medium text-gray-300 mb-1">Email</Text>

@@ -3,7 +3,7 @@ import { Text, TextInput, View, Pressable } from "react-native";
 import { useAuthUtils } from "../context/AuthUtilsContext";
 import Button from "../Global/Button/Button";
 
-export default function LoginForm({ onSubmit }: { onSubmit: () => void }) {
+export default function LoginForm() {
   const { login } = useAuthUtils();
 
   const [email, setEmail] = useState<string>("");
@@ -17,7 +17,6 @@ export default function LoginForm({ onSubmit }: { onSubmit: () => void }) {
       setError(null);
       try {
         await login(email, password);
-        onSubmit();
       } catch (err) {
         setError("Login failed. Please check your credentials and try again.");
         console.error("Error logging in: ", err);
@@ -29,10 +28,6 @@ export default function LoginForm({ onSubmit }: { onSubmit: () => void }) {
 
   return (
     <View className="w-full">
-      <Text className="text-2xl font-bold text-blue-400 mb-6">
-        Welcome Back
-      </Text>
-
       {error && (
         <View className="bg-red-900/30 border border-red-800 rounded-lg p-3 mb-4">
           <Text className="text-red-400 text-sm">{error}</Text>

@@ -18,7 +18,7 @@ const GroupPage = () => {
   }, [groupsRefreshKey]);
 
   if (!user) {
-    return <Redirect href={"/signin"} />;
+    return <Redirect href={"/(auth)"} />;
   }
 
   return (
@@ -29,10 +29,3 @@ const GroupPage = () => {
 };
 
 export default GroupPage;
-
-const styles = StyleSheet.create({
-  chatBoxContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-});
