@@ -16,12 +16,14 @@ type ExpoRouterModalProps = {
   children: React.ReactNode;
   title?: string;
   onClose?: () => void;
+  scrollable?: boolean;
 };
 
 const ExpoRouterModal = ({
   children,
   title,
   onClose,
+  scrollable = true,
 }: ExpoRouterModalProps) => {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -39,6 +41,19 @@ const ExpoRouterModal = ({
   const modalMaxHeight = Math.min(availableHeight, windowHeight * 0.9);
 
   const keyboardOffset = 130;
+
+  const ContentWrapper = scrollable ? ScrollView : View;
+
+  const contentProps = scrollable
+    ? {
+        ref: scrollViewRef,
+        keyboardShouldPersistTaps: "handled" as const,
+        showsVerticalScrollIndicator: true,
+        nestedScrollEnabled: true,
+        contentContainerStyle: { paddingBottom: 16 },
+        keyboardDismissMode: "interactive" as const,
+      }
+    : {};
 
   return (
     <View className="flex-1 bg-black/70">
@@ -78,17 +93,9 @@ const ExpoRouterModal = ({
             </View>
 
             {/* Content */}
-            <ScrollView
-              ref={scrollViewRef}
-              className="px-4 py-4"
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={true}
-              nestedScrollEnabled={true}
-              contentContainerStyle={{ paddingBottom: 16 }}
-              keyboardDismissMode="interactive"
-            >
+            <ContentWrapper className="px-4 py-4" {...contentProps}>
               {children}
-            </ScrollView>
+            </ContentWrapper>
           </View>
         </View>
       </KeyboardAvoidingView>

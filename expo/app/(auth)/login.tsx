@@ -6,7 +6,7 @@ import LoginForm from "@/components/AuthMenu/LoginForm";
 
 const Login = () => {
   return (
-    <ExpoRouterModal title="Welcome Back">
+    <ExpoRouterModal title="Welcome Back" scrollable={false}>
       <LoginForm />
     </ExpoRouterModal>
   );
