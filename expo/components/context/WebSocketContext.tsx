@@ -37,6 +37,7 @@ interface WebSocketContextType {
   removeUserFromGroup: (email: string, group_id: number) => void;
   leaveGroup: (group_id: number) => void;
   getGroups: () => Promise<Group[]>;
+  getUsers: () => Promise<User[]>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -365,8 +366,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const inviteUsersToGroup = async (emails: string[], group_id: number) => {
-    http
+  const inviteUsersToGroup = async (
+    emails: string[],
+    group_id: number
+  ): Promise<any> => {
+    return http
       .post(`${httpBaseURL}/inviteUsersToGroup`, {
         group_id: group_id,
         emails: emails,
@@ -376,8 +380,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       });
   };
 
-  const removeUserFromGroup = async (email: string, group_id: number) => {
-    http
+  const removeUserFromGroup = async (
+    email: string,
+    group_id: number
+  ): Promise<any> => {
+    return http
       .post(`${httpBaseURL}/removeUserFromGroup`, {
         group_id: group_id,
         email: email,
@@ -401,6 +408,22 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         return [];
       });
     return groups;
+  };
+
+  const getUsers = async (): Promise<User[]> => {
+    const users = http
+      .get(`${httpBaseURL}/relevantUsers`)
+      .then((response) => {
+        const { data } = response;
+        return data;
+      })
+      .catch((error) => {
+        if (!(error instanceof CanceledError)) {
+          console.error("Error loading groups:", error);
+        }
+        return [];
+      });
+    return users;
   };
 
   const sendMessage = (msg: string) => {
@@ -454,6 +477,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         inviteUsersToGroup,
         removeUserFromGroup,
         getGroups,
+        getUsers,
       }}
     >
       {children}

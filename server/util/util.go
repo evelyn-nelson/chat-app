@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func GetUser(c *gin.Context, queries *db.Queries) (db.GetUserByIdRow, error) {
@@ -26,4 +27,11 @@ func GetUser(c *gin.Context, queries *db.Queries) (db.GetUserByIdRow, error) {
 		}
 		return user, nil
 	}
+}
+
+func strPtr(pt pgtype.Text) *string {
+	if !pt.Valid {
+		return nil
+	}
+	return &pt.String
 }

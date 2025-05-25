@@ -1,22 +1,58 @@
-import { Platform, Text, View } from "react-native";
+import {
+  Platform,
+  Text,
+  View,
+  Image,
+  Pressable,
+  TextInput,
+  Alert,
+} from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
-import { useWebSocket } from "../context/WebSocketContext";
-import { useGlobalStore } from "../context/GlobalStoreContext";
-import { DateOptions, Group } from "@/types/types";
+// ... other imports
+import {
+  Group,
+  GroupUser,
+  UpdateGroupParams,
+  PickerImageResult,
+  DateOptions,
+} from "@/types/types";
 import UserList from "./UserList";
 import Button from "../Global/Button/Button";
+import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
+import { useGlobalStore } from "../context/GlobalStoreContext";
+import { useWebSocket } from "../context/WebSocketContext";
+import { router } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 
-const ChatSettingsMenu = (props: { group: Group }) => {
-  const { group } = props;
-  const { user: self, store } = useGlobalStore();
-  const user = group.group_users.find((member) => member.id === self?.id);
+const ChatSettingsMenu = (props: {
+  group: Group;
+  onUserKicked: (userId: number) => void;
+}) => {
+  const { group: initialGroup, onUserKicked } = props;
+  const { store, refreshGroups } = useGlobalStore();
+  const currentUserIsAdmin = initialGroup.admin;
+
   const { inviteUsersToGroup, updateGroup, getGroups } = useWebSocket();
-  const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
-  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
-  const { refreshGroups } = useGlobalStore();
-  const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
+
+  const [currentGroup, setCurrentGroup] = useState<Group>(initialGroup);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableName, setEditableName] = useState(initialGroup.name);
+  const [editableDescription, setEditableDescription] = useState(
+    initialGroup.description || ""
+  );
+  const [editableLocation, setEditableLocation] = useState(
+    initialGroup.location || ""
+  );
+  const [currentImageUriForPreview, setCurrentImageUriForPreview] = useState<
+    string | null
+  >(initialGroup.image_url || null);
+  const [newImageFileToUpload, setNewImageFileToUpload] =
+    useState<PickerImageResult | null>(null);
+  const [imageMarkedForRemoval, setImageMarkedForRemoval] =
+    useState<boolean>(false);
+
   const parseDate = useCallback(
     (dateString: string | null | undefined): Date | null => {
       if (!dateString) return null;
@@ -27,83 +63,236 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   );
 
   const [dateOptions, setDateOptions] = useState<DateOptions>({
-    startTime: parseDate(group.start_time),
-    endTime: parseDate(group.end_time),
+    startTime: parseDate(currentGroup.start_time),
+    endTime: parseDate(currentGroup.end_time),
   });
-  const [showDateOptions, setShowDateOptions] = useState(false);
-  const excludedUserList = group.group_users;
 
-  const [hasDateChanges, setHasDateChanges] = useState(false);
+  const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
+
+  const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
 
   useEffect(() => {
-    const groupStartTime = parseDate(group.start_time);
-    const groupEndTime = parseDate(group.end_time);
-
-    const startTimeChanged =
-      (dateOptions.startTime ?? null)?.getTime() !==
-      (groupStartTime ?? null)?.getTime();
-    const endTimeChanged =
-      (dateOptions.endTime ?? null)?.getTime() !==
-      (groupEndTime ?? null)?.getTime();
-
-    setHasDateChanges(startTimeChanged || endTimeChanged);
-  }, [dateOptions, group.start_time, group.end_time, parseDate]);
-
-  const fetchAndRefreshGroups = async () => {
-    try {
-      const updatedGroups = await getGroups();
-      await store.saveGroups(updatedGroups);
-      refreshGroups();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    } catch (error) {
-      console.error("Failed to fetch and refresh groups:", error);
-    }
-  };
-
-  const handleUpdateGroup = async () => {
-    if (!hasDateChanges || !dateOptions.startTime || !dateOptions.endTime) {
-      return;
-    }
-
-    setIsLoadingUpdate(true);
-    setShowDateOptions(false);
-    try {
-      const updatedGroup = await updateGroup(group.id, {
-        start_time: dateOptions.startTime.toISOString(),
-        end_time: dateOptions.endTime.toISOString(),
+    setCurrentGroup(initialGroup);
+    if (!isEditing) {
+      setEditableName(initialGroup.name);
+      setEditableDescription(initialGroup.description || "");
+      setEditableLocation(initialGroup.location || "");
+      setCurrentImageUriForPreview(initialGroup.image_url || null);
+      setNewImageFileToUpload(null);
+      setImageMarkedForRemoval(false);
+      setDateOptions({
+        startTime: parseDate(initialGroup.start_time),
+        endTime: parseDate(initialGroup.end_time),
       });
+    }
+  }, [initialGroup, isEditing, parseDate]);
 
-      if (updatedGroup) {
-        await fetchAndRefreshGroups();
+  useEffect(() => {
+    if (!isEditing) {
+      setEditableName(currentGroup.name);
+      setEditableDescription(currentGroup.description || "");
+      setEditableLocation(currentGroup.location || "");
+      setCurrentImageUriForPreview(currentGroup.image_url || null);
+      setNewImageFileToUpload(null);
+      setImageMarkedForRemoval(false);
+      setDateOptions({
+        startTime: parseDate(currentGroup.start_time),
+        endTime: parseDate(currentGroup.end_time),
+      });
+    }
+  }, [isEditing, currentGroup, parseDate]);
+
+  const syncWithServerAndGlobalStore = async () => {
+    try {
+      const allGroups = await getGroups();
+      await store.saveGroups(allGroups);
+      refreshGroups();
+
+      const newGroups = await store.loadGroups();
+
+      const latestVersionOfCurrentGroup = newGroups.find(
+        (g) => g.id === currentGroup.id
+      );
+      if (latestVersionOfCurrentGroup) {
+        setCurrentGroup(latestVersionOfCurrentGroup);
       } else {
-        console.error("Group update returned undefined.");
+        console.warn(
+          "Current group not found after sync, it might have been deleted."
+        );
+        router.back();
       }
     } catch (error) {
-      console.error("Error updating group:", error);
-    } finally {
-      setIsLoadingUpdate(false);
+      console.error("Failed to sync with server and global store:", error);
     }
   };
+
+  const onKickSuccess = async (userId: number) => {
+    await onUserKicked(userId);
+    await syncWithServerAndGlobalStore();
+  };
+
+  // --- Re-use or import your image upload function ---
+  // async function uploadImageAsync(
+  //   uri: string,
+  //   base64?: string
+  // ): Promise<string | null> {
+  //   console.log("Attempting to upload image from URI:", uri);
+  //   // (Same implementation as in ChatCreateMenu or a shared utility)
+  //   // For testing, simulate an upload:
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       const mockUrl = `https://picsum.photos/seed/${Date.now()}/200/200`;
+  //       console.log("Simulated upload, returning URL:", mockUrl);
+  //       resolve(mockUrl);
+  //       // resolve(null); // Simulate upload failure
+  //     }, 1500);
+  //   });
+  // }
+  // --- End of uploadImageAsync ---
+
+  const handleSaveChanges = async () => {
+    setIsLoadingUpdate(true);
+    const payload: UpdateGroupParams = {};
+    let hasChanges = false;
+    // let finalImageUrlForPayload: string | null | undefined =
+    //   currentGroup.image_url;
+
+    // if (imageMarkedForRemoval) {
+    //   finalImageUrlForPayload = null;
+    // } else if (newImageFileToUpload?.uri) {
+    //   const uploadedUrl = await uploadImageAsync(
+    //     newImageFileToUpload.uri,
+    //     newImageFileToUpload.base64
+    //   );
+    //   if (!uploadedUrl) {
+    //     setIsLoadingUpdate(false);
+    //     return;
+    //   }
+    //   finalImageUrlForPayload = uploadedUrl;
+    // }
+
+    // if (finalImageUrlForPayload !== currentGroup.image_url) {
+    //   payload.image_url = finalImageUrlForPayload;
+    //   hasChanges = true;
+    // }
+    // ... compare editableName with currentGroup.name, etc. ...
+    if (
+      editableName.trim() !== currentGroup.name &&
+      editableName.trim() !== ""
+    ) {
+      payload.name = editableName.trim();
+      hasChanges = true;
+    }
+    if (editableDescription !== (currentGroup.description || "")) {
+      payload.description = editableDescription;
+      hasChanges = true;
+    }
+    if (editableLocation !== (currentGroup.location || "")) {
+      payload.location = editableLocation;
+      hasChanges = true;
+    }
+    const groupStartTime = parseDate(currentGroup.start_time);
+    const groupEndTime = parseDate(currentGroup.end_time);
+    if (
+      dateOptions.startTime?.toISOString() !== groupStartTime?.toISOString() &&
+      dateOptions.startTime !== null
+    ) {
+      payload.start_time = dateOptions.startTime.toISOString();
+      hasChanges = true;
+    }
+    if (
+      dateOptions.endTime?.toISOString() !== groupEndTime?.toISOString() &&
+      dateOptions.endTime !== null
+    ) {
+      payload.end_time = dateOptions.endTime.toISOString();
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      try {
+        const updatedGroupData = await updateGroup(currentGroup.id, payload);
+        if (updatedGroupData) {
+          const optimisticallyUpdatedGroup = {
+            ...currentGroup,
+            ...payload,
+            // image_url:
+            //   payload.image_url === undefined
+            //     ? currentGroup.image_url
+            //     : payload.image_url,
+            start_time: payload.start_time || currentGroup.start_time,
+            end_time: payload.end_time || currentGroup.end_time,
+          };
+          setCurrentGroup(optimisticallyUpdatedGroup as Group);
+          await syncWithServerAndGlobalStore();
+        } else {
+          Alert.alert("Update Failed", "Could not save changes.");
+        }
+      } catch (error) {
+        console.error("Error saving changes", error);
+      }
+    }
+    setIsLoadingUpdate(false);
+    setIsEditing(false);
+  };
+
   const handleInviteUsers = async () => {
     if (usersToInvite.length === 0) return;
-
     setIsLoadingInvite(true);
     try {
-      await inviteUsersToGroup(usersToInvite, group.id);
-
-      await fetchAndRefreshGroups();
+      await inviteUsersToGroup(usersToInvite, currentGroup.id);
 
       setUsersToInvite([]);
+      await syncWithServerAndGlobalStore();
     } catch (error) {
       console.error("Error inviting users:", error);
+      Alert.alert("Invite Failed", "Could not invite users. Please try again.");
     } finally {
       setIsLoadingInvite(false);
     }
   };
 
-  const formatDate = (date: Date | null) => {
-    if (!date) return "Not set";
+  const handlePickImage = async () => {
+    // const permissionResult =
+    //   // await ImagePicker.requestMediaLibraryPermissionsAsync();
+    // if (permissionResult.granted === false) {
+    //   Alert.alert(
+    //     "Permission Required",
+    //     "Permission to access camera roll is required."
+    //   );
+    //   return;
+    // }
+    // try {
+    //   const pickerResult = await ImagePicker.launchImageLibraryAsync({
+    //     mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    //     allowsEditing: true,
+    //     aspect: [1, 1],
+    //     quality: 0.6,
+    //     // base64: true, // If your uploadImageAsync needs it
+    //   });
+    //   if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
+    //     const newImg: PickerImageResult = {
+    //       uri: pickerResult.assets[0].uri,
+    //       // base64: pickerResult.assets[0].base64,
+    //     };
+    //     setCurrentImageUriForPreview(newImg.uri); // Update preview
+    //     setNewImageFileToUpload(newImg); // Mark new file for upload
+    //     setImageMarkedForRemoval(false); // Unmark removal if user picks new image
+    //   }
+    // } catch (e) {
+    //   console.error("Image picker error:", e);
+    //   Alert.alert("Image Error", "Could not select image.");
+    // }
+  };
 
+  const handleRemoveImage = () => {
+    setCurrentImageUriForPreview(null); // Clear preview
+    setNewImageFileToUpload(null); // No new file to upload
+    setImageMarkedForRemoval(true); // Flag for removal on save
+  };
+  const formatDate = (date: Date | null) => {
+    // ... (same as before)
+    if (!date) return "Not set";
     return date.toLocaleDateString(undefined, {
       weekday: "short",
       month: "short",
@@ -113,44 +302,170 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     });
   };
 
-  const isUpdateDisabled =
-    isLoadingUpdate ||
-    !hasDateChanges ||
-    !dateOptions.startTime ||
-    !dateOptions.endTime;
+  const renderEditableField = (
+    label: string,
+    value: string,
+    setter: (text: string) => void,
+    placeholder: string,
+    multiline = false,
+    required = false
+  ) => (
+    <View className="mb-3">
+      <Text className="text-sm text-gray-400 mb-1">
+        {label}
+        {required && " *"}
+      </Text>
+      <TextInput
+        className={`bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 w-full ${
+          multiline ? "h-24" : ""
+        }`}
+        value={value}
+        onChangeText={setter}
+        placeholder={placeholder}
+        placeholderTextColor="#6B7280"
+        multiline={multiline}
+        textAlignVertical={multiline ? "top" : "auto"}
+      />
+    </View>
+  );
+
+  const renderDisplayField = (
+    label: string,
+    value: string | null | undefined
+  ) => (
+    <View className="mb-3">
+      <Text className="text-sm text-gray-400 mb-1">{label}</Text>
+      <Text className="text-base text-gray-200">
+        {value || <Text className="italic text-gray-500">Not set</Text>}
+      </Text>
+    </View>
+  );
 
   return (
     <View
       className={`w-full pb-4 ${Platform.OS === "web" ? "max-w-[500px]" : ""}`}
     >
-      {/* Group Members Card */}
+      {/* Group Image Display/Edit */}
+      <View className="items-center my-4">
+        <Pressable
+          onPress={
+            isEditing && currentUserIsAdmin ? handlePickImage : undefined
+          }
+          className="relative"
+          disabled={!isEditing || !currentUserIsAdmin}
+        >
+          {currentImageUriForPreview ? (
+            <Image
+              source={{ uri: currentImageUriForPreview }}
+              className="w-28 h-28 rounded-full bg-gray-700 border-2 border-gray-600"
+            />
+          ) : (
+            <View className="w-28 h-28 rounded-full bg-gray-700 items-center justify-center border-2 border-gray-600">
+              <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+            </View>
+          )}
+          {isEditing && currentUserIsAdmin && (
+            <View className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full border-2 border-gray-800">
+              <Ionicons name="pencil" size={16} color="white" />
+            </View>
+          )}
+        </Pressable>
+        {isEditing &&
+          currentUserIsAdmin &&
+          currentImageUriForPreview && ( // Show remove button if there's an image to remove
+            <Button
+              size="xs"
+              text="Remove Image"
+              onPress={handleRemoveImage}
+              variant="secondary"
+              className="mt-2 bg-red-700/30"
+              textClassName="text-red-400"
+            />
+          )}
+      </View>
+
+      {/* Admin Edit Controls */}
+      {currentUserIsAdmin && (
+        <View className="flex-row justify-end mb-4 px-4">
+          {isEditing ? (
+            <>
+              <Button
+                text="Cancel"
+                onPress={() => setIsEditing(false)} // useEffect handles reset
+                size="sm"
+                variant="secondary"
+                className="mr-2"
+              />
+              <Button
+                text={isLoadingUpdate ? "Saving..." : "Save Changes"}
+                onPress={handleSaveChanges}
+                disabled={isLoadingUpdate}
+                size="sm"
+                variant="primary"
+              />
+            </>
+          ) : (
+            <Button
+              text="Edit Group"
+              onPress={() => setIsEditing(true)}
+              size="sm"
+              variant="primary"
+              leftIcon={<Ionicons name="pencil" size={16} color="white" />}
+            />
+          )}
+        </View>
+      )}
+
+      {/* Group Details Card */}
       <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
-          Group Members
+          Group Details
         </Text>
-        <View className="bg-gray-800 rounded-lg p-3">
-          <UserList group={group} />
-        </View>
+        {isEditing && currentUserIsAdmin
+          ? renderEditableField(
+              "Group Name",
+              editableName,
+              setEditableName,
+              "Enter group name",
+              false,
+              true
+            )
+          : renderDisplayField("Group Name", currentGroup.name)}
+
+        {isEditing && currentUserIsAdmin
+          ? renderEditableField(
+              "Description",
+              editableDescription,
+              setEditableDescription,
+              "Enter description (optional)",
+              true
+            )
+          : renderDisplayField("Description", currentGroup.description)}
+
+        {isEditing && currentUserIsAdmin
+          ? renderEditableField(
+              "Location",
+              editableLocation,
+              setEditableLocation,
+              "Enter location (optional)"
+            )
+          : renderDisplayField("Location", currentGroup.location)}
       </View>
 
       {/* Event Schedule Card */}
-      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-lg font-semibold text-blue-400">
-            Event Schedule
+            Event Schedule *
           </Text>
-          <Button
-            size="sm"
-            onPress={() => setShowDateOptions(!showDateOptions)}
-            text={showDateOptions ? "Hide" : "Edit"}
-            className="bg-gray-800 rounded-lg"
-            textClassName="text-blue-300 font-medium"
-            border={false}
-          />
         </View>
-
-        {!showDateOptions && dateOptions && (
-          <View className="bg-gray-800 rounded-lg p-3 mb-2">
+        {isEditing && currentUserIsAdmin ? (
+          <GroupDateOptions
+            dateOptions={dateOptions}
+            setDateOptions={setDateOptions}
+          />
+        ) : (
+          <View className="bg-gray-800 rounded-lg p-3">
             <View className="mb-1">
               <Text className="text-sm text-gray-400 mb-1">Starts:</Text>
               <Text className="text-base font-medium text-gray-200">
@@ -165,63 +480,50 @@ const ChatSettingsMenu = (props: { group: Group }) => {
             </View>
           </View>
         )}
+      </View>
 
-        {!showDateOptions && !dateOptions && (
-          <View className="bg-gray-800 rounded-lg p-3 mb-2">
-            <Text className="text-base text-gray-400">No schedule set</Text>
-          </View>
-        )}
-
-        {showDateOptions && (
-          <GroupDateOptions
-            dateOptions={dateOptions}
-            setDateOptions={setDateOptions}
+      {/* Group Members Card */}
+      <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
+        <Text className="text-lg font-semibold text-blue-400 mb-3">
+          {/* *** Use currentGroup for member count *** */}
+          {currentGroup.group_users.length}{" "}
+          {currentGroup.group_users.length === 1 ? "Member" : "Members"}
+        </Text>
+        <View className="bg-gray-800 rounded-lg p-1">
+          <UserList
+            group={currentGroup}
+            currentUserIsAdmin={currentUserIsAdmin}
+            onUserKicked={onKickSuccess}
           />
-        )}
+        </View>
       </View>
 
       {/* User Invite Card */}
-      {user?.admin && (
-        <View className="w-full z-50 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
+      {currentUserIsAdmin && (
+        <View className="w-full z-30 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
           <Text className="text-lg font-semibold text-blue-400 mb-3">
             Invite Friends
           </Text>
-
-          <View className="z-40 bg-gray-800 rounded-lg p-3 overflow-visible">
+          <View className="z-20 bg-gray-800 rounded-lg p-3 overflow-visible">
             <UserInviteMultiselect
               placeholderText="Select friends to invite"
               userList={usersToInvite}
               setUserList={setUsersToInvite}
-              excludedUserList={excludedUserList}
+              excludedUserList={currentGroup.group_users}
             />
           </View>
-        </View>
-      )}
-
-      {usersToInvite.length > 0 && user?.admin && (
-        <View className="z-10 mb-3">
-          <Button
-            border={false}
-            size="lg"
-            className="w-full bg-blue-600 rounded-lg" // Changed color for distinction
-            textClassName="text-white font-medium"
-            text={isLoadingInvite ? "Inviting..." : "Add New Users"}
-            onPress={handleInviteUsers}
-            disabled={isLoadingInvite}
-          />
-        </View>
-      )}
-      {user?.admin && ( // Only show Update button if user is admin
-        <View className="z-10">
-          <Button
-            border={false}
-            size="lg"
-            className="w-full bg-blue-600 rounded-lg"
-            textClassName="text-white font-medium"
-            text={"Update Group"}
-            onPress={handleUpdateGroup}
-            disabled={isUpdateDisabled}
-          />
+          {usersToInvite.length > 0 && (
+            <View className="mt-3">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full bg-green-600"
+                text={isLoadingInvite ? "Inviting..." : "Add New Users"}
+                onPress={handleInviteUsers}
+                disabled={isLoadingInvite}
+              />
+            </View>
+          )}
         </View>
       )}
     </View>

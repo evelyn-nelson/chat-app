@@ -1,27 +1,73 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, Alert } from "react-native";
 import React, { useState } from "react";
 import { Group, GroupUser } from "@/types/types";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 
-const UserListItem = (props: {
+type UserListItemProps = {
   user: GroupUser;
   group: Group;
   index: number;
-}) => {
-  const { user, group, index } = props;
+  currentUserIsAdmin?: boolean;
+  onKickSuccess: (userId: number) => void;
+  onKickFailure?: (userId: number) => void;
+};
 
-  const [hidden, setHidden] = useState(false);
+const UserListItem = (props: UserListItemProps) => {
+  const {
+    user,
+    group,
+    index,
+    currentUserIsAdmin,
+    onKickSuccess,
+    onKickFailure,
+  } = props;
+
+  const [isKicking, setIsKicking] = useState(false);
 
   const { removeUserFromGroup } = useWebSocket();
   const { user: self } = useGlobalStore();
 
-  const isAdmin = user.admin;
+  const isTargetUserAdmin = user.admin;
   const isSelf = self?.id === user.id;
-  if (hidden) {
-    return <View />;
-  }
+
+  const canKickUser = currentUserIsAdmin && !isTargetUserAdmin && !isSelf;
+
+  const handleKickUser = () => {
+    if (isKicking) return;
+
+    Alert.alert(
+      "Confirm Kick",
+      `Are you sure you want to remove ${user.username} from "${group.name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Kick",
+          style: "destructive",
+          onPress: async () => {
+            setIsKicking(true);
+            try {
+              await removeUserFromGroup(user.email, group.id);
+              onKickSuccess(user.id);
+            } catch (error) {
+              console.error("Failed to remove user:", error);
+              Alert.alert(
+                "Error",
+                `Failed to remove ${user.username}. Please try again.`
+              );
+              if (onKickFailure) {
+                onKickFailure(user.id);
+              }
+            } finally {
+              setIsKicking(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View className={`${index !== 0 ? "border-t border-gray-700" : ""} w-full`}>
       <View className="flex-row items-center px-4 py-3">
@@ -29,16 +75,18 @@ const UserListItem = (props: {
           <View className="flex-row items-center">
             <Text
               numberOfLines={1}
-              className={`font-medium text-base ${isAdmin ? "text-blue-400" : "text-gray-200"}`}
+              className={`font-medium text-base ${
+                isTargetUserAdmin ? "text-blue-400" : "text-gray-200"
+              }`}
             >
               {user.username}
             </Text>
-            {isAdmin && (
+            {isTargetUserAdmin && (
               <View className="ml-2 px-2 py-0.5 bg-blue-900/30 rounded-full">
                 <Text className="text-xs text-blue-400">Admin</Text>
               </View>
             )}
-            {isSelf && !isAdmin && (
+            {isSelf && (
               <View className="ml-2 px-2 py-0.5 bg-gray-700 rounded-full">
                 <Text className="text-xs text-gray-400">You</Text>
               </View>
@@ -52,19 +100,18 @@ const UserListItem = (props: {
             {user.email}
           </Text>
         </View>
-        {!isAdmin && !isSelf && (
+
+        {canKickUser && (
           <Pressable
-            className="w-8 h-8 rounded-full items-center justify-center"
-            onPress={() => {
-              if (user && group) {
-                removeUserFromGroup(user.email, group.id);
-                setHidden(true);
-              }
-            }}
+            disabled={isKicking}
+            className={`w-8 h-8 rounded-full items-center justify-center active:bg-gray-700 ${
+              isKicking ? "opacity-50" : ""
+            }`}
+            onPress={handleKickUser}
           >
             {({ pressed }) => (
               <Ionicons
-                color={pressed ? "#4B5563" : "#9CA3AF"}
+                color={pressed || isKicking ? "#6B7280" : "#9CA3AF"}
                 name={"close-circle-outline"}
                 size={22}
               />

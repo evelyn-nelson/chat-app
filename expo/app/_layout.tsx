@@ -11,7 +11,6 @@ import { useEffect } from "react";
 
 export default function RootLayout() {
   useEffect(() => {
-    console.log("here");
     // SystemUI.setBackgroundColorAsync("#111827");
   }, []);
 

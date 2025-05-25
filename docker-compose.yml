@@ -70,9 +70,9 @@ services:
     image: sqlc/sqlc
     volumes:
       - ./db:/src/db
-      - ./server/db:/src/server/db
+      - ./server:/src/server
     working_dir: /src
-    command: ["generate", "-f", "db/sqlc.yaml"]
+    command: ["generate", "-f", "server/sqlc.yaml"]
   redis_cache:
     image: redis:7-alpine
     restart: unless-stopped

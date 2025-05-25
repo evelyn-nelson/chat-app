@@ -28,7 +28,7 @@ type User = {
 
 type GroupAdminMap = Map<number, boolean>;
 
-type GroupUser = User & { admin: boolean };
+type GroupUser = User & { admin: boolean; invited_at?: string };
 
 type Group = {
   id: number;
@@ -36,15 +36,21 @@ type Group = {
   created_at: string;
   updated_at: string;
   admin: boolean;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   group_users: GroupUser[];
+  description?: string | null;
+  location?: string | null;
+  image_url?: string | null;
 };
 
 type UpdateGroupParams = {
-  name?: string;
-  start_time?: string;
-  end_time?: string;
+  name?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  description?: string | null;
+  location?: string | null;
+  image_url?: string | null;
 };
 
 type UserGroup = {
@@ -61,6 +67,11 @@ type DateOptions = {
   endTime: Date | null;
 };
 
+type PickerImageResult = {
+  uri: string;
+  base64: string;
+};
+
 export {
   Message,
   RawMessage,
@@ -72,4 +83,5 @@ export {
   GroupUser,
   MessageUser,
   DateOptions,
+  PickerImageResult,
 };

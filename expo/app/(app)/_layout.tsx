@@ -18,8 +18,8 @@ import { useMessageStore } from "@/components/context/MessageStoreContext";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
-  const { getGroups, disconnect } = useWebSocket();
-  const { store, refreshGroups } = useGlobalStore();
+  const { getGroups, disconnect, getUsers } = useWebSocket();
+  const { store, refreshGroups, refreshUsers } = useGlobalStore();
   const { loadHistoricalMessages } = useMessageStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,15 +56,15 @@ const AppLayout = () => {
     };
   }, []);
 
-  const isFetching = useRef(false);
+  const isFetchingGroups = useRef(false);
 
   const fetchGroups = async () => {
-    if (isFetching.current) return;
-    isFetching.current = true;
+    if (isFetchingGroups.current) return;
+    isFetchingGroups.current = true;
 
     try {
       const data = await getGroups();
-      store.saveGroups(data);
+      await store.saveGroups(data);
       refreshGroups();
     } catch (error) {
       if (!(error instanceof CanceledError)) {
@@ -75,18 +75,44 @@ const AppLayout = () => {
         }
       }
     } finally {
-      isFetching.current = false;
+      isFetchingGroups.current = false;
+    }
+  };
+
+  const isFetchingUsers = useRef(false);
+
+  const fetchUsers = async () => {
+    if (isFetchingUsers.current) return;
+    isFetchingUsers.current = true;
+
+    try {
+      const data = await getUsers();
+      await store.saveUsers(data);
+      refreshUsers();
+    } catch (error) {
+      if (!(error instanceof CanceledError)) {
+        try {
+          await store.loadUsers();
+        } catch (storeError) {
+          console.error("Failed to load users:", storeError);
+        }
+      }
+    } finally {
+      isFetchingUsers.current = false;
     }
   };
 
   useEffect(() => {
     fetchGroups();
+    fetchUsers();
 
-    const groupIntervalId = setInterval(fetchGroups, 5000);
-    const messagesIntervalId = setInterval(loadHistoricalMessages, 5000);
+    const groupsIntervalId = setInterval(fetchGroups, 100000);
+    const usersIntervalId = setInterval(fetchUsers, 100000);
+    const messagesIntervalId = setInterval(loadHistoricalMessages, 30000);
 
     return () => {
-      clearInterval(groupIntervalId);
+      clearInterval(groupsIntervalId);
+      clearInterval(usersIntervalId);
       clearInterval(messagesIntervalId);
     };
   }, []);
