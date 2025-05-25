@@ -5,23 +5,30 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 
-const UserListItem = (props: {
+type UserListItemProps = {
   user: GroupUser;
   group: Group;
   index: number;
-}) => {
-  const { user, group, index } = props;
+  currentUserIsAdmin?: boolean;
+};
+
+const UserListItem = (props: UserListItemProps) => {
+  const { user, group, index, currentUserIsAdmin } = props;
 
   const [hidden, setHidden] = useState(false);
 
   const { removeUserFromGroup } = useWebSocket();
   const { user: self } = useGlobalStore();
 
-  const isAdmin = user.admin;
+  const isTargetUserAdmin = user.admin;
   const isSelf = self?.id === user.id;
+
   if (hidden) {
     return <View />;
   }
+
+  const canKickUser = currentUserIsAdmin && !isTargetUserAdmin && !isSelf;
+
   return (
     <View className={`${index !== 0 ? "border-t border-gray-700" : ""} w-full`}>
       <View className="flex-row items-center px-4 py-3">
@@ -29,16 +36,18 @@ const UserListItem = (props: {
           <View className="flex-row items-center">
             <Text
               numberOfLines={1}
-              className={`font-medium text-base ${isAdmin ? "text-blue-400" : "text-gray-200"}`}
+              className={`font-medium text-base ${
+                isTargetUserAdmin ? "text-blue-400" : "text-gray-200"
+              }`}
             >
               {user.username}
             </Text>
-            {isAdmin && (
+            {isTargetUserAdmin && (
               <View className="ml-2 px-2 py-0.5 bg-blue-900/30 rounded-full">
                 <Text className="text-xs text-blue-400">Admin</Text>
               </View>
             )}
-            {isSelf && !isAdmin && (
+            {isSelf && (
               <View className="ml-2 px-2 py-0.5 bg-gray-700 rounded-full">
                 <Text className="text-xs text-gray-400">You</Text>
               </View>
@@ -52,11 +61,12 @@ const UserListItem = (props: {
             {user.email}
           </Text>
         </View>
-        {!isAdmin && !isSelf && (
+
+        {canKickUser && (
           <Pressable
-            className="w-8 h-8 rounded-full items-center justify-center"
+            className="w-8 h-8 rounded-full items-center justify-center active:bg-gray-700" // Added active state
             onPress={() => {
-              if (user && group) {
+              if (self && group && user) {
                 removeUserFromGroup(user.email, group.id);
                 setHidden(true);
               }
@@ -64,7 +74,7 @@ const UserListItem = (props: {
           >
             {({ pressed }) => (
               <Ionicons
-                color={pressed ? "#4B5563" : "#9CA3AF"}
+                color={pressed ? "#6B7280" : "#9CA3AF"} // Adjusted pressed color
                 name={"close-circle-outline"}
                 size={22}
               />

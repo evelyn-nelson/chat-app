@@ -2,8 +2,14 @@ import { Group } from "@/types/types";
 import { Platform, ScrollView, Text, View } from "react-native";
 import UserListItem from "./UserListItem";
 
-const UserList = (props: { group: Group }) => {
-  const { group } = props;
+type UserListProps = {
+  group: Group;
+  currentUserIsAdmin?: boolean;
+};
+
+const UserList = (props: UserListProps) => {
+  const { group, currentUserIsAdmin } = props;
+
   return (
     <View className="w-full rounded-lg overflow-hidden bg-gray-800">
       <ScrollView
@@ -15,10 +21,13 @@ const UserList = (props: { group: Group }) => {
       >
         {group.group_users.map((user, index) => {
           return (
-            <View
-              key={index}
-            >
-              <UserListItem user={user} group={group} index={index} />
+            <View key={index}>
+              <UserListItem
+                user={user}
+                group={group}
+                index={index}
+                currentUserIsAdmin={currentUserIsAdmin}
+              />
             </View>
           );
         })}

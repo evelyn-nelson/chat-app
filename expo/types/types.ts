@@ -36,15 +36,21 @@ type Group = {
   created_at: string;
   updated_at: string;
   admin: boolean;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   group_users: GroupUser[];
+  description?: string | null;
+  location?: string | null;
+  image_url?: string | null;
 };
 
 type UpdateGroupParams = {
   name?: string;
   start_time?: string;
   end_time?: string;
+  description?: string;
+  location?: string;
+  image_url?: string;
 };
 
 type UserGroup = {
@@ -61,6 +67,11 @@ type DateOptions = {
   endTime: Date | null;
 };
 
+type PickerImageResult = {
+  uri: string;
+  base64: string;
+};
+
 export {
   Message,
   RawMessage,
@@ -72,4 +83,5 @@ export {
   GroupUser,
   MessageUser,
   DateOptions,
+  PickerImageResult,
 };

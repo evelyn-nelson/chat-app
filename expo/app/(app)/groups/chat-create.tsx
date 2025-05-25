@@ -6,7 +6,7 @@ import ExpoRouterModal from "@/components/Global/Modal/ExpoRouterModal";
 const ChatCreate = () => {
   return (
     <ExpoRouterModal title="Create Group">
-      <ChatCreateMenu onSubmit={() => router.back()} isModal={true} />
+      <ChatCreateMenu onSubmit={() => router.back()} />
     </ExpoRouterModal>
   );
 };
