@@ -75,10 +75,7 @@ const GroupDateOptions = ({
     );
   };
 
-  const onChange = (
-    event: DateTimePickerEvent,
-    selectedDate: Date | undefined
-  ) => {
+  const onChange = (_: DateTimePickerEvent, selectedDate: Date | undefined) => {
     const currentDate = selectedDate;
     if (currentDate && expirationInterval != "month") {
       const expirationDate = new Date(currentDate);
