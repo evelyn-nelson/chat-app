@@ -19,7 +19,7 @@ export class Store implements IStore {
     if (!this.db) {
       throw new Error("Database not available for initialization.");
     }
-    const DATABASE_VERSION = 3;
+    const DATABASE_VERSION = 4;
     let { user_version: currentDbVersion } = (await this.db.getFirstAsync<{
       user_version: number;
     }>("PRAGMA user_version")) || { user_version: -1 };
@@ -65,10 +65,26 @@ export class Store implements IStore {
         `);
         await this.db.execAsync("DROP TABLE messages_old_v2;");
         await this.db.execAsync("COMMIT;");
-        await this.db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+        await this.db.execAsync(`PRAGMA user_version = 3`);
       } catch (e) {
         await this.db.execAsync("ROLLBACK;");
         console.error("Error migrating database to version 3:", e);
+        throw e;
+      }
+    }
+    if (currentDbVersion === 3) {
+      await this.db.execAsync("BEGIN TRANSACTION;");
+      try {
+        await this.db.execAsync(`
+        ALTER TABLE groups ADD COLUMN description TEXT;
+        ALTER TABLE groups ADD COLUMN location TEXT;
+        ALTER TABLE groups ADD COLUMN image_url TEXT;
+      `);
+        await this.db.execAsync("COMMIT;");
+        await this.db.execAsync(`PRAGMA user_version = 4`);
+      } catch (e) {
+        await this.db.execAsync("ROLLBACK;");
+        console.error("Error migrating database to version 4:", e);
         throw e;
       }
     }
@@ -190,12 +206,16 @@ export class Store implements IStore {
 
       for (const group of groupsToSave) {
         await db.runAsync(
-          `INSERT INTO groups (id, name, admin, group_users, created_at, updated_at, start_time, end_time)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO groups (id, name, admin, group_users, created_at, updated_at, start_time, end_time, description, location, image_url)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, admin = excluded.admin, group_users = excluded.group_users,
              created_at = excluded.created_at, updated_at = excluded.updated_at,
-             start_time = excluded.start_time, end_time = excluded.end_time;`,
+             start_time = excluded.start_time, end_time = excluded.end_time,
+             description = excluded.description, location = excluded.location, image_url = excluded.image_url
+             ;
+             
+             `,
           [
             group.id,
             group.name,
@@ -205,6 +225,9 @@ export class Store implements IStore {
             group.updated_at,
             group.start_time,
             group.end_time,
+            group.description ?? null,
+            group.location ?? null,
+            group.image_url ?? null,
           ]
         );
       }
@@ -296,6 +319,9 @@ export class Store implements IStore {
           updated_at: row.updated_at,
           start_time: row.start_time,
           end_time: row.end_time,
+          description: row.description,
+          location: row.location,
+          image_url: row.image_url,
         };
       }) ?? []
     );

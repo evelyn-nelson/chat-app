@@ -44,6 +44,15 @@ type Group = {
   image_url?: string | null;
 };
 
+interface CreateGroupParams {
+  name: string;
+  start_time: string;
+  end_time: string;
+  description?: string | null;
+  location?: string | null;
+  image_url?: string | null;
+}
+
 type UpdateGroupParams = {
   name?: string | null;
   start_time?: string | null;
@@ -68,7 +77,7 @@ type DateOptions = {
 };
 
 type PickerImageResult = {
-  uri: string;
+  url: string;
   base64: string;
 };
 
@@ -77,6 +86,7 @@ export {
   RawMessage,
   User,
   Group,
+  CreateGroupParams,
   UpdateGroupParams,
   UserGroup,
   GroupAdminMap,

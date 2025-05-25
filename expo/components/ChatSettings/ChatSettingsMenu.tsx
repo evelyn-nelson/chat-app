@@ -45,7 +45,7 @@ const ChatSettingsMenu = (props: {
   const [editableLocation, setEditableLocation] = useState(
     initialGroup.location || ""
   );
-  const [currentImageUriForPreview, setCurrentImageUriForPreview] = useState<
+  const [currentImageUrlForPreview, setCurrentImageUrlForPreview] = useState<
     string | null
   >(initialGroup.image_url || null);
   const [newImageFileToUpload, setNewImageFileToUpload] =
@@ -78,7 +78,7 @@ const ChatSettingsMenu = (props: {
       setEditableName(initialGroup.name);
       setEditableDescription(initialGroup.description || "");
       setEditableLocation(initialGroup.location || "");
-      setCurrentImageUriForPreview(initialGroup.image_url || null);
+      setCurrentImageUrlForPreview(initialGroup.image_url || null);
       setNewImageFileToUpload(null);
       setImageMarkedForRemoval(false);
       setDateOptions({
@@ -93,7 +93,7 @@ const ChatSettingsMenu = (props: {
       setEditableName(currentGroup.name);
       setEditableDescription(currentGroup.description || "");
       setEditableLocation(currentGroup.location || "");
-      setCurrentImageUriForPreview(currentGroup.image_url || null);
+      setCurrentImageUrlForPreview(currentGroup.image_url || null);
       setNewImageFileToUpload(null);
       setImageMarkedForRemoval(false);
       setDateOptions({
@@ -134,10 +134,10 @@ const ChatSettingsMenu = (props: {
 
   // --- Re-use or import your image upload function ---
   // async function uploadImageAsync(
-  //   uri: string,
+  //   url: string,
   //   base64?: string
   // ): Promise<string | null> {
-  //   console.log("Attempting to upload image from URI:", uri);
+  //   console.log("Attempting to upload image from URL:", url);
   //   // (Same implementation as in ChatCreateMenu or a shared utility)
   //   // For testing, simulate an upload:
   //   return new Promise((resolve) => {
@@ -160,9 +160,9 @@ const ChatSettingsMenu = (props: {
 
     // if (imageMarkedForRemoval) {
     //   finalImageUrlForPayload = null;
-    // } else if (newImageFileToUpload?.uri) {
+    // } else if (newImageFileToUpload?.url) {
     //   const uploadedUrl = await uploadImageAsync(
-    //     newImageFileToUpload.uri,
+    //     newImageFileToUpload.url,
     //     newImageFileToUpload.base64
     //   );
     //   if (!uploadedUrl) {
@@ -272,10 +272,10 @@ const ChatSettingsMenu = (props: {
     //   });
     //   if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
     //     const newImg: PickerImageResult = {
-    //       uri: pickerResult.assets[0].uri,
+    //       url: pickerResult.assets[0].url,
     //       // base64: pickerResult.assets[0].base64,
     //     };
-    //     setCurrentImageUriForPreview(newImg.uri); // Update preview
+    //     setCurrentImageUrlForPreview(newImg.url); // Update preview
     //     setNewImageFileToUpload(newImg); // Mark new file for upload
     //     setImageMarkedForRemoval(false); // Unmark removal if user picks new image
     //   }
@@ -286,7 +286,7 @@ const ChatSettingsMenu = (props: {
   };
 
   const handleRemoveImage = () => {
-    setCurrentImageUriForPreview(null); // Clear preview
+    setCurrentImageUrlForPreview(null); // Clear preview
     setNewImageFileToUpload(null); // No new file to upload
     setImageMarkedForRemoval(true); // Flag for removal on save
   };
@@ -354,9 +354,9 @@ const ChatSettingsMenu = (props: {
           className="relative"
           disabled={!isEditing || !currentUserIsAdmin}
         >
-          {currentImageUriForPreview ? (
+          {currentImageUrlForPreview ? (
             <Image
-              source={{ uri: currentImageUriForPreview }}
+              source={{ uri: currentImageUrlForPreview }}
               className="w-28 h-28 rounded-full bg-gray-700 border-2 border-gray-600"
             />
           ) : (
@@ -372,7 +372,7 @@ const ChatSettingsMenu = (props: {
         </Pressable>
         {isEditing &&
           currentUserIsAdmin &&
-          currentImageUriForPreview && ( // Show remove button if there's an image to remove
+          currentImageUrlForPreview && ( // Show remove button if there's an image to remove
             <Button
               size="xs"
               text="Remove Image"

@@ -57,16 +57,16 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
 
   // --- Placeholder for image upload function ---
   async function uploadImageAsync(
-    uri: string,
+    url: string,
     base64?: string
   ): Promise<string | null> {
-    console.log("Attempting to upload image from URI:", uri);
+    console.log("Attempting to upload image from URL:", url);
     // Example using FormData (conceptual):
-    // const filename = uri.split('/').pop();
+    // const filename = url.split('/').pop();
     // const match = /\.(\w+)$/.exec(filename!);
     // const type = match ? `image/${match[1]}` : `image`;
     // const formData = new FormData();
-    // formData.append('file', { uri, name: filename, type } as any);
+    // formData.append('file', { url, name: filename, type } as any);
     // try {
     //   const response = await fetch('YOUR_UPLOAD_ENDPOINT', {
     //     method: 'POST',
@@ -97,7 +97,6 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
       }, 1500);
     });
   }
-  // --- End of placeholder ---
 
   const handleCreateGroup = async () => {
     if (!groupName.trim() || !dateOptions.startTime || !dateOptions.endTime) {
@@ -109,28 +108,27 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
     }
 
     setIsLoading(true);
-    let finalImageUrl: string | null = null;
+    // let finalImageUrl: string | null = null;
 
-    if (selectedImage?.uri) {
-      const uploadedUrl = await uploadImageAsync(
-        selectedImage.uri,
-        selectedImage.base64
-      );
-      if (!uploadedUrl) {
-        // Upload failed, uploadImageAsync should have shown an alert.
-        setIsLoading(false);
-        return; // Stop group creation if image upload fails
-      }
-      finalImageUrl = uploadedUrl;
-    }
+    // if (selectedImage?.url) {
+    //   const uploadedUrl = await uploadImageAsync(
+    //     selectedImage.url,
+    //     selectedImage.base64
+    //   );
+    //   if (!uploadedUrl) {
+    //     setIsLoading(false);
+    //     return; // Stop group creation if image upload fails
+    //   }
+    //   finalImageUrl = uploadedUrl;
+    // }
 
     try {
       const createdGroup = await createGroup(
         groupName,
         dateOptions.startTime,
-        dateOptions.endTime
-        // description,
-        // location,
+        dateOptions.endTime,
+        description,
+        location
         // finalImageUrl // Pass the uploaded image URL
       );
 
@@ -158,10 +156,10 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
         );
       }
     } catch (error) {
-      console.error("Error during group creation process:", error);
+      console.error("Error durlng group creation process:", error);
       Alert.alert(
         "Error",
-        "An unexpected error occurred during group creation."
+        "An unexpected error occurred durlng group creation."
       );
     } finally {
       setIsLoading(false);
@@ -199,7 +197,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
     //   });
     //   if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
     //     setSelectedImage({
-    //       uri: pickerResult.assets[0].uri,
+    //       url: pickerResult.assets[0].url,
     //       // base64: pickerResult.assets[0].base64, // Store if you requested it
     //     });
     //   }
@@ -218,9 +216,9 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
       {/* Group Image Picker */}
       <View className="items-center my-4">
         <Pressable onPress={handlePickImage} className="relative">
-          {selectedImage?.uri ? (
+          {selectedImage?.url ? (
             <Image
-              source={{ uri: selectedImage.uri }} // Preview using local URI
+              source={{ uri: selectedImage.url }} // Preview using local URL
               className="w-28 h-28 rounded-full bg-gray-700 border-2 border-gray-600"
             />
           ) : (
@@ -232,7 +230,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
             <Ionicons name="pencil" size={16} color="white" />
           </View>
         </Pressable>
-        {selectedImage?.uri && (
+        {selectedImage?.url && (
           <Button
             size="xs"
             text="Remove Image"

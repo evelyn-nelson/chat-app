@@ -4,6 +4,7 @@ import {
   User,
   UserGroup,
   UpdateGroupParams,
+  CreateGroupParams,
 } from "@/types/types";
 import React, {
   createContext,
@@ -27,7 +28,10 @@ interface WebSocketContextType {
   createGroup: (
     name: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
+    description?: string | null,
+    location?: string | null,
+    imageUrl?: string | null
   ) => Promise<Group | undefined>;
   updateGroup: (
     id: number,
@@ -65,16 +69,24 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const createGroup = async (
     name: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
+    description?: string | null,
+    location?: string | null,
+    imageUrl?: string | null
   ): Promise<Group | undefined> => {
     const httpURL = `${httpBaseURL}/createGroup`;
 
+    const payload: CreateGroupParams = {
+      name,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      ...(description !== undefined && { description }),
+      ...(location !== undefined && { location }),
+      ...(imageUrl !== undefined && { image_url: imageUrl }),
+    };
+
     const group = http
-      .post(httpURL, {
-        name: name,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-      })
+      .post(httpURL, payload)
       .then((response) => {
         const { data } = response;
         return data;
@@ -93,7 +105,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<Group | undefined> => {
     const httpURL = `${httpBaseURL}/updateGroup/${id}`;
     if (
-      !(updateParams.name || updateParams.start_time || updateParams.end_time)
+      !(
+        updateParams.name ||
+        updateParams.start_time ||
+        updateParams.end_time ||
+        updateParams.description ||
+        updateParams.location ||
+        updateParams.image_url
+      )
     ) {
       console.error("Invalid input");
       return undefined;
