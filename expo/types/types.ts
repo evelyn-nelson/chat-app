@@ -28,7 +28,7 @@ type User = {
 
 type GroupAdminMap = Map<number, boolean>;
 
-type GroupUser = User & { admin: boolean };
+type GroupUser = User & { admin: boolean; invited_at?: string };
 
 type Group = {
   id: number;
@@ -45,12 +45,12 @@ type Group = {
 };
 
 type UpdateGroupParams = {
-  name?: string;
-  start_time?: string;
-  end_time?: string;
-  description?: string;
-  location?: string;
-  image_url?: string;
+  name?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  description?: string | null;
+  location?: string | null;
+  image_url?: string | null;
 };
 
 type UserGroup = {

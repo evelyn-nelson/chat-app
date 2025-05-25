@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   TextInput,
+  Alert,
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
@@ -15,27 +16,25 @@ import {
   Group,
   GroupUser,
   UpdateGroupParams,
+  PickerImageResult, // Use the consistent type
 } from "@/types/types";
 import UserList from "./UserList";
-import Button from "../Global/Button/Button"; // Your Button component
+import Button from "../Global/Button/Button";
 import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 import Ionicons from "@expo/vector-icons/Ionicons";
-// import * as ImagePicker from 'expo-image-picker';
-
-type PickerResultImage = {
-  uri: string;
-  base64?: string;
-};
+// import * as ImagePicker from "expo-image-picker"; // Import expo-image-picker
 
 const ChatSettingsMenu = (props: { group: Group }) => {
   const { group } = props;
-  const { user: self, store, refreshGroups } = useGlobalStore();
+  const { user: self, store, refreshGroups, refreshUsers } = useGlobalStore();
   const currentUserIsAdmin = group.admin;
 
-  const { inviteUsersToGroup, updateGroup, getGroups } = useWebSocket();
+  const { inviteUsersToGroup, updateGroup, getGroups, getUsers } =
+    useWebSocket();
 
   const [isEditing, setIsEditing] = useState(false);
 
+  // Editable fields state
   const [editableName, setEditableName] = useState(group.name);
   const [editableDescription, setEditableDescription] = useState(
     group.description || ""
@@ -43,11 +42,18 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   const [editableLocation, setEditableLocation] = useState(
     group.location || ""
   );
-  const [currentImageUri, setCurrentImageUri] = useState<string | null>(
-    group.image_url || null
-  );
-  const [newImageFileForUpload, setNewImageFileForUpload] =
-    useState<PickerResultImage | null>(null);
+
+  // Image related state:
+  // currentImageUriForPreview: URI shown in the <Image> tag (can be original URL or new local URI)
+  // newImageFileToUpload: Holds {uri, base64?} if a NEW image is picked from gallery
+  // imageMarkedForRemoval: Flag to indicate if the user wants to remove the existing image
+  const [currentImageUriForPreview, setCurrentImageUriForPreview] = useState<
+    string | null
+  >(group.image_url || null);
+  const [newImageFileToUpload, setNewImageFileToUpload] =
+    useState<PickerImageResult | null>(null);
+  const [imageMarkedForRemoval, setImageMarkedForRemoval] =
+    useState<boolean>(false);
 
   const parseDate = useCallback(
     (dateString: string | null | undefined): Date | null => {
@@ -69,14 +75,15 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
   const [isLoadingInvite, setIsLoadingInvite] = useState(false);
 
+  // Reset fields when group prop changes or when exiting edit mode
   useEffect(() => {
     if (!isEditing || group) {
       setEditableName(group.name);
-      // Assuming group.description, group.location, group.image_url will be added to your Group type
       setEditableDescription(group.description || "");
       setEditableLocation(group.location || "");
-      setCurrentImageUri(group.image_url || null);
-      setNewImageFileForUpload(null);
+      setCurrentImageUriForPreview(group.image_url || null);
+      setNewImageFileToUpload(null);
+      setImageMarkedForRemoval(false);
       setDateOptions({
         startTime: parseDate(group.start_time),
         endTime: parseDate(group.end_time),
@@ -94,51 +101,77 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     }
   };
 
+  const fetchAndRefreshUsers = async () => {
+    try {
+      const updatedUsers = await getUsers();
+      await store.saveUsers(updatedUsers);
+      refreshUsers();
+    } catch (error) {
+      console.error("Failed to fetch and refresh groups:", error);
+    }
+  };
+
+  // --- Re-use or import your image upload function ---
+  async function uploadImageAsync(
+    uri: string,
+    base64?: string
+  ): Promise<string | null> {
+    console.log("Attempting to upload image from URI:", uri);
+    // (Same implementation as in ChatCreateMenu or a shared utility)
+    // For testing, simulate an upload:
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const mockUrl = `https://picsum.photos/seed/${Date.now()}/200/200`;
+        console.log("Simulated upload, returning URL:", mockUrl);
+        resolve(mockUrl);
+        // resolve(null); // Simulate upload failure
+      }, 1500);
+    });
+  }
+  // --- End of uploadImageAsync ---
+
   const handleSaveChanges = async () => {
     setIsLoadingUpdate(true);
 
-    // Ensure UpdateGroupParams will include description, location, image_url
     const payload: UpdateGroupParams = {};
     let hasChanges = false;
+    let finalImageUrlForPayload: string | null | undefined = group.image_url; // Start with original
 
-    let finalImageUrl: string | null | undefined = group.image_url;
-
-    if (newImageFileForUpload) {
-      if (newImageFileForUpload.uri === "REMOVE_IMAGE_MARKER") {
-        finalImageUrl = null;
-      } else {
-        console.warn(
-          "Placeholder: Image upload logic needed. Using local URI for now.",
-          newImageFileForUpload.uri
-        );
-        finalImageUrl = newImageFileForUpload.uri; // Replace with actual URL after upload
+    // 1. Handle Image Update/Removal
+    if (imageMarkedForRemoval) {
+      finalImageUrlForPayload = null;
+    } else if (newImageFileToUpload?.uri) {
+      const uploadedUrl = await uploadImageAsync(
+        newImageFileToUpload.uri,
+        newImageFileToUpload.base64
+      );
+      if (!uploadedUrl) {
+        // Upload failed, uploadImageAsync should have shown an alert.
+        setIsLoadingUpdate(false);
+        return; // Stop if new image selected but upload failed
       }
+      finalImageUrlForPayload = uploadedUrl;
     }
 
-    // *** FIX FOR TYPESCRIPT ERROR ***
-    // If your UpdateGroupParams.image_url is 'string | undefined', convert null to undefined.
-    // If you change UpdateGroupParams.image_url to 'string | null | undefined',
-    // you can directly assign: payload.image_url = finalImageUrl;
-    payload.image_url = finalImageUrl === null ? undefined : finalImageUrl;
-    if (payload.image_url !== group.image_url) {
-      // Check if it actually changed
+    // Only add image_url to payload if it actually changed from the original
+    if (finalImageUrlForPayload !== group.image_url) {
+      payload.image_url = finalImageUrlForPayload;
       hasChanges = true;
     }
-    // *******************************
 
+    // 2. Handle other field updates
     if (editableName.trim() !== group.name && editableName.trim() !== "") {
       payload.name = editableName.trim();
       hasChanges = true;
     }
     if (editableDescription !== (group.description || "")) {
-      payload.description = editableDescription; // Assumes description in UpdateGroupParams
+      payload.description = editableDescription;
       hasChanges = true;
     }
     if (editableLocation !== (group.location || "")) {
-      payload.location = editableLocation; // Assumes location in UpdateGroupParams
+      payload.location = editableLocation;
       hasChanges = true;
     }
-
     const groupStartTime = parseDate(group.start_time);
     const groupEndTime = parseDate(group.end_time);
     if (
@@ -163,14 +196,22 @@ const ChatSettingsMenu = (props: { group: Group }) => {
           await fetchAndRefreshGroups();
         } else {
           console.error("Group update returned undefined.");
+          Alert.alert(
+            "Update Failed",
+            "Could not save some changes. Please try again."
+          );
         }
       } catch (error) {
         console.error("Error updating group:", error);
+        Alert.alert(
+          "Error",
+          "An unexpected error occurred while saving changes."
+        );
       }
     }
 
     setIsLoadingUpdate(false);
-    setIsEditing(false);
+    setIsEditing(false); // Exit edit mode
   };
 
   const handleInviteUsers = async () => {
@@ -182,6 +223,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
         group.id
       );
       await fetchAndRefreshGroups();
+      await fetchAndRefreshUsers();
       setUsersToInvite([]);
     } catch (error) {
       console.error("Error inviting users:", error);
@@ -191,19 +233,46 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   };
 
   const handlePickImage = async () => {
-    console.log("Image picker to be implemented for settings");
-    // Placeholder for image picker logic
-    // const newImg = { uri: "https://picsum.photos/seed/newgroupimage/200" };
-    // setCurrentImageUri(newImg.uri);
-    // setNewImageFileForUpload(newImg);
+    // const permissionResult =
+    //   // await ImagePicker.requestMediaLibraryPermissionsAsync();
+    // if (permissionResult.granted === false) {
+    //   Alert.alert(
+    //     "Permission Required",
+    //     "Permission to access camera roll is required."
+    //   );
+    //   return;
+    // }
+    // try {
+    //   const pickerResult = await ImagePicker.launchImageLibraryAsync({
+    //     mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    //     allowsEditing: true,
+    //     aspect: [1, 1],
+    //     quality: 0.6,
+    //     // base64: true, // If your uploadImageAsync needs it
+    //   });
+    //   if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
+    //     const newImg: PickerImageResult = {
+    //       uri: pickerResult.assets[0].uri,
+    //       // base64: pickerResult.assets[0].base64,
+    //     };
+    //     setCurrentImageUriForPreview(newImg.uri); // Update preview
+    //     setNewImageFileToUpload(newImg); // Mark new file for upload
+    //     setImageMarkedForRemoval(false); // Unmark removal if user picks new image
+    //   }
+    // } catch (e) {
+    //   console.error("Image picker error:", e);
+    //   Alert.alert("Image Error", "Could not select image.");
+    // }
   };
 
   const handleRemoveImage = () => {
-    setCurrentImageUri(null);
-    setNewImageFileForUpload({ uri: "REMOVE_IMAGE_MARKER" });
+    setCurrentImageUriForPreview(null); // Clear preview
+    setNewImageFileToUpload(null); // No new file to upload
+    setImageMarkedForRemoval(true); // Flag for removal on save
   };
 
   const formatDate = (date: Date | null) => {
+    // ... (same as before)
     if (!date) return "Not set";
     return date.toLocaleDateString(undefined, {
       weekday: "short",
@@ -214,6 +283,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     });
   };
 
+  // ... (renderEditableField, renderDisplayField helpers same as before)
   const renderEditableField = (
     label: string,
     value: string,
@@ -257,6 +327,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     <View
       className={`w-full pb-4 ${Platform.OS === "web" ? "max-w-[500px]" : ""}`}
     >
+      {/* Group Image Display/Edit */}
       <View className="items-center my-4">
         <Pressable
           onPress={
@@ -265,9 +336,9 @@ const ChatSettingsMenu = (props: { group: Group }) => {
           className="relative"
           disabled={!isEditing || !currentUserIsAdmin}
         >
-          {currentImageUri ? (
+          {currentImageUriForPreview ? (
             <Image
-              source={{ uri: currentImageUri }}
+              source={{ uri: currentImageUriForPreview }}
               className="w-28 h-28 rounded-full bg-gray-700 border-2 border-gray-600"
             />
           ) : (
@@ -281,29 +352,31 @@ const ChatSettingsMenu = (props: { group: Group }) => {
             </View>
           )}
         </Pressable>
-        {isEditing && currentUserIsAdmin && currentImageUri && (
-          <Button
-            text="Remove Image"
-            onPress={handleRemoveImage}
-            size="xs"
-            variant="secondary" // Example variant
-            className="mt-2 bg-red-700/80" // This will override variant bg
-            textClassName="text-white" // This will override variant text color
-          />
-        )}
+        {isEditing &&
+          currentUserIsAdmin &&
+          currentImageUriForPreview && ( // Show remove button if there's an image to remove
+            <Button
+              size="xs"
+              text="Remove Image"
+              onPress={handleRemoveImage}
+              variant="secondary"
+              className="mt-2 bg-red-700/30"
+              textClassName="text-red-400"
+            />
+          )}
       </View>
 
+      {/* Admin Edit Controls */}
       {currentUserIsAdmin && (
         <View className="flex-row justify-end mb-4 px-4">
           {isEditing ? (
             <>
               <Button
                 text="Cancel"
-                onPress={() => setIsEditing(false)}
+                onPress={() => setIsEditing(false)} // useEffect handles reset
                 size="sm"
-                variant="secondary" // Use your button variants
+                variant="secondary"
                 className="mr-2"
-                // textClassName="text-white" // Variant handles text color
               />
               <Button
                 text={isLoadingUpdate ? "Saving..." : "Save Changes"}
@@ -311,7 +384,6 @@ const ChatSettingsMenu = (props: { group: Group }) => {
                 disabled={isLoadingUpdate}
                 size="sm"
                 variant="primary"
-                // textClassName="text-white" // Variant handles text color
               />
             </>
           ) : (
@@ -319,14 +391,14 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               text="Edit Group"
               onPress={() => setIsEditing(true)}
               size="sm"
-              variant="primary" // Use your button variants
-              // textClassName="text-white" // Variant handles text color
-              leftIcon={<Ionicons name="pencil" size={16} color="white" />} // *** USE leftIcon ***
+              variant="primary"
+              leftIcon={<Ionicons name="pencil" size={16} color="white" />}
             />
           )}
         </View>
       )}
 
+      {/* Group Details Card */}
       <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           Group Details
@@ -350,10 +422,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               "Enter description (optional)",
               true
             )
-          : renderDisplayField(
-              "Description",
-              group.description /* Assumes type updated */
-            )}
+          : renderDisplayField("Description", group.description)}
 
         {isEditing && currentUserIsAdmin
           ? renderEditableField(
@@ -362,12 +431,10 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               setEditableLocation,
               "Enter location (optional)"
             )
-          : renderDisplayField(
-              "Location",
-              group.location /* Assumes type updated */
-            )}
+          : renderDisplayField("Location", group.location)}
       </View>
 
+      {/* Event Schedule Card */}
       <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-lg font-semibold text-blue-400">
@@ -397,6 +464,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
         )}
       </View>
 
+      {/* Group Members Card */}
       <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
           {group.group_users.length}{" "}
@@ -407,6 +475,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
         </View>
       </View>
 
+      {/* User Invite Card */}
       {currentUserIsAdmin && (
         <View className="w-full z-30 bg-gray-900 rounded-xl shadow-md p-4 mb-4 overflow-visible">
           <Text className="text-lg font-semibold text-blue-400 mb-3">
@@ -426,7 +495,6 @@ const ChatSettingsMenu = (props: { group: Group }) => {
                 variant="primary"
                 size="lg"
                 className="w-full bg-green-600"
-                textClassName="text-white font-medium"
                 text={isLoadingInvite ? "Inviting..." : "Add New Users"}
                 onPress={handleInviteUsers}
                 disabled={isLoadingInvite}

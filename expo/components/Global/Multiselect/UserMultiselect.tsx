@@ -65,7 +65,6 @@ const UserMultiSelect = (props: {
     setTags((prevTags) => prevTags.filter((_, tagIndex) => tagIndex !== index));
   };
 
-  // Function to truncate email for display
   const truncateEmail = (email: string, maxLength = 20) => {
     if (email.length <= maxLength) return email;
     return email.substring(0, maxLength - 3) + "...";
@@ -73,7 +72,6 @@ const UserMultiSelect = (props: {
 
   return (
     <View className="w-full">
-      {/* Tags container with more height */}
       <View className="h-28 mb-2 bg-gray-700 rounded-lg p-2">
         <ScrollView
           keyboardShouldPersistTaps="handled"

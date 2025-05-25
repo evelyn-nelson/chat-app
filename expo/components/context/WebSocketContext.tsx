@@ -37,6 +37,7 @@ interface WebSocketContextType {
   removeUserFromGroup: (email: string, group_id: number) => void;
   leaveGroup: (group_id: number) => void;
   getGroups: () => Promise<Group[]>;
+  getUsers: () => Promise<User[]>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -403,6 +404,22 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     return groups;
   };
 
+  const getUsers = async (): Promise<User[]> => {
+    const users = http
+      .get(`${httpBaseURL}/relevantUsers`)
+      .then((response) => {
+        const { data } = response;
+        return data;
+      })
+      .catch((error) => {
+        if (!(error instanceof CanceledError)) {
+          console.error("Error loading groups:", error);
+        }
+        return [];
+      });
+    return users;
+  };
+
   const sendMessage = (msg: string) => {
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -454,6 +471,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         inviteUsersToGroup,
         removeUserFromGroup,
         getGroups,
+        getUsers,
       }}
     >
       {children}

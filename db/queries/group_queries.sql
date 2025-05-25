@@ -6,7 +6,7 @@ SELECT "id", "name",  "start_time", "end_time", "created_at", "updated_at" FROM 
 
 -- name: GetGroupsForUser :many
 SELECT groups.id, groups.name, groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
-json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin))::text AS group_users 
+json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin, 'invited_at', ug2.created_at))::text AS group_users 
 FROM groups
 JOIN user_groups ug ON ug.group_id = groups.id
 JOIN users u ON u.id = ug.user_id

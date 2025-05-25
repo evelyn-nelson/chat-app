@@ -1,3 +1,4 @@
+import React from "react"; // Import React for useMemo
 import { Group } from "@/types/types";
 import { Platform, ScrollView, Text, View } from "react-native";
 import UserListItem from "./UserListItem";
@@ -10,6 +11,34 @@ type UserListProps = {
 const UserList = (props: UserListProps) => {
   const { group, currentUserIsAdmin } = props;
 
+  const sortedGroupUsers = React.useMemo(() => {
+    if (!group || !group.group_users) {
+      return [];
+    }
+
+    return [...group.group_users].sort((userA, userB) => {
+      if (userA.admin !== userB.admin) {
+        return userA.admin ? -1 : 1;
+      }
+      if (userA.invited_at && !userB.invited_at) {
+        return 1;
+      }
+      if (!userA.invited_at && userB.invited_at) {
+        return -1;
+      }
+      if (!(userA.invited_at && userB.invited_at)) {
+        return 0;
+      }
+      if (userA.invited_at < userB.invited_at) {
+        return -1;
+      }
+      if (userA.invited_at > userB.invited_at) {
+        return 1;
+      }
+      return 0;
+    });
+  }, [group, group?.group_users]);
+
   return (
     <View className="w-full rounded-lg overflow-hidden bg-gray-800">
       <ScrollView
@@ -19,13 +48,14 @@ const UserList = (props: UserListProps) => {
         }}
         showsVerticalScrollIndicator={Platform.OS !== "web"}
       >
-        {group.group_users.map((user, index) => {
+        {sortedGroupUsers.map((user, index) => {
+          const key = user.id || `user-${index}`;
           return (
-            <View key={index}>
+            <View key={key}>
               <UserListItem
                 user={user}
                 group={group}
-                index={index}
+                index={index} // This index is from the *sorted* list
                 currentUserIsAdmin={currentUserIsAdmin}
               />
             </View>
