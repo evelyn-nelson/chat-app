@@ -1,4 +1,4 @@
-import React from "react"; // Import React for useMemo
+import { useMemo } from "react";
 import { Group } from "@/types/types";
 import { Platform, ScrollView, Text, View } from "react-native";
 import UserListItem from "./UserListItem";
@@ -11,7 +11,7 @@ type UserListProps = {
 const UserList = (props: UserListProps) => {
   const { group, currentUserIsAdmin } = props;
 
-  const sortedGroupUsers = React.useMemo(() => {
+  const sortedGroupUsers = useMemo(() => {
     if (!group || !group.group_users) {
       return [];
     }
