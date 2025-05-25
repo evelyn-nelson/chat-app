@@ -4,6 +4,7 @@ import { DateOptions } from "@/types/types";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Dropdown } from "react-native-element-dropdown";
 import Button from "../Button/Button";
 
@@ -16,7 +17,10 @@ type DatePickerMode = "date" | "time" | "datetime" | "countdown";
 
 type ExpirationOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 14 | "month";
 
-const data = [
+const data: {
+  label: string;
+  value: ExpirationOptions;
+}[] = [
   { label: "1 day", value: 1 },
   { label: "2 days", value: 2 },
   { label: "3 days", value: 3 },
@@ -32,10 +36,11 @@ const GroupDateOptions = ({
   dateOptions,
   setDateOptions,
 }: GroupDateOptionsProps) => {
+  const { showActionSheetWithOptions } = useActionSheet();
+
   const [show, setShow] = useState(false);
   const [expirationInterval, setExpirationInterval] =
     useState<ExpirationOptions>(1);
-
   const formatDate = (date: Date | null) => {
     if (!date) return { datePart: "Not set", timePart: "" };
 
@@ -53,10 +58,24 @@ const GroupDateOptions = ({
     return { datePart, timePart };
   };
 
-  const onChange = (
-    event: DateTimePickerEvent,
-    selectedDate: Date | undefined
-  ) => {
+  const onSelectExpiration = () => {
+    const options = [...data.map((option) => option.label), "Cancel"];
+    const cancelButtonIndex = 9;
+
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+      },
+      (selectedIndex: number | undefined) => {
+        if (selectedIndex !== undefined && data[selectedIndex]) {
+          setExpirationInterval(data[selectedIndex].value);
+        }
+      }
+    );
+  };
+
+  const onChange = (_: DateTimePickerEvent, selectedDate: Date | undefined) => {
     const currentDate = selectedDate;
     if (currentDate && expirationInterval != "month") {
       const expirationDate = new Date(currentDate);
@@ -300,49 +319,9 @@ const GroupDateOptions = ({
             Set Duration
           </Text>
           <View className="w-full">
-            <Dropdown
-              data={data}
-              placeholder="Choose duration"
-              value={expirationInterval}
-              onChange={(item) => setExpirationInterval(item.value)}
-              labelField={"label"}
-              valueField={"value"}
-              style={{
-                height: 50,
-                backgroundColor: "#374151",
-                borderColor: "#4B5563",
-                borderWidth: 1,
-                borderRadius: 8,
-                paddingHorizontal: 8,
-                width: "100%",
-                maxWidth: "100%", // Add maxWidth to prevent overflow
-              }}
-              placeholderStyle={{
-                fontSize: 14,
-                color: "#9CA3AF",
-              }}
-              selectedTextStyle={{
-                fontSize: 14,
-                color: "#E5E7EB",
-              }}
-              itemTextStyle={{
-                color: "#E5E7EB",
-              }}
-              containerStyle={{
-                backgroundColor: "#374151",
-                borderColor: "#4B5563",
-                borderWidth: 1,
-                borderRadius: 8,
-                width: "100%",
-                maxWidth: "65%",
-              }}
-              activeColor="#1E293B"
-              maxHeight={200}
-              itemContainerStyle={{
-                width: "100%",
-                justifyContent: "space-between",
-                paddingHorizontal: 8, // Add padding to match
-              }}
+            <Button
+              text={`${data.find((item) => item?.value === expirationInterval)?.label}`}
+              onPress={onSelectExpiration}
             />
           </View>
         </View>
