@@ -36,16 +36,19 @@ func (q *Queries) DeleteGroup(ctx context.Context, id int32) (DeleteGroupRow, er
 }
 
 const getAllGroups = `-- name: GetAllGroups :many
-SELECT "id", "name", "start_time", "end_time", "created_at", "updated_at" FROM groups
+SELECT "id", "name", "description", "location", "image_url", "start_time", "end_time", "created_at", "updated_at" FROM groups
 `
 
 type GetAllGroupsRow struct {
-	ID        int32            `json:"id"`
-	Name      string           `json:"name"`
-	StartTime pgtype.Timestamp `json:"start_time"`
-	EndTime   pgtype.Timestamp `json:"end_time"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetAllGroups(ctx context.Context) ([]GetAllGroupsRow, error) {
@@ -60,6 +63,9 @@ func (q *Queries) GetAllGroups(ctx context.Context) ([]GetAllGroupsRow, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Description,
+			&i.Location,
+			&i.ImageUrl,
 			&i.StartTime,
 			&i.EndTime,
 			&i.CreatedAt,
@@ -76,16 +82,19 @@ func (q *Queries) GetAllGroups(ctx context.Context) ([]GetAllGroupsRow, error) {
 }
 
 const getGroupById = `-- name: GetGroupById :one
-SELECT "id", "name",  "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1
+SELECT "id", "name", "description", "location", "image_url", "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1
 `
 
 type GetGroupByIdRow struct {
-	ID        int32            `json:"id"`
-	Name      string           `json:"name"`
-	StartTime pgtype.Timestamp `json:"start_time"`
-	EndTime   pgtype.Timestamp `json:"end_time"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetGroupById(ctx context.Context, id int32) (GetGroupByIdRow, error) {
@@ -94,6 +103,9 @@ func (q *Queries) GetGroupById(ctx context.Context, id int32) (GetGroupByIdRow, 
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Description,
+		&i.Location,
+		&i.ImageUrl,
 		&i.StartTime,
 		&i.EndTime,
 		&i.CreatedAt,
@@ -106,6 +118,9 @@ const getGroupWithUsersByID = `-- name: GetGroupWithUsersByID :one
 SELECT
     g.id,
     g.name,
+    g."description",
+    g.location,
+    g.image_url,
     g.start_time,
     g.end_time,
     g.created_at,
@@ -130,14 +145,17 @@ type GetGroupWithUsersByIDParams struct {
 }
 
 type GetGroupWithUsersByIDRow struct {
-	ID         int32            `json:"id"`
-	Name       string           `json:"name"`
-	StartTime  pgtype.Timestamp `json:"start_time"`
-	EndTime    pgtype.Timestamp `json:"end_time"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
-	Admin      bool             `json:"admin"`
-	GroupUsers interface{}      `json:"group_users"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	Admin       bool             `json:"admin"`
+	GroupUsers  interface{}      `json:"group_users"`
 }
 
 func (q *Queries) GetGroupWithUsersByID(ctx context.Context, arg GetGroupWithUsersByIDParams) (GetGroupWithUsersByIDRow, error) {
@@ -146,6 +164,9 @@ func (q *Queries) GetGroupWithUsersByID(ctx context.Context, arg GetGroupWithUse
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Description,
+		&i.Location,
+		&i.ImageUrl,
 		&i.StartTime,
 		&i.EndTime,
 		&i.CreatedAt,
@@ -157,7 +178,7 @@ func (q *Queries) GetGroupWithUsersByID(ctx context.Context, arg GetGroupWithUse
 }
 
 const getGroupsForUser = `-- name: GetGroupsForUser :many
-SELECT groups.id, groups.name, groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
+SELECT groups.id, groups.name, groups."description", groups."location", groups."image_url", groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
 json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin, 'invited_at', ug2.created_at))::text AS group_users 
 FROM groups
 JOIN user_groups ug ON ug.group_id = groups.id
@@ -169,14 +190,17 @@ GROUP BY groups.id, ug.id, u.id
 `
 
 type GetGroupsForUserRow struct {
-	ID         int32            `json:"id"`
-	Name       string           `json:"name"`
-	StartTime  pgtype.Timestamp `json:"start_time"`
-	EndTime    pgtype.Timestamp `json:"end_time"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	Admin      bool             `json:"admin"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
-	GroupUsers string           `json:"group_users"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	Admin       bool             `json:"admin"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	GroupUsers  string           `json:"group_users"`
 }
 
 func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsForUserRow, error) {
@@ -191,6 +215,9 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsFo
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Description,
+			&i.Location,
+			&i.ImageUrl,
 			&i.StartTime,
 			&i.EndTime,
 			&i.CreatedAt,
@@ -209,17 +236,27 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsFo
 }
 
 const insertGroup = `-- name: InsertGroup :one
-INSERT INTO groups ("name", "start_time", "end_time") VALUES ($1, $2, $3) RETURNING id, name, created_at, updated_at, start_time, end_time
+INSERT INTO groups ("name", "start_time", "end_time", "description", "location", "image_url") VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, created_at, updated_at, start_time, end_time, description, location, image_url
 `
 
 type InsertGroupParams struct {
-	Name      string           `json:"name"`
-	StartTime pgtype.Timestamp `json:"start_time"`
-	EndTime   pgtype.Timestamp `json:"end_time"`
+	Name        string           `json:"name"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
 }
 
 func (q *Queries) InsertGroup(ctx context.Context, arg InsertGroupParams) (Group, error) {
-	row := q.db.QueryRow(ctx, insertGroup, arg.Name, arg.StartTime, arg.EndTime)
+	row := q.db.QueryRow(ctx, insertGroup,
+		arg.Name,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Description,
+		arg.Location,
+		arg.ImageUrl,
+	)
 	var i Group
 	err := row.Scan(
 		&i.ID,
@@ -228,6 +265,9 @@ func (q *Queries) InsertGroup(ctx context.Context, arg InsertGroupParams) (Group
 		&i.UpdatedAt,
 		&i.StartTime,
 		&i.EndTime,
+		&i.Description,
+		&i.Location,
+		&i.ImageUrl,
 	)
 	return i, err
 }
@@ -237,24 +277,34 @@ UPDATE groups
 SET
     "name" = coalesce($2, "name"),
     "start_time" = coalesce($3, "start_time"),
-    "end_time" = coalesce($4, "end_time")
+    "end_time" = coalesce($4, "end_time"),
+    "description" = coalesce($5, "description"),
+    "location" = coalesce($6, "location"),
+    "image_url" = coalesce($7, "image_url")
 WHERE id = $1
-RETURNING "id", "name", "start_time", "end_time" "created_at", "updated_at"
+RETURNING "id", "name", "start_time", "end_time", "description", "location", "image_url", "created_at", "updated_at"
 `
 
 type UpdateGroupParams struct {
-	ID        int32            `json:"id"`
-	Name      pgtype.Text      `json:"name"`
-	StartTime pgtype.Timestamp `json:"start_time"`
-	EndTime   pgtype.Timestamp `json:"end_time"`
+	ID          int32            `json:"id"`
+	Name        pgtype.Text      `json:"name"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
 }
 
 type UpdateGroupRow struct {
-	ID        int32            `json:"id"`
-	Name      string           `json:"name"`
-	StartTime pgtype.Timestamp `json:"start_time"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (UpdateGroupRow, error) {
@@ -263,12 +313,19 @@ func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Updat
 		arg.Name,
 		arg.StartTime,
 		arg.EndTime,
+		arg.Description,
+		arg.Location,
+		arg.ImageUrl,
 	)
 	var i UpdateGroupRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.StartTime,
+		&i.EndTime,
+		&i.Description,
+		&i.Location,
+		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

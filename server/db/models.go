@@ -9,12 +9,15 @@ import (
 )
 
 type Group struct {
-	ID        int32            `json:"id"`
-	Name      string           `json:"name"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-	StartTime pgtype.Timestamp `json:"start_time"`
-	EndTime   pgtype.Timestamp `json:"end_time"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	EndTime     pgtype.Timestamp `json:"end_time"`
+	Description pgtype.Text      `json:"description"`
+	Location    pgtype.Text      `json:"location"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
 }
 
 type Message struct {
