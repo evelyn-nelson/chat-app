@@ -375,9 +375,12 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 
 	qtx := h.db.WithTx(tx)
 	groupParams := db.InsertGroupParams{
-		Name:      req.Name,
-		StartTime: pgtype.Timestamp{Time: req.StartTime, Valid: true},
-		EndTime:   pgtype.Timestamp{Time: req.EndTime, Valid: true},
+		Name:        req.Name,
+		StartTime:   pgtype.Timestamp{Time: req.StartTime, Valid: true},
+		EndTime:     pgtype.Timestamp{Time: req.EndTime, Valid: true},
+		Description: util.NullablePgText(req.Description),
+		Location:    util.NullablePgText(req.Location),
+		ImageUrl:    util.NullablePgText(req.ImageUrl),
 	}
 	group, err := qtx.InsertGroup(ctx, groupParams)
 	if err != nil {
@@ -483,15 +486,12 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	}
 
 	updateParams := db.UpdateGroupParams{ID: groupID}
-	if req.Name != nil {
-		updateParams.Name = pgtype.Text{String: *req.Name, Valid: true}
-	}
-	if req.StartTime != nil {
-		updateParams.StartTime = pgtype.Timestamp{Time: *req.StartTime, Valid: true}
-	}
-	if req.EndTime != nil {
-		updateParams.EndTime = pgtype.Timestamp{Time: *req.EndTime, Valid: true}
-	}
+	updateParams.Name = util.NullablePgText(req.Name)
+	updateParams.StartTime = util.NullablePgTimestamp(req.StartTime)
+	updateParams.EndTime = util.NullablePgTimestamp(req.EndTime)
+	updateParams.Description = util.NullablePgText(req.Description)
+	updateParams.Location = util.NullablePgText(req.Location)
+	updateParams.ImageUrl = util.NullablePgText(req.ImageUrl)
 
 	_, err = h.db.UpdateGroup(ctx, updateParams)
 	if err != nil {
@@ -500,8 +500,6 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 		return
 	}
 
-	// Fetch the complete group data including users for the response.
-	// user.ID is the ID of the authenticated user making the request.
 	fullGroupData, err := h.db.GetGroupWithUsersByID(
 		ctx,
 		db.GetGroupWithUsersByIDParams{
@@ -577,6 +575,15 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	if fullGroupData.EndTime.Valid {
 		responseClientGroup.EndTime = &fullGroupData.EndTime.Time
 	}
+	if fullGroupData.Description.Valid {
+		responseClientGroup.Description = &fullGroupData.Description.String
+	}
+	if fullGroupData.Location.Valid {
+		responseClientGroup.Location = &fullGroupData.Location.String
+	}
+	if fullGroupData.ImageUrl.Valid {
+		responseClientGroup.ImageUrl = &fullGroupData.ImageUrl.String
+	}
 
 	if fullGroupData.Admin {
 		responseClientGroup.Admin = fullGroupData.Admin
@@ -598,7 +605,7 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	if req.Name != nil {
 		updatePayload := &GroupUpdateEventPayload{
 			GroupID: fullGroupData.ID,
-			Name:    fullGroupData.Name, // Use the name from the fetched data
+			Name:    fullGroupData.Name,
 		}
 		select {
 		case h.hub.UpdateGroupInfoChan <- updatePayload:

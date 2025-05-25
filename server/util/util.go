@@ -4,6 +4,7 @@ import (
 	"chat-app-server/db"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,9 +30,16 @@ func GetUser(c *gin.Context, queries *db.Queries) (db.GetUserByIdRow, error) {
 	}
 }
 
-func strPtr(pt pgtype.Text) *string {
-	if !pt.Valid {
-		return nil
+func NullablePgText(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{Valid: false}
 	}
-	return &pt.String
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func NullablePgTimestamp(s *time.Time) pgtype.Timestamp {
+	if s == nil {
+		return pgtype.Timestamp{Valid: false}
+	}
+	return pgtype.Timestamp{Time: *s, Valid: true}
 }

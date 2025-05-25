@@ -55,6 +55,9 @@ export interface GroupRow {
   updated_at: string;
   start_time: string;
   end_time: string;
+  description: string | null;
+  location: string | null;
+  image_url: string | null;
 }
 
 export interface UserRow {
