@@ -15,6 +15,27 @@ JOIN users u2 ON u2.id = ug2.user_id
 WHERE u.id = $1
 GROUP BY groups.id, ug.id, u.id;
 
+-- name: GetGroupWithUsersByID :one
+SELECT
+    g.id,
+    g.name,
+    g.start_time,
+    g.end_time,
+    g.created_at,
+    g.updated_at,
+    (SELECT ug_check.admin FROM user_groups ug_check WHERE ug_check.group_id = g.id AND ug_check.user_id = sqlc.arg('requesting_user_id')) AS admin, -- Admin status of the requesting user for THIS group
+    COALESCE(
+        (SELECT json_agg(jsonb_build_object('id', u.id, 'username', u.username, 'email', u.email, 'admin', ug.admin, 'invited_at', ug.created_at))::text
+         FROM users u
+         JOIN user_groups ug ON u.id = ug.user_id
+         WHERE ug.group_id = g.id),
+        '[]'::text
+    ) AS group_users
+FROM
+    groups g
+WHERE
+    g.id = sqlc.arg('group_id');
+
 -- name: InsertGroup :one
 INSERT INTO groups ("name", "start_time", "end_time") VALUES ($1, $2, $3) RETURNING *; 
 

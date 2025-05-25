@@ -8,48 +8,46 @@ import {
   Alert,
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
-import { useWebSocket } from "../context/WebSocketContext";
-import { useGlobalStore } from "../context/GlobalStoreContext";
+// ... other imports
 import {
-  DateOptions,
   Group,
   GroupUser,
   UpdateGroupParams,
-  PickerImageResult, // Use the consistent type
+  PickerImageResult,
+  DateOptions,
 } from "@/types/types";
 import UserList from "./UserList";
 import Button from "../Global/Button/Button";
-import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
+import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
+import { useGlobalStore } from "../context/GlobalStoreContext";
+import { useWebSocket } from "../context/WebSocketContext";
+import { router } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-// import * as ImagePicker from "expo-image-picker"; // Import expo-image-picker
+import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 
-const ChatSettingsMenu = (props: { group: Group }) => {
-  const { group } = props;
-  const { user: self, store, refreshGroups, refreshUsers } = useGlobalStore();
-  const currentUserIsAdmin = group.admin;
+const ChatSettingsMenu = (props: {
+  group: Group;
+  onUserKicked: (userId: number) => void;
+}) => {
+  const { group: initialGroup, onUserKicked } = props;
+  const { store, refreshGroups } = useGlobalStore();
+  const currentUserIsAdmin = initialGroup.admin;
 
-  const { inviteUsersToGroup, updateGroup, getGroups, getUsers } =
-    useWebSocket();
+  const { inviteUsersToGroup, updateGroup, getGroups } = useWebSocket();
+
+  const [currentGroup, setCurrentGroup] = useState<Group>(initialGroup);
 
   const [isEditing, setIsEditing] = useState(false);
-
-  // Editable fields state
-  const [editableName, setEditableName] = useState(group.name);
+  const [editableName, setEditableName] = useState(initialGroup.name);
   const [editableDescription, setEditableDescription] = useState(
-    group.description || ""
+    initialGroup.description || ""
   );
   const [editableLocation, setEditableLocation] = useState(
-    group.location || ""
+    initialGroup.location || ""
   );
-
-  // Image related state:
-  // currentImageUriForPreview: URI shown in the <Image> tag (can be original URL or new local URI)
-  // newImageFileToUpload: Holds {uri, base64?} if a NEW image is picked from gallery
-  // imageMarkedForRemoval: Flag to indicate if the user wants to remove the existing image
   const [currentImageUriForPreview, setCurrentImageUriForPreview] = useState<
     string | null
-  >(group.image_url || null);
+  >(initialGroup.image_url || null);
   const [newImageFileToUpload, setNewImageFileToUpload] =
     useState<PickerImageResult | null>(null);
   const [imageMarkedForRemoval, setImageMarkedForRemoval] =
@@ -65,115 +63,137 @@ const ChatSettingsMenu = (props: { group: Group }) => {
   );
 
   const [dateOptions, setDateOptions] = useState<DateOptions>({
-    startTime: parseDate(group.start_time),
-    endTime: parseDate(group.end_time),
+    startTime: parseDate(currentGroup.start_time),
+    endTime: parseDate(currentGroup.end_time),
   });
 
   const [usersToInvite, setUsersToInvite] = useState<string[]>([]);
-  const excludedUserList: GroupUser[] = group.group_users;
 
   const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
   const [isLoadingInvite, setIsLoadingInvite] = useState(false);
 
-  // Reset fields when group prop changes or when exiting edit mode
   useEffect(() => {
-    if (!isEditing || group) {
-      setEditableName(group.name);
-      setEditableDescription(group.description || "");
-      setEditableLocation(group.location || "");
-      setCurrentImageUriForPreview(group.image_url || null);
+    setCurrentGroup(initialGroup);
+    if (!isEditing) {
+      setEditableName(initialGroup.name);
+      setEditableDescription(initialGroup.description || "");
+      setEditableLocation(initialGroup.location || "");
+      setCurrentImageUriForPreview(initialGroup.image_url || null);
       setNewImageFileToUpload(null);
       setImageMarkedForRemoval(false);
       setDateOptions({
-        startTime: parseDate(group.start_time),
-        endTime: parseDate(group.end_time),
+        startTime: parseDate(initialGroup.start_time),
+        endTime: parseDate(initialGroup.end_time),
       });
     }
-  }, [group, isEditing, parseDate]);
+  }, [initialGroup, isEditing, parseDate]);
 
-  const fetchAndRefreshGroups = async () => {
+  useEffect(() => {
+    if (!isEditing) {
+      setEditableName(currentGroup.name);
+      setEditableDescription(currentGroup.description || "");
+      setEditableLocation(currentGroup.location || "");
+      setCurrentImageUriForPreview(currentGroup.image_url || null);
+      setNewImageFileToUpload(null);
+      setImageMarkedForRemoval(false);
+      setDateOptions({
+        startTime: parseDate(currentGroup.start_time),
+        endTime: parseDate(currentGroup.end_time),
+      });
+    }
+  }, [isEditing, currentGroup, parseDate]);
+
+  const syncWithServerAndGlobalStore = async () => {
     try {
-      const updatedGroups = await getGroups();
-      await store.saveGroups(updatedGroups);
+      const allGroups = await getGroups();
+      await store.saveGroups(allGroups);
       refreshGroups();
+
+      const newGroups = await store.loadGroups();
+
+      const latestVersionOfCurrentGroup = newGroups.find(
+        (g) => g.id === currentGroup.id
+      );
+      if (latestVersionOfCurrentGroup) {
+        setCurrentGroup(latestVersionOfCurrentGroup);
+      } else {
+        console.warn(
+          "Current group not found after sync, it might have been deleted."
+        );
+        router.back();
+      }
     } catch (error) {
-      console.error("Failed to fetch and refresh groups:", error);
+      console.error("Failed to sync with server and global store:", error);
     }
   };
 
-  const fetchAndRefreshUsers = async () => {
-    try {
-      const updatedUsers = await getUsers();
-      await store.saveUsers(updatedUsers);
-      refreshUsers();
-    } catch (error) {
-      console.error("Failed to fetch and refresh groups:", error);
-    }
+  const onKickSuccess = async (userId: number) => {
+    await onUserKicked(userId);
+    await syncWithServerAndGlobalStore();
   };
 
   // --- Re-use or import your image upload function ---
-  async function uploadImageAsync(
-    uri: string,
-    base64?: string
-  ): Promise<string | null> {
-    console.log("Attempting to upload image from URI:", uri);
-    // (Same implementation as in ChatCreateMenu or a shared utility)
-    // For testing, simulate an upload:
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockUrl = `https://picsum.photos/seed/${Date.now()}/200/200`;
-        console.log("Simulated upload, returning URL:", mockUrl);
-        resolve(mockUrl);
-        // resolve(null); // Simulate upload failure
-      }, 1500);
-    });
-  }
+  // async function uploadImageAsync(
+  //   uri: string,
+  //   base64?: string
+  // ): Promise<string | null> {
+  //   console.log("Attempting to upload image from URI:", uri);
+  //   // (Same implementation as in ChatCreateMenu or a shared utility)
+  //   // For testing, simulate an upload:
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       const mockUrl = `https://picsum.photos/seed/${Date.now()}/200/200`;
+  //       console.log("Simulated upload, returning URL:", mockUrl);
+  //       resolve(mockUrl);
+  //       // resolve(null); // Simulate upload failure
+  //     }, 1500);
+  //   });
+  // }
   // --- End of uploadImageAsync ---
 
   const handleSaveChanges = async () => {
     setIsLoadingUpdate(true);
-
     const payload: UpdateGroupParams = {};
     let hasChanges = false;
-    let finalImageUrlForPayload: string | null | undefined = group.image_url; // Start with original
+    // let finalImageUrlForPayload: string | null | undefined =
+    //   currentGroup.image_url;
 
-    // 1. Handle Image Update/Removal
-    if (imageMarkedForRemoval) {
-      finalImageUrlForPayload = null;
-    } else if (newImageFileToUpload?.uri) {
-      const uploadedUrl = await uploadImageAsync(
-        newImageFileToUpload.uri,
-        newImageFileToUpload.base64
-      );
-      if (!uploadedUrl) {
-        // Upload failed, uploadImageAsync should have shown an alert.
-        setIsLoadingUpdate(false);
-        return; // Stop if new image selected but upload failed
-      }
-      finalImageUrlForPayload = uploadedUrl;
-    }
+    // if (imageMarkedForRemoval) {
+    //   finalImageUrlForPayload = null;
+    // } else if (newImageFileToUpload?.uri) {
+    //   const uploadedUrl = await uploadImageAsync(
+    //     newImageFileToUpload.uri,
+    //     newImageFileToUpload.base64
+    //   );
+    //   if (!uploadedUrl) {
+    //     setIsLoadingUpdate(false);
+    //     return;
+    //   }
+    //   finalImageUrlForPayload = uploadedUrl;
+    // }
 
-    // Only add image_url to payload if it actually changed from the original
-    if (finalImageUrlForPayload !== group.image_url) {
-      payload.image_url = finalImageUrlForPayload;
-      hasChanges = true;
-    }
-
-    // 2. Handle other field updates
-    if (editableName.trim() !== group.name && editableName.trim() !== "") {
+    // if (finalImageUrlForPayload !== currentGroup.image_url) {
+    //   payload.image_url = finalImageUrlForPayload;
+    //   hasChanges = true;
+    // }
+    // ... compare editableName with currentGroup.name, etc. ...
+    if (
+      editableName.trim() !== currentGroup.name &&
+      editableName.trim() !== ""
+    ) {
       payload.name = editableName.trim();
       hasChanges = true;
     }
-    if (editableDescription !== (group.description || "")) {
+    if (editableDescription !== (currentGroup.description || "")) {
       payload.description = editableDescription;
       hasChanges = true;
     }
-    if (editableLocation !== (group.location || "")) {
+    if (editableLocation !== (currentGroup.location || "")) {
       payload.location = editableLocation;
       hasChanges = true;
     }
-    const groupStartTime = parseDate(group.start_time);
-    const groupEndTime = parseDate(group.end_time);
+    const groupStartTime = parseDate(currentGroup.start_time);
+    const groupEndTime = parseDate(currentGroup.end_time);
     if (
       dateOptions.startTime?.toISOString() !== groupStartTime?.toISOString() &&
       dateOptions.startTime !== null
@@ -191,42 +211,42 @@ const ChatSettingsMenu = (props: { group: Group }) => {
 
     if (hasChanges) {
       try {
-        const updatedGroupData = await updateGroup(group.id, payload);
+        const updatedGroupData = await updateGroup(currentGroup.id, payload);
         if (updatedGroupData) {
-          await fetchAndRefreshGroups();
+          const optimisticallyUpdatedGroup = {
+            ...currentGroup,
+            ...payload,
+            // image_url:
+            //   payload.image_url === undefined
+            //     ? currentGroup.image_url
+            //     : payload.image_url,
+            start_time: payload.start_time || currentGroup.start_time,
+            end_time: payload.end_time || currentGroup.end_time,
+          };
+          setCurrentGroup(optimisticallyUpdatedGroup as Group);
+          await syncWithServerAndGlobalStore();
         } else {
-          console.error("Group update returned undefined.");
-          Alert.alert(
-            "Update Failed",
-            "Could not save some changes. Please try again."
-          );
+          Alert.alert("Update Failed", "Could not save changes.");
         }
       } catch (error) {
-        console.error("Error updating group:", error);
-        Alert.alert(
-          "Error",
-          "An unexpected error occurred while saving changes."
-        );
+        console.error("Error saving changes", error);
       }
     }
-
     setIsLoadingUpdate(false);
-    setIsEditing(false); // Exit edit mode
+    setIsEditing(false);
   };
 
   const handleInviteUsers = async () => {
     if (usersToInvite.length === 0) return;
     setIsLoadingInvite(true);
     try {
-      await inviteUsersToGroup(
-        usersToInvite.map((id) => id.toString()),
-        group.id
-      );
-      await fetchAndRefreshGroups();
-      await fetchAndRefreshUsers();
+      await inviteUsersToGroup(usersToInvite, currentGroup.id);
+
       setUsersToInvite([]);
+      await syncWithServerAndGlobalStore();
     } catch (error) {
       console.error("Error inviting users:", error);
+      Alert.alert("Invite Failed", "Could not invite users. Please try again.");
     } finally {
       setIsLoadingInvite(false);
     }
@@ -270,7 +290,6 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     setNewImageFileToUpload(null); // No new file to upload
     setImageMarkedForRemoval(true); // Flag for removal on save
   };
-
   const formatDate = (date: Date | null) => {
     // ... (same as before)
     if (!date) return "Not set";
@@ -283,7 +302,6 @@ const ChatSettingsMenu = (props: { group: Group }) => {
     });
   };
 
-  // ... (renderEditableField, renderDisplayField helpers same as before)
   const renderEditableField = (
     label: string,
     value: string,
@@ -412,7 +430,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               false,
               true
             )
-          : renderDisplayField("Group Name", group.name)}
+          : renderDisplayField("Group Name", currentGroup.name)}
 
         {isEditing && currentUserIsAdmin
           ? renderEditableField(
@@ -422,7 +440,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               "Enter description (optional)",
               true
             )
-          : renderDisplayField("Description", group.description)}
+          : renderDisplayField("Description", currentGroup.description)}
 
         {isEditing && currentUserIsAdmin
           ? renderEditableField(
@@ -431,7 +449,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               setEditableLocation,
               "Enter location (optional)"
             )
-          : renderDisplayField("Location", group.location)}
+          : renderDisplayField("Location", currentGroup.location)}
       </View>
 
       {/* Event Schedule Card */}
@@ -467,11 +485,16 @@ const ChatSettingsMenu = (props: { group: Group }) => {
       {/* Group Members Card */}
       <View className="w-full bg-gray-900 rounded-xl shadow-md p-4 mb-4">
         <Text className="text-lg font-semibold text-blue-400 mb-3">
-          {group.group_users.length}{" "}
-          {group.group_users.length === 1 ? "Member" : "Members"}
+          {/* *** Use currentGroup for member count *** */}
+          {currentGroup.group_users.length}{" "}
+          {currentGroup.group_users.length === 1 ? "Member" : "Members"}
         </Text>
         <View className="bg-gray-800 rounded-lg p-1">
-          <UserList group={group} currentUserIsAdmin={currentUserIsAdmin} />
+          <UserList
+            group={currentGroup}
+            currentUserIsAdmin={currentUserIsAdmin}
+            onUserKicked={onKickSuccess}
+          />
         </View>
       </View>
 
@@ -486,7 +509,7 @@ const ChatSettingsMenu = (props: { group: Group }) => {
               placeholderText="Select friends to invite"
               userList={usersToInvite}
               setUserList={setUsersToInvite}
-              excludedUserList={excludedUserList}
+              excludedUserList={currentGroup.group_users}
             />
           </View>
           {usersToInvite.length > 0 && (

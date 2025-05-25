@@ -1,43 +1,39 @@
 import { useMemo } from "react";
-import { Group } from "@/types/types";
-import { Platform, ScrollView, Text, View } from "react-native";
+import { Group, GroupUser } from "@/types/types";
+import { Platform, ScrollView, View } from "react-native"; // Removed Text
 import UserListItem from "./UserListItem";
 
 type UserListProps = {
   group: Group;
   currentUserIsAdmin?: boolean;
+  onUserKicked: (userId: number) => void;
 };
 
 const UserList = (props: UserListProps) => {
-  const { group, currentUserIsAdmin } = props;
+  const { group, currentUserIsAdmin, onUserKicked } = props;
 
   const sortedGroupUsers = useMemo(() => {
-    if (!group || !group.group_users) {
+    if (!group?.group_users) {
       return [];
     }
-
     return [...group.group_users].sort((userA, userB) => {
       if (userA.admin !== userB.admin) {
         return userA.admin ? -1 : 1;
       }
-      if (userA.invited_at && !userB.invited_at) {
-        return 1;
-      }
-      if (!userA.invited_at && userB.invited_at) {
-        return -1;
-      }
-      if (!(userA.invited_at && userB.invited_at)) {
+      if (!(userA && userB)) {
         return 0;
       }
-      if (userA.invited_at < userB.invited_at) {
+      if (userA.invited_at && userB.invited_at) {
+        if (userA.invited_at < userB.invited_at) return -1;
+        if (userA.invited_at > userB.invited_at) return 1;
+      } else if (userA.invited_at) {
         return -1;
-      }
-      if (userA.invited_at > userB.invited_at) {
+      } else if (userB.invited_at) {
         return 1;
       }
-      return 0;
+      return userA.username.localeCompare(userB.username);
     });
-  }, [group, group?.group_users]);
+  }, [group?.group_users]);
 
   return (
     <View className="w-full rounded-lg overflow-hidden bg-gray-800">
@@ -48,19 +44,16 @@ const UserList = (props: UserListProps) => {
         }}
         showsVerticalScrollIndicator={Platform.OS !== "web"}
       >
-        {sortedGroupUsers.map((user, index) => {
-          const key = user.id || `user-${index}`;
-          return (
-            <View key={key}>
-              <UserListItem
-                user={user}
-                group={group}
-                index={index} // This index is from the *sorted* list
-                currentUserIsAdmin={currentUserIsAdmin}
-              />
-            </View>
-          );
-        })}
+        {sortedGroupUsers.map((user, index) => (
+          <UserListItem
+            key={user.id}
+            user={user}
+            group={group}
+            index={index}
+            currentUserIsAdmin={currentUserIsAdmin}
+            onKickSuccess={onUserKicked}
+          />
+        ))}
       </ScrollView>
     </View>
   );

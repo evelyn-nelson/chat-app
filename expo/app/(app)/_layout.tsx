@@ -64,7 +64,7 @@ const AppLayout = () => {
 
     try {
       const data = await getGroups();
-      store.saveGroups(data);
+      await store.saveGroups(data);
       refreshGroups();
     } catch (error) {
       if (!(error instanceof CanceledError)) {
@@ -87,7 +87,7 @@ const AppLayout = () => {
 
     try {
       const data = await getUsers();
-      store.saveUsers(data);
+      await store.saveUsers(data);
       refreshUsers();
     } catch (error) {
       if (!(error instanceof CanceledError)) {
@@ -106,9 +106,9 @@ const AppLayout = () => {
     fetchGroups();
     fetchUsers();
 
-    const groupsIntervalId = setInterval(fetchGroups, 5000);
-    const usersIntervalId = setInterval(fetchUsers, 5000);
-    const messagesIntervalId = setInterval(loadHistoricalMessages, 5000);
+    const groupsIntervalId = setInterval(fetchGroups, 100000);
+    const usersIntervalId = setInterval(fetchUsers, 100000);
+    const messagesIntervalId = setInterval(loadHistoricalMessages, 30000);
 
     return () => {
       clearInterval(groupsIntervalId);

@@ -366,8 +366,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const inviteUsersToGroup = async (emails: string[], group_id: number) => {
-    http
+  const inviteUsersToGroup = async (
+    emails: string[],
+    group_id: number
+  ): Promise<any> => {
+    return http
       .post(`${httpBaseURL}/inviteUsersToGroup`, {
         group_id: group_id,
         emails: emails,
@@ -377,8 +380,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       });
   };
 
-  const removeUserFromGroup = async (email: string, group_id: number) => {
-    http
+  const removeUserFromGroup = async (
+    email: string,
+    group_id: number
+  ): Promise<any> => {
+    return http
       .post(`${httpBaseURL}/removeUserFromGroup`, {
         group_id: group_id,
         email: email,

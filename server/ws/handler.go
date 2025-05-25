@@ -493,34 +493,133 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 		updateParams.EndTime = pgtype.Timestamp{Time: *req.EndTime, Valid: true}
 	}
 
-	updatedGroup, err := h.db.UpdateGroup(ctx, updateParams)
+	_, err = h.db.UpdateGroup(ctx, updateParams)
 	if err != nil {
 		log.Printf("Error updating group %d: %v", groupID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group"})
 		return
 	}
 
-	var updatedName string
-	if req.Name != nil {
-		updatedName = updatedGroup.Name
+	// Fetch the complete group data including users for the response.
+	// user.ID is the ID of the authenticated user making the request.
+	fullGroupData, err := h.db.GetGroupWithUsersByID(
+		ctx,
+		db.GetGroupWithUsersByIDParams{
+			GroupID:          groupID,
+			RequestingUserID: pgtype.Int4{Int32: user.ID, Valid: true},
+		},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Should be rare if update succeeded, implies group vanished immediately.
+			c.JSON(
+				http.StatusNotFound,
+				gin.H{"error": "Group not found after update"},
+			)
+		} else {
+			log.Printf(
+				"Error fetching group details after update for group %d: %v",
+				groupID,
+				err,
+			)
+			c.JSON(
+				http.StatusInternalServerError,
+				gin.H{"error": "Failed to retrieve updated group details"},
+			)
+		}
+		return
 	}
 
-	if updatedName != "" {
+	var clientGroupUsers []ClientGroupUser
+	groupUsersStr, ok := fullGroupData.GroupUsers.(string)
+	if !ok {
+		log.Printf(
+			"Error: fullGroupData.GroupUsers is not type string as expected. Actual type: %T, value: %v for group %d",
+			fullGroupData.GroupUsers,
+			fullGroupData.GroupUsers,
+			groupID,
+		)
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "Failed to process group user data (unexpected data type)"},
+		)
+		return
+	}
+
+	if err := json.Unmarshal(
+		[]byte(groupUsersStr),
+		&clientGroupUsers,
+	); err != nil {
+		log.Printf(
+			"Error unmarshalling group_users JSON string '%s' for group %d: %v",
+			groupUsersStr,
+			groupID,
+			err,
+		)
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "Failed to parse group user data"},
+		)
+		return
+	}
+
+	responseClientGroup := ClientGroup{
+		ID:         fullGroupData.ID,
+		Name:       fullGroupData.Name,
+		CreatedAt:  fullGroupData.CreatedAt.Time,
+		UpdatedAt:  fullGroupData.UpdatedAt.Time,
+		GroupUsers: clientGroupUsers,
+	}
+
+	if fullGroupData.StartTime.Valid {
+		responseClientGroup.StartTime = &fullGroupData.StartTime.Time
+	}
+	if fullGroupData.EndTime.Valid {
+		responseClientGroup.EndTime = &fullGroupData.EndTime.Time
+	}
+
+	if fullGroupData.Admin {
+		responseClientGroup.Admin = fullGroupData.Admin
+	} else {
+		log.Printf(
+			"Warning: Admin status from GetGroupWithUsersByID for user %d, group %d was NULL. Defaulting based on prior check.",
+			user.ID,
+			groupID,
+		)
+		responseClientGroup.Admin = userGroup.Admin
+	}
+	if userGroup.Admin && !responseClientGroup.Admin && fullGroupData.Admin {
+		log.Printf(
+			"Warning: Admin status mismatch for user %d, group %d. Initial: true, FromQuery: %v. Using query result.",
+			user.ID, groupID, fullGroupData.Admin,
+		)
+	}
+
+	if req.Name != nil {
 		updatePayload := &GroupUpdateEventPayload{
-			GroupID: updatedGroup.ID,
-			Name:    updatedName,
+			GroupID: fullGroupData.ID,
+			Name:    fullGroupData.Name, // Use the name from the fetched data
 		}
 		select {
 		case h.hub.UpdateGroupInfoChan <- updatePayload:
-			log.Printf("Sent request to hub to process group info update for group %d", updatedGroup.ID)
+			log.Printf(
+				"Sent request to hub to process group info update for group %d",
+				fullGroupData.ID,
+			)
 		case <-ctx.Done():
-			log.Printf("Context cancelled while trying to send UpdateGroupInfoChan for group %d", updatedGroup.ID)
+			log.Printf(
+				"Context cancelled while trying to send UpdateGroupInfoChan for group %d",
+				fullGroupData.ID,
+			)
 		default:
-			log.Printf("Warning: Hub UpdateGroupInfoChan full for group %d. Update might be delayed or dropped.", updatedGroup.ID)
+			log.Printf(
+				"Warning: Hub UpdateGroupInfoChan full for group %d. Update might be delayed or dropped.",
+				fullGroupData.ID,
+			)
 		}
 	}
 
-	c.JSON(http.StatusOK, UpdateGroupResponse{Group: updatedGroup})
+	c.JSON(http.StatusOK, UpdateGroupResponse{Group: responseClientGroup})
 }
 
 func (h *Handler) GetGroups(c *gin.Context) {

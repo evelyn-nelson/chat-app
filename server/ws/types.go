@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"chat-app-server/db"
 	"time"
 )
 
@@ -17,8 +16,19 @@ type UpdateGroupRequest struct {
 	EndTime   *time.Time `json:"end_time,omitempty"`
 }
 
+type ClientGroup struct {
+	ID         int32             `json:"id"`
+	Name       string            `json:"name"`
+	StartTime  *time.Time        `json:"start_time,omitempty"`
+	EndTime    *time.Time        `json:"end_time,omitempty"`
+	CreatedAt  time.Time         `json:"created_at"`
+	UpdatedAt  time.Time         `json:"updated_at"`
+	Admin      bool              `json:"admin"`
+	GroupUsers []ClientGroupUser `json:"group_users"`
+}
+
 type UpdateGroupResponse struct {
-	Group db.UpdateGroupRow `json:"group"`
+	Group ClientGroup `json:"group"`
 }
 
 type JoinGroupRequest struct {
@@ -36,3 +46,11 @@ type RemoveUserFromGroupRequest struct {
 }
 
 type GroupAdminMap map[int32]bool
+
+type ClientGroupUser struct {
+	ID        int32  `json:"id"`
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	Admin     bool   `json:"admin"`
+	InvitedAt string `json:"invited_at"`
+}

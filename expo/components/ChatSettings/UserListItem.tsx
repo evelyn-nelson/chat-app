@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, Alert } from "react-native";
 import React, { useState } from "react";
 import { Group, GroupUser } from "@/types/types";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -10,12 +10,21 @@ type UserListItemProps = {
   group: Group;
   index: number;
   currentUserIsAdmin?: boolean;
+  onKickSuccess: (userId: number) => void;
+  onKickFailure?: (userId: number) => void;
 };
 
 const UserListItem = (props: UserListItemProps) => {
-  const { user, group, index, currentUserIsAdmin } = props;
+  const {
+    user,
+    group,
+    index,
+    currentUserIsAdmin,
+    onKickSuccess,
+    onKickFailure,
+  } = props;
 
-  const [hidden, setHidden] = useState(false);
+  const [isKicking, setIsKicking] = useState(false);
 
   const { removeUserFromGroup } = useWebSocket();
   const { user: self } = useGlobalStore();
@@ -23,11 +32,41 @@ const UserListItem = (props: UserListItemProps) => {
   const isTargetUserAdmin = user.admin;
   const isSelf = self?.id === user.id;
 
-  if (hidden) {
-    return <View />;
-  }
-
   const canKickUser = currentUserIsAdmin && !isTargetUserAdmin && !isSelf;
+
+  const handleKickUser = () => {
+    if (isKicking) return;
+
+    Alert.alert(
+      "Confirm Kick",
+      `Are you sure you want to remove ${user.username} from "${group.name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Kick",
+          style: "destructive",
+          onPress: async () => {
+            setIsKicking(true);
+            try {
+              await removeUserFromGroup(user.email, group.id);
+              onKickSuccess(user.id);
+            } catch (error) {
+              console.error("Failed to remove user:", error);
+              Alert.alert(
+                "Error",
+                `Failed to remove ${user.username}. Please try again.`
+              );
+              if (onKickFailure) {
+                onKickFailure(user.id);
+              }
+            } finally {
+              setIsKicking(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View className={`${index !== 0 ? "border-t border-gray-700" : ""} w-full`}>
@@ -64,17 +103,15 @@ const UserListItem = (props: UserListItemProps) => {
 
         {canKickUser && (
           <Pressable
-            className="w-8 h-8 rounded-full items-center justify-center active:bg-gray-700" // Added active state
-            onPress={() => {
-              if (self && group && user) {
-                removeUserFromGroup(user.email, group.id);
-                setHidden(true);
-              }
-            }}
+            disabled={isKicking}
+            className={`w-8 h-8 rounded-full items-center justify-center active:bg-gray-700 ${
+              isKicking ? "opacity-50" : ""
+            }`}
+            onPress={handleKickUser}
           >
             {({ pressed }) => (
               <Ionicons
-                color={pressed ? "#6B7280" : "#9CA3AF"} // Adjusted pressed color
+                color={pressed || isKicking ? "#6B7280" : "#9CA3AF"}
                 name={"close-circle-outline"}
                 size={22}
               />

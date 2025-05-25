@@ -102,6 +102,60 @@ func (q *Queries) GetGroupById(ctx context.Context, id int32) (GetGroupByIdRow, 
 	return i, err
 }
 
+const getGroupWithUsersByID = `-- name: GetGroupWithUsersByID :one
+SELECT
+    g.id,
+    g.name,
+    g.start_time,
+    g.end_time,
+    g.created_at,
+    g.updated_at,
+    (SELECT ug_check.admin FROM user_groups ug_check WHERE ug_check.group_id = g.id AND ug_check.user_id = $1) AS admin, -- Admin status of the requesting user for THIS group
+    COALESCE(
+        (SELECT json_agg(jsonb_build_object('id', u.id, 'username', u.username, 'email', u.email, 'admin', ug.admin, 'invited_at', ug.created_at))::text
+         FROM users u
+         JOIN user_groups ug ON u.id = ug.user_id
+         WHERE ug.group_id = g.id),
+        '[]'::text
+    ) AS group_users
+FROM
+    groups g
+WHERE
+    g.id = $2
+`
+
+type GetGroupWithUsersByIDParams struct {
+	RequestingUserID pgtype.Int4 `json:"requesting_user_id"`
+	GroupID          int32       `json:"group_id"`
+}
+
+type GetGroupWithUsersByIDRow struct {
+	ID         int32            `json:"id"`
+	Name       string           `json:"name"`
+	StartTime  pgtype.Timestamp `json:"start_time"`
+	EndTime    pgtype.Timestamp `json:"end_time"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
+	Admin      bool             `json:"admin"`
+	GroupUsers interface{}      `json:"group_users"`
+}
+
+func (q *Queries) GetGroupWithUsersByID(ctx context.Context, arg GetGroupWithUsersByIDParams) (GetGroupWithUsersByIDRow, error) {
+	row := q.db.QueryRow(ctx, getGroupWithUsersByID, arg.RequestingUserID, arg.GroupID)
+	var i GetGroupWithUsersByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.StartTime,
+		&i.EndTime,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Admin,
+		&i.GroupUsers,
+	)
+	return i, err
+}
+
 const getGroupsForUser = `-- name: GetGroupsForUser :many
 SELECT groups.id, groups.name, groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
 json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin, 'invited_at', ug2.created_at))::text AS group_users 
