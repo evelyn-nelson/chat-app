@@ -130,6 +130,7 @@ const UserMultiSelect = (props: {
           ref={inputRef}
           className="h-12 w-full border border-gray-600 rounded-lg bg-gray-700 text-white px-3"
           placeholderTextColor="#9CA3AF"
+          onSubmitEditing={() => handleSelectUser(currentText)}
           onChangeText={onSearchTextChange}
           value={currentText}
           blurOnSubmit={false}

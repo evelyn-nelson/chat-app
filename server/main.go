@@ -56,8 +56,6 @@ func main() {
 
 	authHandler := auth.NewAuthHandler(db, ctx, connPool)
 	hub := ws.NewHub(db, ctx, connPool, RedisClient, ServerInstanceID)
-	// wsHandler := ws.NewHandler(hub, db, ctx, connPool, RedisClient, ServerInstanceID) // Handler might also need it
-	// hub := ws.NewHub(db, ctx, connPool)
 	wsHandler := ws.NewHandler(hub, db, ctx, connPool)
 	go hub.Run()
 
@@ -67,4 +65,5 @@ func main() {
 
 	router.InitRouter(authHandler, wsHandler, api)
 	router.Start(":8080")
+
 }

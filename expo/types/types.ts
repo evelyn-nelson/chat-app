@@ -1,24 +1,24 @@
 type Message = {
-  id: number;
+  id: string;
   content: string;
   user: MessageUser;
-  group_id: number;
+  group_id: string;
   timestamp: string;
 };
 
 type RawMessage = {
   content: string;
-  sender_id: number;
-  group_id: number;
+  sender_id: string;
+  group_id: string;
 };
 
 type MessageUser = {
-  id: number;
+  id: string;
   username: string;
 };
 
 type User = {
-  id: number;
+  id: string;
   username: string;
   email: string;
   created_at: string;
@@ -26,12 +26,12 @@ type User = {
   group_admin_map?: GroupAdminMap;
 };
 
-type GroupAdminMap = Map<number, boolean>;
+type GroupAdminMap = Map<string, boolean>;
 
 type GroupUser = User & { admin: boolean; invited_at?: string };
 
 type Group = {
-  id: number;
+  id: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -63,9 +63,9 @@ type UpdateGroupParams = {
 };
 
 type UserGroup = {
-  id: number;
-  user_id: number;
-  group_id: number;
+  id: string;
+  user_id: string;
+  group_id: string;
   admin: boolean;
   created_at: string;
   updated_at: string;

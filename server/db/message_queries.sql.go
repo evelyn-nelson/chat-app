@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,7 +17,7 @@ DELETE FROM messages
 WHERE id = $1 RETURNING id, content, user_id, group_id, created_at, updated_at
 `
 
-func (q *Queries) DeleteMessage(ctx context.Context, id int32) (Message, error) {
+func (q *Queries) DeleteMessage(ctx context.Context, id uuid.UUID) (Message, error) {
 	row := q.db.QueryRow(ctx, deleteMessage, id)
 	var i Message
 	err := row.Scan(
@@ -65,7 +66,7 @@ const getMessageById = `-- name: GetMessageById :one
 SELECT id, content, user_id, group_id, created_at, updated_at FROM messages WHERE id = $1
 `
 
-func (q *Queries) GetMessageById(ctx context.Context, id int32) (Message, error) {
+func (q *Queries) GetMessageById(ctx context.Context, id uuid.UUID) (Message, error) {
 	row := q.db.QueryRow(ctx, getMessageById, id)
 	var i Message
 	err := row.Scan(
@@ -88,15 +89,15 @@ JOIN users u2 ON u2.id = m.user_id
 `
 
 type GetRelevantMessagesRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Content   string           `json:"content"`
-	UserID    pgtype.Int4      `json:"user_id"`
+	UserID    *uuid.UUID       `json:"user_id"`
 	Username  string           `json:"username"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
-func (q *Queries) GetRelevantMessages(ctx context.Context, userID pgtype.Int4) ([]GetRelevantMessagesRow, error) {
+func (q *Queries) GetRelevantMessages(ctx context.Context, userID *uuid.UUID) ([]GetRelevantMessagesRow, error) {
 	rows, err := q.db.Query(ctx, getRelevantMessages, userID)
 	if err != nil {
 		return nil, err
@@ -128,9 +129,9 @@ INSERT INTO messages ("user_id", "group_id", "content") VALUES ($1,$2,$3) RETURN
 `
 
 type InsertMessageParams struct {
-	UserID  pgtype.Int4 `json:"user_id"`
-	GroupID pgtype.Int4 `json:"group_id"`
-	Content string      `json:"content"`
+	UserID  *uuid.UUID `json:"user_id"`
+	GroupID *uuid.UUID `json:"group_id"`
+	Content string     `json:"content"`
 }
 
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (Message, error) {

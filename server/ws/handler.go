@@ -11,10 +11,10 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -70,7 +70,7 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 		conn.Close()
 	}()
 
-	var userID int32
+	var userID uuid.UUID
 	var user *db.GetUserByIdRow
 	isAuthenticated := false
 
@@ -187,8 +187,8 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 	}
 
 	inviterUserGroup, err := h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
-		UserID:  pgtype.Int4{Int32: invitingUser.ID, Valid: true},
-		GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+		UserID:  &invitingUser.ID,
+		GroupID: &req.GroupID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
@@ -225,12 +225,12 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 
 	qtx := h.db.WithTx(tx)
 	var successfulInvites []db.UserGroup
-	var invitedUserIDs []int32
+	var invitedUserIDs []uuid.UUID
 
 	for _, user := range usersToInvite {
 		userGroup, err := qtx.InsertUserGroup(ctx, db.InsertUserGroupParams{
-			UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
-			GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+			UserID:  &user.ID,
+			GroupID: &req.GroupID,
 			Admin:   false,
 		})
 		if err != nil {
@@ -283,8 +283,8 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 	}
 
 	userGroup, err := h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
-		UserID:  pgtype.Int4{Int32: requestingUser.ID, Valid: true},
-		GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+		UserID:  &requestingUser.ID,
+		GroupID: &req.GroupID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -317,8 +317,8 @@ func (h *Handler) RemoveUserFromGroup(c *gin.Context) {
 	}
 
 	deletedUserGroup, err := h.db.DeleteUserGroup(ctx, db.DeleteUserGroupParams{
-		UserID:  pgtype.Int4{Int32: userToKick.ID, Valid: true},
-		GroupID: pgtype.Int4{Int32: req.GroupID, Valid: true},
+		UserID:  &userToKick.ID,
+		GroupID: &req.GroupID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -390,8 +390,8 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 	}
 
 	_, err = qtx.InsertUserGroup(ctx, db.InsertUserGroupParams{
-		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
-		GroupID: pgtype.Int4{Int32: group.ID, Valid: true},
+		UserID:  &user.ID,
+		GroupID: &group.ID,
 		Admin:   true,
 	})
 	if err != nil {
@@ -426,12 +426,11 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 		return
 	}
 
-	groupIDParam, err := strconv.Atoi(c.Param("groupID"))
+	groupID, err := uuid.Parse(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID format"})
 		return
 	}
-	groupID := int32(groupIDParam)
 
 	var req UpdateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -440,8 +439,8 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	}
 
 	userGroup, err := h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
-		GroupID: pgtype.Int4{Int32: groupID, Valid: true},
-		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
+		GroupID: &groupID,
+		UserID:  &user.ID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -504,7 +503,7 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 		ctx,
 		db.GetGroupWithUsersByIDParams{
 			GroupID:          groupID,
-			RequestingUserID: pgtype.Int4{Int32: user.ID, Valid: true},
+			RequestingUserID: &user.ID,
 		},
 	)
 	if err != nil {
@@ -655,12 +654,11 @@ func (h *Handler) GetGroups(c *gin.Context) {
 
 func (h *Handler) GetUsersInGroup(c *gin.Context) {
 	ctx := c.Request.Context()
-	groupIDParam, err := strconv.Atoi(c.Param("groupID"))
+	groupID, err := uuid.Parse(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID format"})
 		return
 	}
-	groupID := int32(groupIDParam)
 
 	user, err := util.GetUser(c, h.db)
 	if err != nil {
@@ -668,7 +666,10 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or unauthorized"})
 		return
 	}
-	_, err = h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{UserID: pgtype.Int4{Int32: user.ID, Valid: true}, GroupID: pgtype.Int4{Int32: groupID, Valid: true}})
+	_, err = h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
+		UserID:  &user.ID,
+		GroupID: &groupID,
+	})
 	if err != nil {
 		log.Printf("Error retrieving users for group %d: %v", groupID, err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "User does not have access to this group"})
@@ -695,12 +696,11 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 		return
 	}
 
-	groupIDParam, err := strconv.Atoi(c.Param("groupID"))
+	groupID, err := uuid.Parse(c.Param("groupID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID format"})
 		return
 	}
-	groupID := int32(groupIDParam)
 
 	tx, err := h.conn.Begin(ctx)
 	if err != nil {
@@ -713,8 +713,8 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 	qtx := h.db.WithTx(tx)
 
 	deletedUserGroup, err := qtx.DeleteUserGroup(ctx, db.DeleteUserGroupParams{
-		UserID:  pgtype.Int4{Int32: user.ID, Valid: true},
-		GroupID: pgtype.Int4{Int32: groupID, Valid: true},
+		UserID:  &user.ID,
+		GroupID: &groupID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -726,7 +726,7 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 		return
 	}
 
-	remainingUserGroups, err := qtx.GetAllUserGroupsForGroup(ctx, pgtype.Int4{Int32: groupID, Valid: true})
+	remainingUserGroups, err := qtx.GetAllUserGroupsForGroup(ctx, &groupID)
 	groupIsEmpty := false
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -768,7 +768,7 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign new admin"})
 					return
 				}
-				log.Printf("User %d promoted to admin in group %d.", remainingUserGroups[0].UserID.Int32, groupID)
+				log.Printf("User %d promoted to admin in group %d.", remainingUserGroups[0].UserID, groupID)
 			}
 		}
 	}
@@ -811,7 +811,7 @@ func (h *Handler) GetRelevantUsers(c *gin.Context) {
 		return
 	}
 
-	users, err := h.db.GetRelevantUsers(ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+	users, err := h.db.GetRelevantUsers(ctx, &user.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			users = make([]db.GetRelevantUsersRow, 0)
@@ -835,7 +835,7 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 		return
 	}
 
-	dbMessages, err := h.db.GetRelevantMessages(ctx, pgtype.Int4{Int32: user.ID, Valid: true})
+	dbMessages, err := h.db.GetRelevantMessages(ctx, &user.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			dbMessages = make([]db.GetRelevantMessagesRow, 0)
@@ -851,8 +851,8 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 		messages = append(messages, Message{
 			ID:        dbMsg.ID,
 			Content:   dbMsg.Content,
-			GroupID:   dbMsg.GroupID.Int32,
-			User:      MessageUser{ID: dbMsg.UserID.Int32, Username: dbMsg.Username},
+			GroupID:   *dbMsg.GroupID,
+			User:      MessageUser{ID: *dbMsg.UserID, Username: dbMsg.Username},
 			Timestamp: dbMsg.CreatedAt,
 		})
 	}

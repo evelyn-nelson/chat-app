@@ -27,35 +27,16 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 		MaxAge: 12 * time.Hour,
 	}))
 
+	// general API
+	apiRoutes := r.Group("/api/")
+	apiRoutes.Use(auth.JWTAuthMiddleware())
+
+	apiRoutes.GET("/users/whoami", api.WhoAmI)
+
 	// auth routes group
 	authRoutes := r.Group("/auth/")
 	authRoutes.POST("/signup", authHandler.Signup)
 	authRoutes.POST("/login", authHandler.Login)
-
-	// CRUD routes group
-	apiRoutes := r.Group("/api/")
-	apiRoutes.Use(auth.JWTAuthMiddleware())
-
-	// User CRUD routes
-	apiRoutes.GET("/users/whoami", api.WhoAmI)
-	apiRoutes.GET("/users", api.GetUsers)
-	apiRoutes.GET("/users/:userID", api.GetUser)
-	apiRoutes.PUT("/users/:userID", api.UpdateUser)
-	apiRoutes.DELETE("/users/:userID", api.DeleteUser)
-
-	// UserGroup CRUD routes
-	apiRoutes.GET("/user_groups", api.GetUserGroups)
-	apiRoutes.GET("/user_groups/:userID/:groupID", api.GetUserGroup)
-	apiRoutes.POST("/user_groups", api.CreateUserGroup)
-	apiRoutes.PUT("/user_groups/:userID/:groupID", api.UpdateUserGroup)
-	apiRoutes.DELETE("/user_groups/:userID/:groupID", api.DeleteUserGroup)
-
-	// Group CRUD routes
-	apiRoutes.GET("/groups", api.GetGroups)
-	apiRoutes.GET("/groups/:groupID", api.GetGroup)
-	apiRoutes.POST("/groups", api.CreateGroup)
-	apiRoutes.PUT("/groups/:groupID", api.UpdateGroup)
-	apiRoutes.DELETE("/groups/:groupID", api.DeleteGroup)
 
 	// WS routes
 	wsRoutes := r.Group("/ws/")

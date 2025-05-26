@@ -23,7 +23,7 @@ const ChatSettings = () => {
     }
   }, [id, store, groupsRefreshKey]);
 
-  const handleUserKicked = useCallback((userId: number) => {
+  const handleUserKicked = useCallback((userId: string) => {
     setGroup((g) =>
       g
         ? {

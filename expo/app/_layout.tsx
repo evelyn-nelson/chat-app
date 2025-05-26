@@ -1,3 +1,4 @@
+import "react-native-get-random-values";
 import { WebSocketProvider } from "@/components/context/WebSocketContext";
 import { GlobalStoreProvider } from "@/components/context/GlobalStoreContext";
 import { Stack, Tabs } from "expo-router";
@@ -10,10 +11,6 @@ import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { useEffect } from "react";
 
 export default function RootLayout() {
-  useEffect(() => {
-    // SystemUI.setBackgroundColorAsync("#111827");
-  }, []);
-
   return (
     <SafeAreaProvider>
       <ActionSheetProvider>

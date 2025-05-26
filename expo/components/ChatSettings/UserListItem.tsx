@@ -10,8 +10,8 @@ type UserListItemProps = {
   group: Group;
   index: number;
   currentUserIsAdmin?: boolean;
-  onKickSuccess: (userId: number) => void;
-  onKickFailure?: (userId: number) => void;
+  onKickSuccess: (userId: string) => void;
+  onKickFailure?: (userId: string) => void;
 };
 
 const UserListItem = (props: UserListItemProps) => {
