@@ -28,6 +28,7 @@ export default function GroupLayout() {
         return groups[i];
       }
     }
+    return null;
   };
 
   // Calculate header height based on platform
@@ -50,11 +51,7 @@ export default function GroupLayout() {
         name="[id]"
         options={({ route }) => {
           const { id } = route.params as GroupParams;
-          if (!Number(id)) {
-            router.back();
-          }
           const group = getGroup(id);
-
           return {
             headerShown: true,
             headerTintColor: "#F3F4F6", // gray-100
@@ -117,7 +114,7 @@ export default function GroupLayout() {
                         {group.name.charAt(0).toUpperCase()}
                       </Text>
                     </View>
-                    <View className="flex-1">
+                    <View className="flex-1 min-w-0">
                       <Text
                         className="text-gray-100 text-base font-semibold"
                         numberOfLines={1}

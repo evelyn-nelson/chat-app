@@ -2,6 +2,7 @@ package router
 
 import (
 	"chat-app-server/auth"
+	"chat-app-server/server"
 	"chat-app-server/ws"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 
 var r *gin.Engine
 
-func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler) {
+func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *server.API) {
 	r = gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -25,6 +26,12 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler) {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
+
+	// general API
+	apiRoutes := r.Group("/api/")
+	apiRoutes.Use(auth.JWTAuthMiddleware())
+
+	apiRoutes.GET("/users/whoami", api.WhoAmI)
 
 	// auth routes group
 	authRoutes := r.Group("/auth/")

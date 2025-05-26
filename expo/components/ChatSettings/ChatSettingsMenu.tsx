@@ -27,7 +27,7 @@ import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
 
 const ChatSettingsMenu = (props: {
   group: Group;
-  onUserKicked: (userId: number) => void;
+  onUserKicked: (userId: string) => void;
 }) => {
   const { group: initialGroup, onUserKicked } = props;
   const { store, refreshGroups } = useGlobalStore();
@@ -127,7 +127,7 @@ const ChatSettingsMenu = (props: {
     }
   };
 
-  const onKickSuccess = async (userId: number) => {
+  const onKickSuccess = async (userId: string) => {
     await onUserKicked(userId);
     await syncWithServerAndGlobalStore();
   };

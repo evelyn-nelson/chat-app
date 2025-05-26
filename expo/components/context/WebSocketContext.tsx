@@ -34,12 +34,12 @@ interface WebSocketContextType {
     imageUrl?: string | null
   ) => Promise<Group | undefined>;
   updateGroup: (
-    id: number,
+    id: string,
     updateParams: UpdateGroupParams
   ) => Promise<Group | undefined>;
-  inviteUsersToGroup: (emails: string[], group_id: number) => void;
-  removeUserFromGroup: (email: string, group_id: number) => void;
-  leaveGroup: (group_id: number) => void;
+  inviteUsersToGroup: (emails: string[], group_id: string) => void;
+  removeUserFromGroup: (email: string, group_id: string) => void;
+  leaveGroup: (group_id: string) => void;
   getGroups: () => Promise<Group[]>;
   getUsers: () => Promise<User[]>;
 }
@@ -100,7 +100,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateGroup = async (
-    id: number,
+    id: string,
     updateParams: UpdateGroupParams
   ): Promise<Group | undefined> => {
     const httpURL = `${httpBaseURL}/updateGroup/${id}`;
@@ -371,7 +371,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const leaveGroup = async (group_id: number) => {
+  const leaveGroup = async (group_id: string) => {
     http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
       console.error(error);
     });
@@ -387,7 +387,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const inviteUsersToGroup = async (
     emails: string[],
-    group_id: number
+    group_id: string
   ): Promise<any> => {
     return http
       .post(`${httpBaseURL}/inviteUsersToGroup`, {
@@ -401,7 +401,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const removeUserFromGroup = async (
     email: string,
-    group_id: number
+    group_id: string
   ): Promise<any> => {
     return http
       .post(`${httpBaseURL}/removeUserFromGroup`, {
