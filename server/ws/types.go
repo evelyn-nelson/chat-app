@@ -2,6 +2,8 @@ package ws
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type CreateGroupRequest struct {
@@ -23,7 +25,7 @@ type UpdateGroupRequest struct {
 }
 
 type ClientGroup struct {
-	ID          int32             `json:"id"`
+	ID          uuid.UUID         `json:"id"`
 	Name        string            `json:"name"`
 	Description *string           `json:"description,omitempty"`
 	Location    *string           `json:"location,omitempty"`
@@ -41,25 +43,25 @@ type UpdateGroupResponse struct {
 }
 
 type JoinGroupRequest struct {
-	ID int32 `json:"id"`
+	ID uuid.UUID `json:"id"`
 }
 
 type InviteUsersToGroupRequest struct {
-	GroupID int32    `json:"group_id"`
-	Emails  []string `json:"emails"`
+	GroupID uuid.UUID `json:"group_id"`
+	Emails  []string  `json:"emails"`
 }
 
 type RemoveUserFromGroupRequest struct {
-	GroupID int32  `json:"group_id"`
-	Email   string `json:"email"`
+	GroupID uuid.UUID `json:"group_id"`
+	Email   string    `json:"email"`
 }
 
-type GroupAdminMap map[int32]bool
+type GroupAdminMap map[uuid.UUID]bool
 
 type ClientGroupUser struct {
-	ID        int32  `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Admin     bool   `json:"admin"`
-	InvitedAt string `json:"invited_at"`
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Admin     bool      `json:"admin"`
+	InvitedAt string    `json:"invited_at"`
 }

@@ -21,7 +21,7 @@ WHERE groups.id = $1;
 SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY(sqlc.arg('emails')::text[]);
 
 -- name: GetUsersByIDs :many
-SELECT id, username, email, created_at, updated_at FROM users WHERE id = ANY(sqlc.arg('ids')::int[]);
+SELECT id, username, email, created_at, updated_at FROM users WHERE id = ANY(sqlc.arg('ids')::UUID[]);
 
 -- name: GetAllUsersInternal :many
 SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM users;

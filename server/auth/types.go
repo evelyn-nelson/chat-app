@@ -1,9 +1,12 @@
 package auth
 
-import "github.com/golang-jwt/jwt/v5"
+import (
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+)
 
 type Claims struct {
-	UserID string `json:"userID"`
+	UserID uuid.UUID `json:"userID"`
 	jwt.RegisteredClaims
 }
 

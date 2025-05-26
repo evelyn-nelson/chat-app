@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,13 +18,13 @@ WHERE id = $1 RETURNING "id", "name", "created_at", "updated_at"
 `
 
 type DeleteGroupRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Name      string           `json:"name"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) DeleteGroup(ctx context.Context, id int32) (DeleteGroupRow, error) {
+func (q *Queries) DeleteGroup(ctx context.Context, id uuid.UUID) (DeleteGroupRow, error) {
 	row := q.db.QueryRow(ctx, deleteGroup, id)
 	var i DeleteGroupRow
 	err := row.Scan(
@@ -40,7 +41,7 @@ SELECT "id", "name", "description", "location", "image_url", "start_time", "end_
 `
 
 type GetAllGroupsRow struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
@@ -86,7 +87,7 @@ SELECT "id", "name", "description", "location", "image_url", "start_time", "end_
 `
 
 type GetGroupByIdRow struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
@@ -97,7 +98,7 @@ type GetGroupByIdRow struct {
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetGroupById(ctx context.Context, id int32) (GetGroupByIdRow, error) {
+func (q *Queries) GetGroupById(ctx context.Context, id uuid.UUID) (GetGroupByIdRow, error) {
 	row := q.db.QueryRow(ctx, getGroupById, id)
 	var i GetGroupByIdRow
 	err := row.Scan(
@@ -140,12 +141,12 @@ WHERE
 `
 
 type GetGroupWithUsersByIDParams struct {
-	RequestingUserID pgtype.Int4 `json:"requesting_user_id"`
-	GroupID          int32       `json:"group_id"`
+	RequestingUserID *uuid.UUID `json:"requesting_user_id"`
+	GroupID          uuid.UUID  `json:"group_id"`
 }
 
 type GetGroupWithUsersByIDRow struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
@@ -190,7 +191,7 @@ GROUP BY groups.id, ug.id, u.id
 `
 
 type GetGroupsForUserRow struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
@@ -203,7 +204,7 @@ type GetGroupsForUserRow struct {
 	GroupUsers  string           `json:"group_users"`
 }
 
-func (q *Queries) GetGroupsForUser(ctx context.Context, id int32) ([]GetGroupsForUserRow, error) {
+func (q *Queries) GetGroupsForUser(ctx context.Context, id uuid.UUID) ([]GetGroupsForUserRow, error) {
 	rows, err := q.db.Query(ctx, getGroupsForUser, id)
 	if err != nil {
 		return nil, err
@@ -286,7 +287,7 @@ RETURNING "id", "name", "start_time", "end_time", "description", "location", "im
 `
 
 type UpdateGroupParams struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        pgtype.Text      `json:"name"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
@@ -296,7 +297,7 @@ type UpdateGroupParams struct {
 }
 
 type UpdateGroupRow struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,29 +18,29 @@ import (
 type Client struct {
 	conn    *websocket.Conn
 	Message chan *Message
-	Groups  map[int32]bool
+	Groups  map[uuid.UUID]bool
 	User    *db.GetUserByIdRow `json:"user"`
 	mutex   sync.RWMutex
 	ctx     context.Context
 	cancel  context.CancelFunc
 }
 type MessageUser struct {
-	ID       int32  `json:"id"`
-	Username string `json:"username"`
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
 }
 
 type Message struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Content   string           `json:"content"`
-	GroupID   int32            `json:"group_id"`
+	GroupID   uuid.UUID        `json:"group_id"`
 	User      MessageUser      `json:"user"`
 	Timestamp pgtype.Timestamp `json:"timestamp"`
 }
 
 type RawMessage struct {
-	Content  string `json:"content"`
-	SenderID int32  `json:"sender_id"`
-	GroupID  int32  `json:"group_id"`
+	Content  string    `json:"content"`
+	SenderID uuid.UUID `json:"sender_id"`
+	GroupID  uuid.UUID `json:"group_id"`
 }
 
 const (
@@ -54,20 +55,20 @@ func NewClient(conn *websocket.Conn, user *db.GetUserByIdRow) *Client {
 	return &Client{
 		conn:    conn,
 		Message: make(chan *Message, 10),
-		Groups:  make(map[int32]bool),
+		Groups:  make(map[uuid.UUID]bool),
 		User:    user,
 		ctx:     ctx,
 		cancel:  cancel,
 	}
 }
 
-func (c *Client) AddGroup(groupID int32) {
+func (c *Client) AddGroup(groupID uuid.UUID) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.Groups[groupID] = true
 }
 
-func (c *Client) RemoveGroup(groupID int32) {
+func (c *Client) RemoveGroup(groupID uuid.UUID) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	delete(c.Groups, groupID)
@@ -161,8 +162,8 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 		}
 
 		_, dbErr := queries.GetUserGroupByGroupIDAndUserID(c.ctx, db.GetUserGroupByGroupIDAndUserIDParams{
-			UserID:  pgtype.Int4{Int32: c.User.ID, Valid: true},
-			GroupID: pgtype.Int4{Int32: rawMessage.GroupID, Valid: true},
+			UserID:  &c.User.ID,
+			GroupID: &rawMessage.GroupID,
 		})
 		if dbErr != nil {
 			if errors.Is(dbErr, pgx.ErrNoRows) {

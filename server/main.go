@@ -4,7 +4,6 @@ import (
 	"chat-app-server/auth"
 	"chat-app-server/db"
 	"chat-app-server/router"
-	"chat-app-server/server"
 	"chat-app-server/ws"
 	"context"
 	"fmt"
@@ -56,15 +55,11 @@ func main() {
 
 	authHandler := auth.NewAuthHandler(db, ctx, connPool)
 	hub := ws.NewHub(db, ctx, connPool, RedisClient, ServerInstanceID)
-	// wsHandler := ws.NewHandler(hub, db, ctx, connPool, RedisClient, ServerInstanceID) // Handler might also need it
-	// hub := ws.NewHub(db, ctx, connPool)
 	wsHandler := ws.NewHandler(hub, db, ctx, connPool)
 	go hub.Run()
 
-	api := server.NewAPI(db, ctx, connPool)
-
 	defer connPool.Close()
 
-	router.InitRouter(authHandler, wsHandler, api)
+	router.InitRouter(authHandler, wsHandler)
 	router.Start(":8080")
 }
