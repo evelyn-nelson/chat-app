@@ -38,16 +38,16 @@ export interface IStore {
 }
 
 export interface MessageRow {
-  message_id: number;
+  message_id: string;
   content: string;
-  group_id: number;
-  user_id: number;
+  group_id: string;
+  user_id: string;
   username: string;
   timestamp: string;
 }
 
 export interface GroupRow {
-  id: number;
+  id: string;
   name: string;
   admin: boolean;
   group_users: string;
@@ -61,7 +61,7 @@ export interface GroupRow {
 }
 
 export interface UserRow {
-  id: number;
+  id: string;
   username: string;
   email: string;
   created_at: string;

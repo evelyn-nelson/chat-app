@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,14 +18,14 @@ WHERE id = $1 RETURNING "id", "username", "email", "created_at", "updated_at"
 `
 
 type DeleteUserRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) DeleteUser(ctx context.Context, id int32) (DeleteUserRow, error) {
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (DeleteUserRow, error) {
 	row := q.db.QueryRow(ctx, deleteUser, id)
 	var i DeleteUserRow
 	err := row.Scan(
@@ -42,7 +43,7 @@ SELECT "id", "username", "email", "created_at", "updated_at" FROM users
 `
 
 type GetAllUsersRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
@@ -84,15 +85,15 @@ WHERE groups.id = $1
 `
 
 type GetAllUsersInGroupRow struct {
-	UserID   int32            `json:"user_id"`
+	UserID   uuid.UUID        `json:"user_id"`
 	Username string           `json:"username"`
-	GroupID  int32            `json:"group_id"`
+	GroupID  uuid.UUID        `json:"group_id"`
 	Name     string           `json:"name"`
 	Admin    bool             `json:"admin"`
 	JoinedAt pgtype.Timestamp `json:"joined_at"`
 }
 
-func (q *Queries) GetAllUsersInGroup(ctx context.Context, id int32) ([]GetAllUsersInGroupRow, error) {
+func (q *Queries) GetAllUsersInGroup(ctx context.Context, id uuid.UUID) ([]GetAllUsersInGroupRow, error) {
 	rows, err := q.db.Query(ctx, getAllUsersInGroup, id)
 	if err != nil {
 		return nil, err
@@ -124,7 +125,7 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 `
 
 type GetAllUsersInternalRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	Password  pgtype.Text      `json:"password"`
@@ -172,14 +173,14 @@ GROUP BY u.id
 `
 
 type GetRelevantUsersRow struct {
-	ID            int32            `json:"id"`
+	ID            uuid.UUID        `json:"id"`
 	Username      string           `json:"username"`
 	Email         string           `json:"email"`
 	CreatedAt     pgtype.Timestamp `json:"created_at"`
 	GroupAdminMap string           `json:"group_admin_map"`
 }
 
-func (q *Queries) GetRelevantUsers(ctx context.Context, userID pgtype.Int4) ([]GetRelevantUsersRow, error) {
+func (q *Queries) GetRelevantUsers(ctx context.Context, userID *uuid.UUID) ([]GetRelevantUsersRow, error) {
 	rows, err := q.db.Query(ctx, getRelevantUsers, userID)
 	if err != nil {
 		return nil, err
@@ -210,7 +211,7 @@ SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE LO
 `
 
 type GetUserByEmailRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
@@ -235,7 +236,7 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 `
 
 type GetUserByEmailInternalRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	Password  pgtype.Text      `json:"password"`
@@ -262,14 +263,14 @@ SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE id
 `
 
 type GetUserByIdRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUserById(ctx context.Context, id int32) (GetUserByIdRow, error) {
+func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow, error) {
 	row := q.db.QueryRow(ctx, getUserById, id)
 	var i GetUserByIdRow
 	err := row.Scan(
@@ -287,7 +288,7 @@ SELECT "id", "username", "email", "password", "created_at", "updated_at" FROM us
 `
 
 type GetUserByIdInternalRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	Password  pgtype.Text      `json:"password"`
@@ -295,7 +296,7 @@ type GetUserByIdInternalRow struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUserByIdInternal(ctx context.Context, id int32) (GetUserByIdInternalRow, error) {
+func (q *Queries) GetUserByIdInternal(ctx context.Context, id uuid.UUID) (GetUserByIdInternalRow, error) {
 	row := q.db.QueryRow(ctx, getUserByIdInternal, id)
 	var i GetUserByIdInternalRow
 	err := row.Scan(
@@ -314,7 +315,7 @@ SELECT "id", "username", "email", "created_at", "updated_at" FROM users WHERE us
 `
 
 type GetUserByUsernameRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
@@ -339,7 +340,7 @@ SELECT id, username, email, created_at, updated_at FROM users WHERE email = ANY(
 `
 
 type GetUsersByEmailsRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
@@ -373,18 +374,18 @@ func (q *Queries) GetUsersByEmails(ctx context.Context, emails []string) ([]GetU
 }
 
 const getUsersByIDs = `-- name: GetUsersByIDs :many
-SELECT id, username, email, created_at, updated_at FROM users WHERE id = ANY($1::int[])
+SELECT id, username, email, created_at, updated_at FROM users WHERE id = ANY($1::UUID[])
 `
 
 type GetUsersByIDsRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUsersByIDs(ctx context.Context, ids []int32) ([]GetUsersByIDsRow, error) {
+func (q *Queries) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]GetUsersByIDsRow, error) {
 	rows, err := q.db.Query(ctx, getUsersByIDs, ids)
 	if err != nil {
 		return nil, err
@@ -421,7 +422,7 @@ type InsertUserParams struct {
 }
 
 type InsertUserRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
@@ -453,11 +454,11 @@ RETURNING "id", "username", "email", "created_at", "updated_at"
 type UpdateUserParams struct {
 	Username pgtype.Text `json:"username"`
 	Email    pgtype.Text `json:"email"`
-	ID       int32       `json:"id"`
+	ID       uuid.UUID   `json:"id"`
 }
 
 type UpdateUserRow struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`

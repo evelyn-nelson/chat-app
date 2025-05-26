@@ -10,7 +10,7 @@ import Animated, {
 import type { MessageUser } from "@/types/types";
 
 export interface ChatBubbleProps {
-  prevUserId: number;
+  prevUserId: string;
   user: MessageUser;
   message: string;
   align: "left" | "right";

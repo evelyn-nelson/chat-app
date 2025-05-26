@@ -5,11 +5,12 @@
 package db
 
 import (
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Group struct {
-	ID          int32            `json:"id"`
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
@@ -21,16 +22,16 @@ type Group struct {
 }
 
 type Message struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Content   string           `json:"content"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 type User struct {
-	ID        int32            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Username  string           `json:"username"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
@@ -39,9 +40,9 @@ type User struct {
 }
 
 type UserGroup struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 	Admin     bool             `json:"admin"`

@@ -15,11 +15,10 @@ export class Store implements IStore {
   }
 
   private async _initializeDatabase(): Promise<void> {
-    // ... (your existing _initializeDatabase code remains the same)
     if (!this.db) {
       throw new Error("Database not available for initialization.");
     }
-    const DATABASE_VERSION = 4;
+    const DATABASE_VERSION = 3;
     let { user_version: currentDbVersion } = (await this.db.getFirstAsync<{
       user_version: number;
     }>("PRAGMA user_version")) || { user_version: -1 };
@@ -27,17 +26,19 @@ export class Store implements IStore {
     if (currentDbVersion >= DATABASE_VERSION) return;
 
     if (currentDbVersion < 1) {
+      console.log("first", currentDbVersion);
       await this.db.execAsync(`
         PRAGMA journal_mode = 'wal';
         PRAGMA foreign_keys = ON;
-        CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
-        CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, group_users TEXT NOT NULL DEFAULT '[]', created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id INTEGER NOT NULL, group_id INTEGER NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
+        CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
+        CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, group_users TEXT NOT NULL DEFAULT '[]', created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id TEXT NOT NULL, group_id TEXT NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
       `);
       await this.db.execAsync(`PRAGMA user_version = 1`);
       currentDbVersion = 1;
     }
     if (currentDbVersion === 1) {
+      console.log("first", currentDbVersion);
       await this.db.execAsync(`
         ALTER TABLE groups ADD COLUMN start_time TEXT;
         ALTER TABLE groups ADD COLUMN end_time TEXT;
@@ -46,6 +47,7 @@ export class Store implements IStore {
       currentDbVersion = 2;
     }
     if (currentDbVersion === 2) {
+      console.log("third", currentDbVersion);
       await this.db.execAsync("BEGIN TRANSACTION;");
       try {
         await this.db.execAsync(
@@ -53,8 +55,8 @@ export class Store implements IStore {
         );
         await this.db.execAsync(`
           CREATE TABLE messages (
-            id INTEGER PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id INTEGER NOT NULL,
-            group_id INTEGER NOT NULL, timestamp TEXT NOT NULL,
+            id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id INTEGER NOT NULL,
+            group_id TEXT NOT NULL, timestamp TEXT NOT NULL,
             FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
             FOREIGN KEY(user_id) REFERENCES users(id)
           );
@@ -66,6 +68,7 @@ export class Store implements IStore {
         await this.db.execAsync("DROP TABLE messages_old_v2;");
         await this.db.execAsync("COMMIT;");
         await this.db.execAsync(`PRAGMA user_version = 3`);
+        currentDbVersion = 3;
       } catch (e) {
         await this.db.execAsync("ROLLBACK;");
         console.error("Error migrating database to version 3:", e);
@@ -73,6 +76,7 @@ export class Store implements IStore {
       }
     }
     if (currentDbVersion === 3) {
+      console.log("fourth", currentDbVersion);
       await this.db.execAsync("BEGIN TRANSACTION;");
       try {
         await this.db.execAsync(`
@@ -88,6 +92,21 @@ export class Store implements IStore {
         throw e;
       }
     }
+  }
+
+  public async resetDatabase(): Promise<void> {
+    console.warn("DEVELOPMENT MODE: Resetting database...");
+    if (this.db) {
+      try {
+        await this.db.closeAsync();
+        this.db = null;
+      } catch (error) {
+        console.error("Error closing database before reset:", error);
+      }
+    }
+
+    await SQLite.deleteDatabaseAsync("store.db");
+    console.log("database deleted");
   }
 
   private async getDb(): Promise<SQLite.SQLiteDatabase> {
@@ -158,7 +177,7 @@ export class Store implements IStore {
       const users = Array.from(new Set(messagesToSave.map((msg) => msg.user)));
       const group_ids = [...new Set(messagesToSave.map((msg) => msg.group_id))];
 
-      const real_groups = await db.getAllAsync<{ id: number }>(
+      const real_groups = await db.getAllAsync<{ id: string }>(
         `SELECT DISTINCT(id) FROM groups;`
       );
       const real_group_ids = real_groups.map((group) => group.id);

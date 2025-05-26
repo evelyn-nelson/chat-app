@@ -1,3 +1,5 @@
+import "react-native-get-random-values";
+import { validate } from "uuid";
 import type { IStore } from "./types";
 import type {
   Group,
@@ -21,7 +23,7 @@ export class Store implements IStore {
       return;
     }
 
-    const messageMap = new Map<number, Message>(
+    const messageMap = new Map<string, Message>(
       this.messages.map((m) => [m.id, m])
     );
     for (const message of messagesToSave) {
@@ -67,7 +69,7 @@ export class Store implements IStore {
     if (clearFirstAndPrune) {
       this.groups = processedGroups;
     } else {
-      const groupMap = new Map<number, Group>(
+      const groupMap = new Map<string, Group>(
         this.groups.map((g) => [g.id, g])
       );
       for (const group of processedGroups) {
@@ -101,12 +103,11 @@ export class Store implements IStore {
             parsedJson !== null &&
             !Array.isArray(parsedJson)
           ) {
-            finalGroupAdminMap = new Map<number, boolean>();
+            finalGroupAdminMap = new Map<string, boolean>();
             for (const key in parsedJson) {
               if (Object.prototype.hasOwnProperty.call(parsedJson, key)) {
-                const numKey = Number(key);
-                if (!isNaN(numKey) && typeof parsedJson[key] === "boolean") {
-                  finalGroupAdminMap.set(numKey, parsedJson[key]);
+                if (validate(key) && typeof parsedJson[key] === "boolean") {
+                  finalGroupAdminMap.set(key, parsedJson[key]);
                 }
               }
             }
@@ -124,14 +125,13 @@ export class Store implements IStore {
         sourceMapData !== null &&
         !Array.isArray(sourceMapData)
       ) {
-        finalGroupAdminMap = new Map<number, boolean>();
+        finalGroupAdminMap = new Map<string, boolean>();
         const plainObjectSource = sourceMapData as Record<string, unknown>;
         for (const key in plainObjectSource) {
           if (Object.prototype.hasOwnProperty.call(plainObjectSource, key)) {
-            const numKey = Number(key);
             const value = plainObjectSource[key];
-            if (!isNaN(numKey) && typeof value === "boolean") {
-              finalGroupAdminMap.set(numKey, value);
+            if (validate(key) && typeof value === "boolean") {
+              finalGroupAdminMap.set(key, value);
             }
           }
         }

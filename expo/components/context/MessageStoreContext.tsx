@@ -20,13 +20,13 @@ type MessageAction =
   | { type: "SET_ERROR"; payload: string | null };
 
 interface MessageState {
-  messages: Record<number, Message[]>;
+  messages: Record<string, Message[]>;
   loading: boolean;
   error: string | null;
 }
 
 interface MessageStoreContextType {
-  getMessagesForGroup: (groupId: number) => Message[];
+  getMessagesForGroup: (groupId: string) => Message[];
   loading: boolean;
   error: string | null;
   loadHistoricalMessages: () => Promise<void>;
@@ -62,7 +62,7 @@ const messageReducer = (
           acc[groupId].push(message);
           return acc;
         },
-        {} as Record<number, Message[]>
+        {} as Record<string, Message[]>
       );
 
       return {
@@ -152,7 +152,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [onMessage, removeMessageHandler]);
 
   const getMessagesForGroup = useCallback(
-    (groupId: number) => {
+    (groupId: string) => {
       return state.messages[groupId] || [];
     },
     [state.messages]

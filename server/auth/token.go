@@ -7,17 +7,18 @@ import (
 	"os"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
-func ValidateToken(tokenString string) (int32, error) {
+func ValidateToken(tokenString string) (uuid.UUID, error) {
 	if tokenString == "" {
-		return 0, fmt.Errorf("authorization token required")
+		return uuid.Nil, fmt.Errorf("authorization token required")
 	}
 	if len(jwtSecret) == 0 {
 		log.Println("Warning: JWT_SECRET environment variable not set.")
-		return 0, fmt.Errorf("JWT secret not configured on server")
+		return uuid.Nil, fmt.Errorf("JWT secret not configured on server")
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
@@ -30,48 +31,48 @@ func ValidateToken(tokenString string) (int32, error) {
 	if err != nil {
 		log.Printf("Token parsing error: %v", err)
 		if errors.Is(err, jwt.ErrTokenMalformed) {
-			return 0, fmt.Errorf("malformed token")
+			return uuid.Nil, fmt.Errorf("malformed token")
 		} else if errors.Is(err, jwt.ErrTokenExpired) {
-			return 0, fmt.Errorf("token is expired")
+			return uuid.Nil, fmt.Errorf("token is expired")
 		} else if errors.Is(err, jwt.ErrTokenNotValidYet) {
-			return 0, fmt.Errorf("token not yet valid")
+			return uuid.Nil, fmt.Errorf("token not yet valid")
 		} else if errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-			return 0, fmt.Errorf("token signature is invalid")
+			return uuid.Nil, fmt.Errorf("token signature is invalid")
 		} else {
-			return 0, fmt.Errorf("couldn't handle token: %w", err)
+			return uuid.Nil, fmt.Errorf("couldn't handle token: %w", err)
 		}
 	}
 	if !token.Valid {
 		log.Printf("Token marked as invalid, though no specific error matched: %v", err)
-		return 0, fmt.Errorf("invalid token")
+		return uuid.Nil, fmt.Errorf("invalid token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, fmt.Errorf("invalid token claims format")
+		return uuid.Nil, fmt.Errorf("invalid token claims format")
 	}
 
+	// Extract the userID claim, assuming it's stored as a string UUID
 	userIDClaim, exists := claims["userID"]
 	if !exists {
-		return 0, fmt.Errorf("userID claim missing in token")
+		return uuid.Nil, fmt.Errorf("userID claim missing in token")
 	}
 
-	var userID int32
-	switch v := userIDClaim.(type) {
-	case float64:
-		userID = int32(v)
-	case int:
-		userID = int32(v)
-	case int32:
-		userID = v
-	default:
-		return 0, fmt.Errorf("invalid userID type (%T) in token", userIDClaim)
+	userIDStr, ok := userIDClaim.(string)
+	if !ok {
+		return uuid.Nil, fmt.Errorf("userID claim is not a string")
 	}
 
-	if userID <= 0 {
-		return 0, fmt.Errorf("invalid userID value (%d) in token", userID)
+	// Parse the string as a UUID
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse userID as UUID: %w", err)
 	}
 
-	log.Printf("Token validated successfully for userID: %d", userID)
+	if userID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("parsed userID is a Nil UUID")
+	}
+
+	log.Printf("Token validated successfully for userID: %s", userID)
 	return userID, nil
 }

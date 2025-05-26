@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,14 +18,14 @@ WHERE user_id = $1 AND group_id = $2 RETURNING "id", "user_id", "group_id", "adm
 `
 
 type DeleteUserGroupParams struct {
-	UserID  pgtype.Int4 `json:"user_id"`
-	GroupID pgtype.Int4 `json:"group_id"`
+	UserID  *uuid.UUID `json:"user_id"`
+	GroupID *uuid.UUID `json:"group_id"`
 }
 
 type DeleteUserGroupRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
@@ -49,9 +50,9 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetAllUserGroupsRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
@@ -89,15 +90,15 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetAllUserGroupsForGroupRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetAllUserGroupsForGroup(ctx context.Context, groupID pgtype.Int4) ([]GetAllUserGroupsForGroupRow, error) {
+func (q *Queries) GetAllUserGroupsForGroup(ctx context.Context, groupID *uuid.UUID) ([]GetAllUserGroupsForGroupRow, error) {
 	rows, err := q.db.Query(ctx, getAllUserGroupsForGroup, groupID)
 	if err != nil {
 		return nil, err
@@ -129,15 +130,15 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetAllUserGroupsForUserRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetAllUserGroupsForUser(ctx context.Context, userID pgtype.Int4) ([]GetAllUserGroupsForUserRow, error) {
+func (q *Queries) GetAllUserGroupsForUser(ctx context.Context, userID *uuid.UUID) ([]GetAllUserGroupsForUserRow, error) {
 	rows, err := q.db.Query(ctx, getAllUserGroupsForUser, userID)
 	if err != nil {
 		return nil, err
@@ -169,14 +170,14 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetUserGroupByGroupIDAndUserIDParams struct {
-	UserID  pgtype.Int4 `json:"user_id"`
-	GroupID pgtype.Int4 `json:"group_id"`
+	UserID  *uuid.UUID `json:"user_id"`
+	GroupID *uuid.UUID `json:"group_id"`
 }
 
 type GetUserGroupByGroupIDAndUserIDRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
@@ -201,15 +202,15 @@ SELECT "id", "user_id", "group_id", "admin", "created_at", "updated_at" FROM use
 `
 
 type GetUserGroupByIDRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
-func (q *Queries) GetUserGroupByID(ctx context.Context, id int32) (GetUserGroupByIDRow, error) {
+func (q *Queries) GetUserGroupByID(ctx context.Context, id uuid.UUID) (GetUserGroupByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserGroupByID, id)
 	var i GetUserGroupByIDRow
 	err := row.Scan(
@@ -232,9 +233,9 @@ RETURNING id, user_id, group_id, created_at, updated_at, admin
 `
 
 type InsertUserGroupParams struct {
-	UserID  pgtype.Int4 `json:"user_id"`
-	GroupID pgtype.Int4 `json:"group_id"`
-	Admin   bool        `json:"admin"`
+	UserID  *uuid.UUID `json:"user_id"`
+	GroupID *uuid.UUID `json:"group_id"`
+	Admin   bool       `json:"admin"`
 }
 
 func (q *Queries) InsertUserGroup(ctx context.Context, arg InsertUserGroupParams) (UserGroup, error) {
@@ -260,15 +261,15 @@ RETURNING "id", "user_id", "group_id", "admin", "created_at", "updated_at"
 `
 
 type UpdateUserGroupParams struct {
-	UserID  pgtype.Int4 `json:"user_id"`
-	GroupID pgtype.Int4 `json:"group_id"`
-	Admin   bool        `json:"admin"`
+	UserID  *uuid.UUID `json:"user_id"`
+	GroupID *uuid.UUID `json:"group_id"`
+	Admin   bool       `json:"admin"`
 }
 
 type UpdateUserGroupRow struct {
-	ID        int32            `json:"id"`
-	UserID    pgtype.Int4      `json:"user_id"`
-	GroupID   pgtype.Int4      `json:"group_id"`
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
 	Admin     bool             `json:"admin"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`

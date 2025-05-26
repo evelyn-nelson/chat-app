@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -17,11 +18,11 @@ func GetUser(c *gin.Context, queries *db.Queries) (db.GetUserByIdRow, error) {
 		return db.GetUserByIdRow{}, errors.New("UserID not found")
 	}
 
-	if _, ok := ID.(int32); !ok {
-		return db.GetUserByIdRow{}, errors.New("UserID is not an int32")
+	if _, ok := ID.(uuid.UUID); !ok {
+		return db.GetUserByIdRow{}, errors.New("UserID is not a uuid")
 	} else {
 		fmt.Println("ID", ID)
-		user, err := queries.GetUserById(ctx, ID.(int32))
+		user, err := queries.GetUserById(ctx, ID.(uuid.UUID))
 		if err != nil {
 			fmt.Println(err.Error())
 			return db.GetUserByIdRow{}, errors.New("user not found")

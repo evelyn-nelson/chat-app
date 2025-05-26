@@ -5,12 +5,12 @@ import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { RawMessage } from "@/types/types";
 
-const MessageEntry = ({ group_id }: { group_id: number }) => {
+const MessageEntry = ({ group_id }: { group_id: string }) => {
   const { user } = useGlobalStore();
   const { sendMessage, connected } = useWebSocket();
 
   const [message, setMessage] = useState<RawMessage>({
-    sender_id: user?.id ?? 0,
+    sender_id: user?.id ?? "",
     content: "",
     group_id,
   });

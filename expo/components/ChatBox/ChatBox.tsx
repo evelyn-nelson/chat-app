@@ -32,7 +32,7 @@ const SCROLL_THRESHOLD = 200;
 const HAPTIC_THRESHOLD = -40;
 
 type BubbleItem = {
-  id: number | null;
+  id: string | null;
   user: MessageUser;
   text: string;
   align: "left" | "right";
@@ -41,7 +41,7 @@ type BubbleItem = {
   dateString?: string;
 };
 
-export default function ChatBox({ group_id }: { group_id: number }) {
+export default function ChatBox({ group_id }: { group_id: string }) {
   const { user } = useGlobalStore();
   const { getMessagesForGroup } = useMessageStore();
   const groupMessages = getMessagesForGroup(group_id);
@@ -260,7 +260,7 @@ export default function ChatBox({ group_id }: { group_id: number }) {
             index < bubblesWithDates.length - 1 &&
             bubblesWithDates[index + 1].type === "message"
               ? bubblesWithDates[index + 1].user.id
-              : 0
+              : ""
           }
           user={item.user}
           message={item.text}

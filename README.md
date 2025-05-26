@@ -56,3 +56,6 @@ To access the db directly, run
 `docker exec -it chat-app-db-1 bash`
 `psql -U postgres`
 `\c postgres`
+
+to do a dev build for real device
+eas build -p ios --profile development

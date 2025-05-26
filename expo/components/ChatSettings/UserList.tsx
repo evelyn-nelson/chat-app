@@ -6,7 +6,7 @@ import UserListItem from "./UserListItem";
 type UserListProps = {
   group: Group;
   currentUserIsAdmin?: boolean;
-  onUserKicked: (userId: number) => void;
+  onUserKicked: (userId: string) => void;
 };
 
 const UserList = (props: UserListProps) => {
