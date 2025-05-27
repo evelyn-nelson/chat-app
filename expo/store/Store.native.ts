@@ -18,65 +18,88 @@ export class Store implements IStore {
     if (!this.db) {
       throw new Error("Database not available for initialization.");
     }
-    const DATABASE_VERSION = 3;
+
+    const TARGET_DATABASE_VERSION = 5;
+
     let { user_version: currentDbVersion } = (await this.db.getFirstAsync<{
       user_version: number;
-    }>("PRAGMA user_version")) || { user_version: -1 };
+    }>("PRAGMA user_version")) || { user_version: 0 };
 
-    if (currentDbVersion >= DATABASE_VERSION) return;
+    if (currentDbVersion >= TARGET_DATABASE_VERSION) {
+      console.log(
+        `Database is already at version ${currentDbVersion} (target: ${TARGET_DATABASE_VERSION}). No migration needed.`
+      );
+      return;
+    }
 
+    console.log(
+      `Current DB version: ${currentDbVersion}, Target DB version: ${TARGET_DATABASE_VERSION}. Starting migration...`
+    );
+
+    // Migration to version 1
     if (currentDbVersion < 1) {
-      console.log("first", currentDbVersion);
+      console.log("Migrating to version 1...");
       await this.db.execAsync(`
-        PRAGMA journal_mode = 'wal';
-        PRAGMA foreign_keys = ON;
-        CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
-        CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, group_users TEXT NOT NULL DEFAULT '[]', created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id TEXT NOT NULL, group_id TEXT NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
-      `);
+      PRAGMA journal_mode = 'wal';
+      PRAGMA foreign_keys = ON;
+      CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
+      CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, group_users TEXT NOT NULL DEFAULT '[]', created_at TEXT, updated_at TEXT);
+      CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id TEXT NOT NULL, group_id TEXT NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
+    `);
       await this.db.execAsync(`PRAGMA user_version = 1`);
       currentDbVersion = 1;
+      console.log("Successfully migrated to version 1.");
     }
+
+    // Migration to version 2
     if (currentDbVersion === 1) {
-      console.log("first", currentDbVersion);
+      console.log("Migrating to version 2...");
       await this.db.execAsync(`
-        ALTER TABLE groups ADD COLUMN start_time TEXT;
-        ALTER TABLE groups ADD COLUMN end_time TEXT;
-      `);
+      ALTER TABLE groups ADD COLUMN start_time TEXT;
+      ALTER TABLE groups ADD COLUMN end_time TEXT;
+    `);
       await this.db.execAsync(`PRAGMA user_version = 2`);
       currentDbVersion = 2;
+      console.log("Successfully migrated to version 2.");
     }
+
     if (currentDbVersion === 2) {
-      console.log("third", currentDbVersion);
+      console.log("Migrating to version 3...");
       await this.db.execAsync("BEGIN TRANSACTION;");
       try {
         await this.db.execAsync(
           "ALTER TABLE messages RENAME TO messages_old_v2;"
         );
+
         await this.db.execAsync(`
-          CREATE TABLE messages (
-            id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id INTEGER NOT NULL,
-            group_id TEXT NOT NULL, timestamp TEXT NOT NULL,
-            FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-          );
-        `);
+        CREATE TABLE messages (
+          id TEXT PRIMARY KEY NOT NULL,
+          content TEXT NOT NULL,
+          user_id TEXT NOT NULL, 
+          group_id TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+      `);
         await this.db.execAsync(`
-          INSERT INTO messages (id, content, user_id, group_id, timestamp)
-          SELECT id, content, user_id, group_id, timestamp FROM messages_old_v2;
-        `);
+        INSERT INTO messages (id, content, user_id, group_id, timestamp)
+        SELECT id, content, user_id, group_id, timestamp FROM messages_old_v2;
+      `);
         await this.db.execAsync("DROP TABLE messages_old_v2;");
         await this.db.execAsync("COMMIT;");
         await this.db.execAsync(`PRAGMA user_version = 3`);
         currentDbVersion = 3;
+        console.log("Successfully migrated to version 3.");
       } catch (e) {
         await this.db.execAsync("ROLLBACK;");
         console.error("Error migrating database to version 3:", e);
         throw e;
       }
     }
+
     if (currentDbVersion === 3) {
-      console.log("fourth", currentDbVersion);
+      console.log("Migrating to version 4...");
       await this.db.execAsync("BEGIN TRANSACTION;");
       try {
         await this.db.execAsync(`
@@ -86,11 +109,61 @@ export class Store implements IStore {
       `);
         await this.db.execAsync("COMMIT;");
         await this.db.execAsync(`PRAGMA user_version = 4`);
+        currentDbVersion = 4;
+        console.log("Successfully migrated to version 4.");
       } catch (e) {
         await this.db.execAsync("ROLLBACK;");
         console.error("Error migrating database to version 4:", e);
         throw e;
       }
+    }
+
+    if (currentDbVersion === 4) {
+      console.log("Migrating to version 5 (E2EE Setup)...");
+      await this.db.execAsync("BEGIN TRANSACTION;");
+      try {
+        await this.db.execAsync(
+          "ALTER TABLE messages RENAME TO messages_old_v4;"
+        );
+
+        await this.db.execAsync(`
+        CREATE TABLE messages (
+          id TEXT PRIMARY KEY NOT NULL,
+          user_id TEXT NOT NULL, -- Sender's user ID
+          group_id TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          
+          -- E2EE Fields for Pattern 1 (per-message key, client-specific portion)
+          ciphertext BLOB NOT NULL,                 -- Encrypted message content (output of secretbox)
+          msg_nonce BLOB NOT NULL,                  -- Nonce for secretbox(ciphertext)
+          sender_ephemeral_public_key BLOB NOT NULL,-- Sender's ephemeral public key used to box the sym_key
+          sym_key_encryption_nonce BLOB NOT NULL,   -- Nonce used to box the sym_key
+          sealed_symmetric_key BLOB NOT NULL,       -- The symmetric message key, sealed for this device
+          
+          FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+      `);
+
+        await this.db.execAsync("DROP TABLE messages_old_v4;");
+        await this.db.execAsync("COMMIT;");
+        await this.db.execAsync(`PRAGMA user_version = 5`);
+        currentDbVersion = 5;
+        console.log("Successfully migrated to version 5.");
+      } catch (e) {
+        await this.db.execAsync("ROLLBACK;");
+        console.error("Error migrating database to version 5:", e);
+        throw e;
+      }
+    }
+
+    if (currentDbVersion === TARGET_DATABASE_VERSION) {
+      console.log("Database is up to date.");
+    } else if (currentDbVersion < TARGET_DATABASE_VERSION) {
+      // This state should ideally not be reached if all migrations run sequentially and update currentDbVersion.
+      console.warn(
+        `Database migration appears incomplete. Current version: ${currentDbVersion}, Target version: ${TARGET_DATABASE_VERSION}. Review migration logic.`
+      );
     }
   }
 
@@ -128,12 +201,10 @@ export class Store implements IStore {
 
     let releaseLock = () => {};
     const currentLockExecution = this.transactionLock.then(async () => {
-      // console.log("Lock acquired, beginning transaction for operation.");
       await db.execAsync("BEGIN TRANSACTION;");
       try {
         const result = await operation(db);
         await db.execAsync("COMMIT;");
-        // console.log("Transaction committed.");
         return result;
       } catch (error) {
         console.error(
@@ -142,7 +213,6 @@ export class Store implements IStore {
         );
         try {
           await db.execAsync("ROLLBACK;");
-          // console.log("Transaction rolled back.");
         } catch (rollbackError) {
           console.error("Failed to rollback transaction:", rollbackError);
         }

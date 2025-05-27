@@ -4,10 +4,12 @@ import { useWebSocket } from "./context/WebSocketContext";
 import { useAuthUtils } from "./context/AuthUtilsContext";
 import { useMessageStore } from "./context/MessageStoreContext";
 import Button from "./Global/Button/Button";
+import { useGlobalStore } from "./context/GlobalStoreContext";
 
 const ConnectionTesting = () => {
   const { establishConnection, disconnect } = useWebSocket();
   const { loadHistoricalMessages } = useMessageStore();
+  const { store } = useGlobalStore();
   const { logout } = useAuthUtils();
   return (
     <View className="h-screen flex items-center justify-center">
@@ -19,6 +21,12 @@ const ConnectionTesting = () => {
         onPress={loadHistoricalMessages}
         size={"xl"}
         className="min-w-[280]"
+      />
+      <Button
+        text={"Drop db"}
+        onPress={() => {
+          store.resetDatabase();
+        }}
       />
     </View>
   );
