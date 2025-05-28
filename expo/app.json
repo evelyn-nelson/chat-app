@@ -42,7 +42,8 @@
         {
           "backgroundColor": "#111827"
         }
-      ]
+      ],
+      "react-native-libsodium"
     ],
     "experiments": {
       "typedRoutes": true

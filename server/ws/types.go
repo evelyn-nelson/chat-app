@@ -6,6 +6,29 @@ import (
 	"github.com/google/uuid"
 )
 
+type Envelope struct {
+	DeviceID  string `json:"deviceId"`
+	EphPubKey string `json:"ephPubKey"` // Base64 encoded
+	KeyNonce  string `json:"keyNonce"`  // Base64 encoded
+	SealedKey string `json:"sealedKey"` // Base64 encoded
+}
+
+type RawMessageE2EE struct {
+	ID         uuid.UUID  `json:"id"`
+	GroupID    uuid.UUID  `json:"groupId"`
+	MsgNonce   string     `json:"msgNonce"`   // Base64 encoded
+	Ciphertext string     `json:"ciphertext"` // Base64 encoded
+	Timestamp  string     `json:"timestamp"`
+	SenderID   uuid.UUID  `json:"sender_id"`
+	Envelopes  []Envelope `json:"envelopes"`
+}
+type ClientSentE2EMessage struct {
+	GroupID    uuid.UUID  `json:"groupId"`
+	MsgNonce   string     `json:"msgNonce"`   // Base64 encoded
+	Ciphertext string     `json:"ciphertext"` // Base64 encoded
+	Envelopes  []Envelope `json:"envelopes"`
+}
+
 type CreateGroupRequest struct {
 	Name        string    `json:"name" binding:"required"`
 	StartTime   time.Time `json:"start_time" binding:"required" `

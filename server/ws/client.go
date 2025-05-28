@@ -12,35 +12,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Client struct {
 	conn    *websocket.Conn
-	Message chan *Message
+	Message chan *RawMessageE2EE
 	Groups  map[uuid.UUID]bool
 	User    *db.GetUserByIdRow `json:"user"`
 	mutex   sync.RWMutex
 	ctx     context.Context
 	cancel  context.CancelFunc
-}
-type MessageUser struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
-}
-
-type Message struct {
-	ID        uuid.UUID        `json:"id"`
-	Content   string           `json:"content"`
-	GroupID   uuid.UUID        `json:"group_id"`
-	User      MessageUser      `json:"user"`
-	Timestamp pgtype.Timestamp `json:"timestamp"`
-}
-
-type RawMessage struct {
-	Content  string    `json:"content"`
-	SenderID uuid.UUID `json:"sender_id"`
-	GroupID  uuid.UUID `json:"group_id"`
 }
 
 const (
@@ -54,7 +35,7 @@ func NewClient(conn *websocket.Conn, user *db.GetUserByIdRow) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Client{
 		conn:    conn,
-		Message: make(chan *Message, 10),
+		Message: make(chan *RawMessageE2EE, 10),
 		Groups:  make(map[uuid.UUID]bool),
 		User:    user,
 		ctx:     ctx,
@@ -96,7 +77,7 @@ func (c *Client) WriteMessage() {
 
 			err := c.conn.WriteJSON(message)
 			if err != nil {
-				log.Printf("Error writing JSON for client %d (%s): %v", c.User.ID, c.User.Username, err)
+				log.Printf("Error writing JSON (E2EE) for client %d (%s): %v", c.User.ID, c.User.Username, err)
 				return
 			}
 		case <-ticker.C:
@@ -138,8 +119,8 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 		default:
 		}
 
-		var rawMessage RawMessage
-		err := c.conn.ReadJSON(&rawMessage)
+		var clientMsg ClientSentE2EMessage
+		err := c.conn.ReadJSON(&clientMsg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
 				log.Printf("Client %d (%s): Unexpected WebSocket close error: %v", c.User.ID, c.User.Username, err)
@@ -155,41 +136,37 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 			return
 		}
 
-		if rawMessage.SenderID != c.User.ID {
-			log.Printf("Client %d (%s): Unauthorized message - claimed sender %d, actual user %d. Discarding.",
-				c.User.ID, c.User.Username, rawMessage.SenderID, c.User.ID)
-			continue
-		}
-
 		_, dbErr := queries.GetUserGroupByGroupIDAndUserID(c.ctx, db.GetUserGroupByGroupIDAndUserIDParams{
 			UserID:  &c.User.ID,
-			GroupID: &rawMessage.GroupID,
+			GroupID: &clientMsg.GroupID,
 		})
 		if dbErr != nil {
 			if errors.Is(dbErr, pgx.ErrNoRows) {
-				log.Printf("Client %d (%s) attempted to send message to unauthorized group %d (not a member per DB). Discarding.",
-					c.User.ID, c.User.Username, rawMessage.GroupID)
+				log.Printf("Client %d (%s) attempted to send E2EE message to unauthorized group %d. Discarding.",
+					c.User.ID, c.User.Username, clientMsg.GroupID)
 			} else {
-				log.Printf("Client %d (%s): DB error checking group %d authorization: %v. Discarding message.",
-					c.User.ID, c.User.Username, rawMessage.GroupID, dbErr)
+				log.Printf("Client %d (%s): DB error checking group %d authorization for E2EE message: %v. Discarding.",
+					c.User.ID, c.User.Username, clientMsg.GroupID, dbErr)
 			}
 			continue
 		}
 
-		msg := &Message{
-			Content: rawMessage.Content,
-			GroupID: rawMessage.GroupID,
-			User:    MessageUser{ID: c.User.ID, Username: c.User.Username},
+		hubMessage := &RawMessageE2EE{
+			GroupID:    clientMsg.GroupID,
+			MsgNonce:   clientMsg.MsgNonce,
+			Ciphertext: clientMsg.Ciphertext,
+			Envelopes:  clientMsg.Envelopes,
+			SenderID:   c.User.ID,
 		}
 
 		select {
-		case hub.Broadcast <- msg:
-			log.Printf("Client %d (%s) sent message to hub for group %d", c.User.ID, c.User.Username, msg.GroupID)
+		case hub.Broadcast <- hubMessage:
+			log.Printf("Client %d (%s) sent E2EE message to hub for group %d", c.User.ID, c.User.Username, hubMessage.GroupID)
 		case <-c.ctx.Done():
 			log.Printf("Client %d (%s): Context cancelled while trying to broadcast message.", c.User.ID, c.User.Username)
 			return
 		default:
-			log.Printf("Hub broadcast channel full for client %d (%s). Message for group %d dropped.", c.User.ID, c.User.Username, msg.GroupID)
+			log.Printf("Hub broadcast channel full for client %d (%s). Message for group %d dropped.", c.User.ID, c.User.Username, hubMessage.GroupID)
 		}
 	}
 }

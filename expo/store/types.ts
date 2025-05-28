@@ -39,11 +39,15 @@ export interface IStore {
 
 export interface MessageRow {
   message_id: string;
-  content: string;
-  group_id: string;
   user_id: string;
-  username: string;
+  group_id: string;
   timestamp: string;
+  username: string;
+  ciphertext: Uint8Array;
+  msg_nonce: Uint8Array;
+  sender_ephemeral_public_key: Uint8Array;
+  sym_key_encryption_nonce: Uint8Array;
+  sealed_symmetric_key: Uint8Array;
 }
 
 export interface GroupRow {

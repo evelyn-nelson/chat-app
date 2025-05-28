@@ -1,11 +1,13 @@
 import {
-  Message,
+  // We will use RawMessage for WebSocket communication.
+  // The client-side 'Message' (with Uint8Array) is handled by subscribers.
+  RawMessage,
   Group,
   User,
-  UserGroup,
+  // UserGroup, // Not directly used in this file's public interface
   UpdateGroupParams,
   CreateGroupParams,
-} from "@/types/types";
+} from "@/types/types"; // Ensure RawMessage is correctly imported
 import React, {
   createContext,
   useCallback,
@@ -14,15 +16,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import http from "../../util/custom-axios";
-import { get } from "@/util/custom-store";
+import http from "../../util/custom-axios"; // Assuming this path is correct
+import { get } from "@/util/custom-store"; // Assuming this path is correct
 import { CanceledError } from "axios";
 
 interface WebSocketContextType {
-  sendMessage: (msg: string) => void;
+  // sendMessage now takes a RawMessage (the E2EE packet for transport)
+  sendMessage: (packet: RawMessage) => void;
   connected: boolean;
-  onMessage: (callback: (message: Message) => void) => void;
-  removeMessageHandler: (callback: (message: Message) => void) => void;
+  // onMessage callback now provides a RawMessage
+  onMessage: (callback: (packet: RawMessage) => void) => void;
+  // removeMessageHandler callback now matches the new onMessage signature
+  removeMessageHandler: (callback: (packet: RawMessage) => void) => void;
   establishConnection: () => Promise<void>;
   disconnect: () => void;
   createGroup: (
@@ -57,13 +62,14 @@ const MAX_RETRY_DELAY = 30000;
 
 const CLOSE_CODE_AUTH_FAILED = 4001;
 const CLOSE_CODE_UNAUTHENTICATED = 4003;
+let preventRetries = false;
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
+  const messageHandlersRef = useRef<((packet: RawMessage) => void)[]>([]);
   const isReconnecting = useRef(false);
 
   const createGroup = async (
@@ -75,7 +81,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     imageUrl?: string | null
   ): Promise<Group | undefined> => {
     const httpURL = `${httpBaseURL}/createGroup`;
-
     const payload: CreateGroupParams = {
       name,
       start_time: startTime.toISOString(),
@@ -84,19 +89,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       ...(location !== undefined && { location }),
       ...(imageUrl !== undefined && { image_url: imageUrl }),
     };
-
-    const group = http
+    return http
       .post(httpURL, payload)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
+      .then((response) => response.data)
       .catch((error) => {
-        console.error("error: ", error);
-        return;
+        console.error("Error creating group:", error);
+        return undefined;
       });
-
-    return group;
   };
 
   const updateGroup = async (
@@ -105,42 +104,29 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<Group | undefined> => {
     const httpURL = `${httpBaseURL}/updateGroup/${id}`;
     if (
-      !(
-        updateParams.name ||
-        updateParams.start_time ||
-        updateParams.end_time ||
-        updateParams.description ||
-        updateParams.location ||
-        updateParams.image_url
+      !Object.values(updateParams).some(
+        (value) => value !== undefined && value !== null
       )
     ) {
-      console.error("Invalid input");
+      console.error("Invalid update input: No parameters provided.");
       return undefined;
     }
-    const group = http
+    return http
       .put(httpURL, updateParams)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
+      .then((response) => response.data)
       .catch((error) => {
-        console.error("error: ", error);
-        return;
+        console.error("Error updating group:", error);
+        return undefined;
       });
-
-    return group;
   };
 
   const establishConnection = (): Promise<void> => {
     let promiseSettled = false;
-    let preventRetries = false;
+    let currentAttemptPreventRetries = false;
 
     return new Promise(async (resolve, reject) => {
       const token = await get("jwt");
       if (!token) {
-        console.error(
-          "No JWT token found, cannot establish WebSocket connection."
-        );
         if (!promiseSettled) {
           promiseSettled = true;
           reject(new Error("Authentication token not found."));
@@ -149,7 +135,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (socketRef.current?.readyState === WebSocket.OPEN && connected) {
-        console.log("WebSocket already open and connected.");
         if (!promiseSettled) {
           promiseSettled = true;
           resolve();
@@ -158,16 +143,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (isReconnecting.current) {
-        console.log("Already attempting connection/reconnection, waiting...");
+        console.log("Connection attempt already in progress.");
+        if (!promiseSettled) {
+          reject(new Error("Connection attempt already in progress."));
+        }
         return;
       }
 
-      console.log("Attempting to establish WebSocket connection...");
       isReconnecting.current = true;
-      preventRetries = false;
+      currentAttemptPreventRetries = false;
 
       const wsURL = `${wsBaseURL}/establishConnection`;
-
       let retryCount = 0;
       let isAuthenticated = false;
 
@@ -175,9 +161,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         if (socketRef.current) {
           const ws = socketRef.current;
           socketRef.current = null;
-          console.log(
-            `Cleaning up socket instance. Reason: ${reason || "N/A"}`
-          );
           ws.onopen = null;
           ws.onmessage = null;
           ws.onclose = null;
@@ -199,76 +182,62 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           reject(error);
         }
         isReconnecting.current = false;
-        preventRetries = true;
+        currentAttemptPreventRetries = true;
         cleanup(error.message);
       };
 
       const connect = () => {
+        if (currentAttemptPreventRetries || preventRetries) {
+          console.log("Retries prevented for current connection flow.");
+          isReconnecting.current = false;
+          if (!promiseSettled && !isAuthenticated) {
+            safeReject(new Error("Connection retries aborted."));
+          }
+          return;
+        }
+
         if (socketRef.current) {
           cleanup("Starting new connection attempt");
         }
 
-        console.log(`Connecting to ${wsURL}... (Attempt ${retryCount + 1})`);
         const socket = new WebSocket(wsURL);
         socketRef.current = socket;
 
         socket.onopen = () => {
-          if (socketRef.current !== socket) {
-            console.warn(
-              "onopen triggered for an outdated socket instance. Ignoring."
-            );
-            return;
-          }
-          console.log(
-            "WebSocket connection opened. Sending authentication message..."
-          );
+          if (socketRef.current !== socket) return;
           try {
             socket.send(JSON.stringify({ type: "auth", token: token }));
           } catch (error) {
-            console.error("Failed to send auth message:", error);
             safeReject(new Error("Failed to send authentication message."));
             socket.close(CLOSE_CODE_AUTH_FAILED, "Failed to send auth");
           }
         };
 
         socket.onmessage = (event) => {
-          if (socketRef.current !== socket) {
-            console.warn(
-              "onmessage triggered for an outdated socket instance. Ignoring."
-            );
-            return;
-          }
+          if (socketRef.current !== socket) return;
           try {
-            const parsedMessage = JSON.parse(event.data);
+            const parsedData = JSON.parse(event.data as string);
 
             if (!isAuthenticated) {
-              if (parsedMessage.type === "auth_success") {
-                console.log("WebSocket authenticated successfully.");
+              if (parsedData.type === "auth_success") {
                 isAuthenticated = true;
                 setConnected(true);
                 isReconnecting.current = false;
                 retryCount = 0;
+                preventRetries = false;
                 if (!promiseSettled) {
                   promiseSettled = true;
                   resolve();
                 }
-              } else if (parsedMessage.type === "auth_failure") {
-                console.error(
-                  "WebSocket authentication failed:",
-                  parsedMessage.error || "No reason provided."
-                );
+              } else if (parsedData.type === "auth_failure") {
                 preventRetries = true;
                 safeReject(
                   new Error(
-                    `Authentication failed: ${parsedMessage.error || "Unknown reason"}`
+                    `Authentication failed: ${parsedData.error || "Unknown reason"}`
                   )
                 );
                 socket.close(CLOSE_CODE_AUTH_FAILED, "Authentication Failed");
               } else {
-                console.error(
-                  "Received unexpected message before authentication:",
-                  parsedMessage
-                );
                 preventRetries = true;
                 safeReject(
                   new Error(
@@ -281,74 +250,73 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
                 );
               }
             } else {
-              messageHandlersRef.current.forEach((handler, index) => {
-                try {
-                  handler(parsedMessage);
-                } catch (handlerError) {
-                  console.error(
-                    `Error in message handler ${index}:`,
-                    handlerError
-                  );
-                }
-              });
+              if (
+                parsedData.groupId &&
+                parsedData.ciphertext &&
+                parsedData.envelopes &&
+                Array.isArray(parsedData.envelopes)
+              ) {
+                messageHandlersRef.current.forEach((handler) => {
+                  try {
+                    handler(parsedData as RawMessage);
+                  } catch (handlerError) {
+                    console.error("Error in message handler:", handlerError);
+                  }
+                });
+              } else if (parsedData.type && parsedData.type === "error") {
+                console.error(
+                  "Received operational error from server:",
+                  parsedData.message
+                );
+              } else {
+                console.warn(
+                  "Received non-message data or malformed E2EE packet after auth:",
+                  parsedData
+                );
+              }
             }
           } catch (error) {
             console.error(
               "Error parsing WebSocket message or in handler:",
               error
             );
-            safeReject(new Error("Failed to process incoming message."));
-            socket.close(1011, "Message processing error");
           }
         };
 
         socket.onclose = (event) => {
           if (socketRef.current !== socket && socketRef.current !== null) {
-            console.warn(
-              `onclose triggered for an outdated socket instance (Code: ${event.code}). Ignoring.`
-            );
             return;
           }
 
-          console.log(
-            `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`
-          );
           cleanup(`onclose event (Code: ${event.code})`);
 
-          if (preventRetries || event.code === 1000) {
-            console.log("Retries prevented or connection closed normally.");
+          if (
+            currentAttemptPreventRetries ||
+            preventRetries ||
+            event.code === 1000 ||
+            event.code === CLOSE_CODE_AUTH_FAILED ||
+            event.code === CLOSE_CODE_UNAUTHENTICATED
+          ) {
             isReconnecting.current = false;
             if (!promiseSettled && !isAuthenticated && event.code !== 1000) {
               safeReject(
                 new Error(
-                  `WebSocket closed unexpectedly (Code: ${event.code}) before authentication completed.`
-                )
-              );
-            } else if (!promiseSettled && event.code === 1000) {
-              safeReject(
-                new Error(
-                  `WebSocket closed normally (Code: 1000) before authentication completed.`
+                  `WebSocket closed (Code: ${event.code}) before authentication completed.`
                 )
               );
             }
             return;
           }
 
-          // --- Retry Logic ---
           retryCount++;
           if (retryCount <= MAX_RETRIES) {
-            // Exponential backoff with jitter and cap
             const delay = Math.min(
               INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1) +
                 Math.random() * 1000,
               MAX_RETRY_DELAY
             );
-            console.log(
-              `Connection closed unexpectedly. Retrying connection in ${Math.round(delay)} ms... (Attempt ${retryCount} of ${MAX_RETRIES})`
-            );
             setTimeout(connect, delay);
           } else {
-            console.error("WebSocket connection failed after maximum retries.");
             isReconnecting.current = false;
             safeReject(
               new Error("WebSocket connection failed after maximum retries")
@@ -357,31 +325,25 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         };
 
         socket.onerror = (event) => {
-          if (socketRef.current !== socket) {
-            console.warn(
-              "onerror triggered for an outdated socket instance. Ignoring."
-            );
-            return;
-          }
+          if (socketRef.current !== socket) return;
           console.error("WebSocket error:", event);
         };
       };
-
       connect();
     });
   };
 
   const leaveGroup = async (group_id: string) => {
-    http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
-      console.error(error);
+    return http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
+      console.error("Error leaving group:", error);
     });
   };
 
   const disconnect = () => {
+    preventRetries = true;
     isReconnecting.current = false;
     if (socketRef.current) {
-      socketRef.current.close(1000);
-      socketRef.current = null;
+      socketRef.current.close(1000, "User initiated disconnect");
     }
   };
 
@@ -389,13 +351,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     emails: string[],
     group_id: string
   ): Promise<any> => {
+    // TODO: define a more specific return type
     return http
       .post(`${httpBaseURL}/inviteUsersToGroup`, {
         group_id: group_id,
         emails: emails,
       })
       .catch((error) => {
-        console.error(error);
+        console.error("Error inviting users:", error);
       });
   };
 
@@ -403,80 +366,81 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     email: string,
     group_id: string
   ): Promise<any> => {
+    // TODO: define a more specific return type
     return http
       .post(`${httpBaseURL}/removeUserFromGroup`, {
         group_id: group_id,
         email: email,
       })
       .catch((error) => {
-        console.error(error);
+        console.error("Error removing user:", error);
       });
   };
 
   const getGroups = async (): Promise<Group[]> => {
-    const groups = http
+    return http
       .get(`${httpBaseURL}/getGroups`)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
+      .then((response) => response.data)
       .catch((error) => {
         if (!(error instanceof CanceledError)) {
           console.error("Error loading groups:", error);
         }
         return [];
       });
-    return groups;
   };
 
   const getUsers = async (): Promise<User[]> => {
-    const users = http
+    return http
       .get(`${httpBaseURL}/relevantUsers`)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
+      .then((response) => response.data)
       .catch((error) => {
         if (!(error instanceof CanceledError)) {
-          console.error("Error loading groups:", error);
+          console.error("Error loading relevant users:", error);
         }
         return [];
       });
-    return users;
   };
 
-  const sendMessage = (msg: string) => {
-    const socket = socketRef.current;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      try {
-        socket.send(msg);
-      } catch (error) {
-        console.error("Error sending message:", error);
+  const sendMessage = useCallback(
+    (packet: RawMessage) => {
+      const socket = socketRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN && connected) {
+        try {
+          socket.send(JSON.stringify(packet));
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
+      } else {
+        console.error(
+          "WebSocket is not connected or not authenticated. Message not sent."
+        );
       }
-    } else {
-      console.error("WebSocket is not initialized.");
-    }
-  };
+    },
+    [connected]
+  );
 
-  const onMessage = useCallback((handler: (message: Message) => void) => {
-    if (!messageHandlersRef.current.includes(handler)) {
-      messageHandlersRef.current = [...messageHandlersRef.current, handler];
+  const onMessage = useCallback((callback: (packet: RawMessage) => void) => {
+    if (!messageHandlersRef.current.includes(callback)) {
+      messageHandlersRef.current = [...messageHandlersRef.current, callback];
     }
   }, []);
 
   const removeMessageHandler = useCallback(
-    (handler: (message: Message) => void) => {
+    (callback: (packet: RawMessage) => void) => {
       messageHandlersRef.current = messageHandlersRef.current.filter(
-        (h) => h !== handler
+        (h) => h !== callback
       );
     },
     []
   );
 
   useEffect(() => {
+    preventRetries = false;
     return () => {
+      preventRetries = true;
+      isReconnecting.current = false;
       if (socketRef.current) {
-        socketRef.current.close();
+        socketRef.current.close(1000, "Component unmounting");
       }
     };
   }, []);

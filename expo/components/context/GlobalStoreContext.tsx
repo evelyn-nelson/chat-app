@@ -14,11 +14,13 @@ import React, {
 
 type Action =
   | { type: "SET_USER"; payload: User | undefined }
+  | { type: "SET_DEVICE_ID"; payload: string | undefined }
   | { type: "TRIGGER_GROUPS_REFRESH" }
   | { type: "TRIGGER_USERS_REFRESH" };
 
 interface State {
   user: User | undefined;
+  deviceId: string | undefined;
   groupsRefreshKey: number;
   usersRefreshKey: number;
 }
@@ -26,12 +28,14 @@ interface State {
 interface GlobalStoreContextType extends State {
   store: Store;
   setUser: (user: User | undefined) => void;
+  setDeviceId: (deviceId: string | undefined) => void;
   refreshGroups: () => void;
   refreshUsers: () => void;
 }
 
 const initialState: State = {
   user: undefined,
+  deviceId: undefined,
   groupsRefreshKey: 0,
   usersRefreshKey: 0,
 };
@@ -40,6 +44,8 @@ const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "SET_USER":
       return { ...state, user: action.payload };
+    case "SET_DEVICE_ID":
+      return { ...state, deviceId: action.payload };
     case "TRIGGER_GROUPS_REFRESH":
       return { ...state, groupsRefreshKey: state.groupsRefreshKey + 1 };
     case "TRIGGER_USERS_REFRESH":
@@ -69,6 +75,10 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
     dispatch({ type: "SET_USER", payload: user });
   }, []);
 
+  const setDeviceId = useCallback((deviceId: string | undefined) => {
+    dispatch({ type: "SET_DEVICE_ID", payload: deviceId });
+  }, []);
+
   const refreshGroups = () => {
     dispatch({ type: "TRIGGER_GROUPS_REFRESH" });
   };
@@ -81,11 +91,12 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
     () => ({
       ...state,
       setUser,
+      setDeviceId,
       refreshGroups,
       refreshUsers,
       store,
     }),
-    [state, setUser, refreshGroups, refreshUsers, store]
+    [state, setUser, setDeviceId, refreshGroups, refreshUsers, store]
   );
 
   return (

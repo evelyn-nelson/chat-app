@@ -62,7 +62,6 @@ export default function ChatBox({ group_id }: { group_id: string }) {
   const bubblesWithDates = useMemo<BubbleItem[]>(() => {
     const reversedMessages = [...groupMessages].reverse();
     const result: BubbleItem[] = [];
-    let currentDate = "";
 
     reversedMessages.forEach((m, index) => {
       const messageDate = new Date(m.timestamp);

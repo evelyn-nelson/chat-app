@@ -272,14 +272,20 @@ export class Store implements IStore {
       }
       for (const message of messagesToSave) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO messages (id, content, user_id, group_id, timestamp)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO messages (id, user_id, group_id, timestamp, username, 
+          ciphertext, msg_nonce, sender_ephemeral_public_key, sym_key_encryption_nonce, sealed_symmetric_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             message.id,
-            message.content,
             message.user.id,
             message.group_id,
             message.timestamp,
+            message.user.username,
+            message.ciphertext,
+            message.msg_nonce,
+            message.sender_ephemeral_public_key,
+            message.sym_key_encryption_nonce,
+            message.sealed_symmetric_key,
           ]
         );
       }
@@ -370,21 +376,28 @@ export class Store implements IStore {
   async loadMessages(): Promise<Message[]> {
     const db = await this.getDb();
     const result = await db.getAllAsync<MessageRow>(`
-      SELECT m.id as message_id, m.content AS content, m.group_id AS group_id,
-             u.id AS user_id, u.username AS username, m.timestamp AS timestamp
+      SELECT m.id as message_id, m.group_id,
+             m.user_id, m.username, m.timestamp,
+             m.ciphertext, m.msg_nonce,
+             m.sender_ephemeral_public_key,
+             m.sym_key_encryption_nonce,
+             m.sealed_symmetric_key
       FROM messages AS m
-      INNER JOIN users AS u ON u.id = m.user_id
     `);
     return (
       result?.map((row) => ({
         id: row.message_id,
-        content: row.content,
         group_id: row.group_id,
         user: {
           id: row.user_id,
           username: row.username,
         },
         timestamp: row.timestamp,
+        ciphertext: row.ciphertext,
+        msg_nonce: row.msg_nonce,
+        sender_ephemeral_public_key: row.sender_ephemeral_public_key,
+        sym_key_encryption_nonce: row.sym_key_encryption_nonce,
+        sealed_symmetric_key: row.sealed_symmetric_key,
       })) ?? []
     );
   }
