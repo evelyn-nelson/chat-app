@@ -1,8 +1,4 @@
-import {
-  ActivityIndicator,
-  View,
-  Platform,
-} from "react-native";
+import { ActivityIndicator, View, Platform } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Redirect, Tabs } from "expo-router";
 import { useAuthUtils } from "@/components/context/AuthUtilsContext";
@@ -17,8 +13,13 @@ import { useMessageStore } from "@/components/context/MessageStoreContext";
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
   const { getGroups, disconnect, getUsers } = useWebSocket();
-  const { store, refreshGroups, refreshUsers, loadRelevantDeviceKeys } =
-    useGlobalStore();
+  const {
+    store,
+    deviceId,
+    refreshGroups,
+    refreshUsers,
+    loadRelevantDeviceKeys,
+  } = useGlobalStore();
   const { loadHistoricalMessages } = useMessageStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +31,7 @@ const AppLayout = () => {
     const initialize = async () => {
       try {
         setIsLoading(true);
-        const loggedInUser = await whoami();
+        const { user: loggedInUser } = await whoami();
         if (isMounted) {
           setUser(loggedInUser);
         }
@@ -110,16 +111,16 @@ const AppLayout = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && deviceId) {
       fetchGroups();
       fetchUsers();
       loadHistoricalMessages();
       fetchDeviceKeys();
 
-      const groupsIntervalId = setInterval(fetchGroups, 100000);
-      const usersIntervalId = setInterval(fetchUsers, 100000);
+      const groupsIntervalId = setInterval(fetchGroups, 10000);
+      const usersIntervalId = setInterval(fetchUsers, 10000);
       const messagesIntervalId = setInterval(loadHistoricalMessages, 10000);
-      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 100000);
+      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 10000);
 
       return () => {
         clearInterval(groupsIntervalId);
@@ -129,7 +130,7 @@ const AppLayout = () => {
       };
     }
     return undefined;
-  }, [user]);
+  }, [user, deviceId, loadHistoricalMessages]);
 
   if (isLoading) {
     return (

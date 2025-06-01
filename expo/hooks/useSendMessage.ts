@@ -29,7 +29,7 @@ export const useSendMessage = (): UseSendMessageReturn => {
   const sendMessage = useCallback(
     async (
       plaintext: string,
-      groupId: string,
+      group_id: string,
       recipientUserIds: string[]
     ): Promise<void> => {
       setIsSending(true);
@@ -67,7 +67,7 @@ export const useSendMessage = (): UseSendMessageReturn => {
         const rawMessagePayload =
           await encryptionService.encryptAndPrepareMessageForSending(
             plaintext,
-            groupId,
+            group_id,
             recipientDevicePublicKeys
           );
 

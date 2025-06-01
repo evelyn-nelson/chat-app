@@ -30,7 +30,7 @@ interface MessageStoreContextType {
   getMessagesForGroup: (groupId: string) => DbMessage[];
   loading: boolean;
   error: string | null;
-  loadHistoricalMessages: () => Promise<void>;
+  loadHistoricalMessages: (deviceId?: string) => Promise<void>;
 }
 
 const initialState: MessageState = {
@@ -99,87 +99,94 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [state, dispatch] = useReducer(messageReducer, initialState);
   const { onMessage, removeMessageHandler } = useWebSocket();
-  const { store, deviceId } = useGlobalStore();
+  const { store, deviceId: globalDeviceId } = useGlobalStore();
 
   const isSyncingHistoricalMessagesRef = useRef(false);
 
-  const loadHistoricalMessages = useCallback(async () => {
-    if (isSyncingHistoricalMessagesRef.current) {
-      console.log(
-        "loadHistoricalMessages: Sync already in progress. Skipping."
-      );
-      return;
-    }
-    if (!deviceId) {
-      console.error(
-        "loadHistoricalMessages: Device ID not available. Skipping."
-      );
-      dispatch({ type: "SET_ERROR", payload: "Device ID not configured." });
-      return;
-    }
-
-    isSyncingHistoricalMessagesRef.current = true;
-    dispatch({ type: "SET_LOADING", payload: true });
-
-    try {
-      const response = await http.get<RawMessage[]>(
-        `${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
-      );
-      const rawMessages: RawMessage[] = response.data;
-      const processedMessages: DbMessage[] = [];
-
-      for (const rawMsg of rawMessages) {
-        const processed = encryptionService.processAndDecodeIncomingMessage(
-          rawMsg,
-          deviceId,
-          rawMsg.sender_id,
-          rawMsg.id,
-          rawMsg.timestamp
+  const loadHistoricalMessages = useCallback(
+    async (deviceId?: string) => {
+      const preferredDeviceId = globalDeviceId ?? deviceId;
+      if (isSyncingHistoricalMessagesRef.current) {
+        console.log(
+          "loadHistoricalMessages: Sync already in progress. Skipping."
         );
-        if (processed) {
-          processedMessages.push(processed);
-        } else {
-          console.warn(
-            `Failed to process historical raw message with ID: ${rawMsg.id}`
-          );
-        }
+        return;
       }
-
-      await store.saveMessages(processedMessages, true);
-      dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: processedMessages });
-      dispatch({ type: "SET_ERROR", payload: null });
-    } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (!preferredDeviceId) {
         console.error(
-          "loadHistoricalMessages: Failed to sync messages:",
-          error
+          "loadHistoricalMessages: Device ID not available. Skipping."
         );
-        try {
-          const messages = await store.loadMessages();
-          dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: messages });
-          dispatch({
-            type: "SET_ERROR",
-            payload: "Failed to sync messages, showing local data.",
-          });
-        } catch (storeError) {
-          console.error(
-            "loadHistoricalMessages: Failed to load messages from store after sync error:",
-            storeError
-          );
-          dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
-        }
-      } else {
-        console.log("loadHistoricalMessages: Sync operation was canceled.");
+        dispatch({ type: "SET_ERROR", payload: "Device ID not configured." });
+        return;
       }
-    } finally {
-      dispatch({ type: "SET_LOADING", payload: false });
-      isSyncingHistoricalMessagesRef.current = false;
-    }
-  }, [dispatch, store, deviceId]);
+
+      isSyncingHistoricalMessagesRef.current = true;
+      dispatch({ type: "SET_LOADING", payload: true });
+
+      try {
+        const response = await http.get<RawMessage[]>(
+          `${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
+        );
+        const rawMessages: RawMessage[] = response.data;
+        const processedMessages: DbMessage[] = [];
+
+        for (const rawMsg of rawMessages) {
+          const processed = encryptionService.processAndDecodeIncomingMessage(
+            rawMsg,
+            preferredDeviceId,
+            rawMsg.sender_id,
+            rawMsg.id,
+            rawMsg.timestamp
+          );
+          if (processed) {
+            processedMessages.push(processed);
+          } else {
+            console.warn(
+              `Failed to process historical raw message with ID: ${rawMsg.id}`
+            );
+          }
+        }
+
+        await store.saveMessages(processedMessages, true);
+        dispatch({
+          type: "SET_HISTORICAL_MESSAGES",
+          payload: processedMessages,
+        });
+        dispatch({ type: "SET_ERROR", payload: null });
+      } catch (error) {
+        if (!(error instanceof CanceledError)) {
+          console.error(
+            "loadHistoricalMessages: Failed to sync messages:",
+            error
+          );
+          try {
+            const messages = await store.loadMessages();
+            dispatch({ type: "SET_HISTORICAL_MESSAGES", payload: messages });
+            dispatch({
+              type: "SET_ERROR",
+              payload: "Failed to sync messages, showing local data.",
+            });
+          } catch (storeError) {
+            console.error(
+              "loadHistoricalMessages: Failed to load messages from store after sync error:",
+              storeError
+            );
+            dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
+          }
+        } else {
+          console.log("loadHistoricalMessages: Sync operation was canceled.");
+        }
+      } finally {
+        dispatch({ type: "SET_LOADING", payload: false });
+        isSyncingHistoricalMessagesRef.current = false;
+      }
+    },
+    [dispatch, store, globalDeviceId]
+  );
 
   useEffect(() => {
     const handleNewRawMessage = async (rawMsg: RawMessage) => {
-      if (!deviceId) {
+      if (!globalDeviceId) {
         console.error(
           "handleNewRawMessage: Device ID not available, cannot process message."
         );
@@ -189,7 +196,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
       const processedMessage =
         encryptionService.processAndDecodeIncomingMessage(
           rawMsg,
-          deviceId,
+          globalDeviceId,
           rawMsg.sender_id,
           rawMsg.id,
           rawMsg.timestamp
@@ -207,7 +214,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
     onMessage(handleNewRawMessage);
     return () => removeMessageHandler(handleNewRawMessage);
-  }, [onMessage, removeMessageHandler, store, deviceId]);
+  }, [onMessage, removeMessageHandler, store, globalDeviceId]);
 
   const getMessagesForGroup = useCallback(
     (groupId: string) => {

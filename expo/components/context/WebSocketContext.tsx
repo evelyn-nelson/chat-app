@@ -1,13 +1,10 @@
 import {
-  // We will use RawMessage for WebSocket communication.
-  // The client-side 'Message' (with Uint8Array) is handled by subscribers.
   RawMessage,
   Group,
   User,
-  // UserGroup, // Not directly used in this file's public interface
   UpdateGroupParams,
   CreateGroupParams,
-} from "@/types/types"; // Ensure RawMessage is correctly imported
+} from "@/types/types";
 import React, {
   createContext,
   useCallback,
@@ -16,17 +13,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import http from "../../util/custom-axios"; // Assuming this path is correct
-import { get } from "@/util/custom-store"; // Assuming this path is correct
+import http from "@/util/custom-axios";
+import { get } from "@/util/custom-store";
 import { CanceledError } from "axios";
 
 interface WebSocketContextType {
-  // sendMessage now takes a RawMessage (the E2EE packet for transport)
   sendMessage: (packet: RawMessage) => void;
   connected: boolean;
-  // onMessage callback now provides a RawMessage
   onMessage: (callback: (packet: RawMessage) => void) => void;
-  // removeMessageHandler callback now matches the new onMessage signature
   removeMessageHandler: (callback: (packet: RawMessage) => void) => void;
   establishConnection: () => Promise<void>;
   disconnect: () => void;
@@ -72,55 +66,61 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const messageHandlersRef = useRef<((packet: RawMessage) => void)[]>([]);
   const isReconnecting = useRef(false);
 
-  const createGroup = async (
-    name: string,
-    startTime: Date,
-    endTime: Date,
-    description?: string | null,
-    location?: string | null,
-    imageUrl?: string | null
-  ): Promise<Group | undefined> => {
-    const httpURL = `${httpBaseURL}/createGroup`;
-    const payload: CreateGroupParams = {
-      name,
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      ...(description !== undefined && { description }),
-      ...(location !== undefined && { location }),
-      ...(imageUrl !== undefined && { image_url: imageUrl }),
-    };
-    return http
-      .post(httpURL, payload)
-      .then((response) => response.data)
-      .catch((error) => {
-        console.error("Error creating group:", error);
-        return undefined;
-      });
-  };
+  const createGroup = useCallback(
+    async (
+      name: string,
+      startTime: Date,
+      endTime: Date,
+      description?: string | null,
+      location?: string | null,
+      imageUrl?: string | null
+    ): Promise<Group | undefined> => {
+      const httpURL = `${httpBaseURL}/createGroup`;
+      const payload: CreateGroupParams = {
+        name,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        ...(description !== undefined && { description }),
+        ...(location !== undefined && { location }),
+        ...(imageUrl !== undefined && { image_url: imageUrl }),
+      };
+      return http
+        .post(httpURL, payload)
+        .then((response) => response.data)
+        .catch((error) => {
+          console.error("Error creating group:", error);
+          return undefined;
+        });
+    },
+    []
+  );
 
-  const updateGroup = async (
-    id: string,
-    updateParams: UpdateGroupParams
-  ): Promise<Group | undefined> => {
-    const httpURL = `${httpBaseURL}/updateGroup/${id}`;
-    if (
-      !Object.values(updateParams).some(
-        (value) => value !== undefined && value !== null
-      )
-    ) {
-      console.error("Invalid update input: No parameters provided.");
-      return undefined;
-    }
-    return http
-      .put(httpURL, updateParams)
-      .then((response) => response.data)
-      .catch((error) => {
-        console.error("Error updating group:", error);
+  const updateGroup = useCallback(
+    async (
+      id: string,
+      updateParams: UpdateGroupParams
+    ): Promise<Group | undefined> => {
+      const httpURL = `${httpBaseURL}/updateGroup/${id}`;
+      if (
+        !Object.values(updateParams).some(
+          (value) => value !== undefined && value !== null
+        )
+      ) {
+        console.error("Invalid update input: No parameters provided.");
         return undefined;
-      });
-  };
+      }
+      return http
+        .put(httpURL, updateParams)
+        .then((response) => response.data)
+        .catch((error) => {
+          console.error("Error updating group:", error);
+          return undefined;
+        });
+    },
+    []
+  );
 
-  const establishConnection = (): Promise<void> => {
+  const establishConnection = useCallback((): Promise<void> => {
     let promiseSettled = false;
     preventRetries = false;
     let currentAttemptPreventRetries = false;
@@ -363,53 +363,53 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       };
       connect();
     });
-  };
+  }, [setConnected]);
 
-  const leaveGroup = async (group_id: string) => {
+  const leaveGroup = useCallback(async (group_id: string) => {
     return http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
       console.error("Error leaving group:", error);
     });
-  };
+  }, []);
 
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
     preventRetries = true;
     isReconnecting.current = false;
     if (socketRef.current) {
       socketRef.current.close(1000, "User initiated disconnect");
     }
-  };
+  }, [setConnected]);
 
-  const inviteUsersToGroup = async (
-    emails: string[],
-    group_id: string
-  ): Promise<any> => {
-    // TODO: define a more specific return type
-    return http
-      .post(`${httpBaseURL}/inviteUsersToGroup`, {
-        group_id: group_id,
-        emails: emails,
-      })
-      .catch((error) => {
-        console.error("Error inviting users:", error);
-      });
-  };
+  const inviteUsersToGroup = useCallback(
+    async (emails: string[], group_id: string): Promise<any> => {
+      // TODO: define a more specific return type
+      return http
+        .post(`${httpBaseURL}/inviteUsersToGroup`, {
+          group_id: group_id,
+          emails: emails,
+        })
+        .catch((error) => {
+          console.error("Error inviting users:", error);
+        });
+    },
+    []
+  );
 
-  const removeUserFromGroup = async (
-    email: string,
-    group_id: string
-  ): Promise<any> => {
-    // TODO: define a more specific return type
-    return http
-      .post(`${httpBaseURL}/removeUserFromGroup`, {
-        group_id: group_id,
-        email: email,
-      })
-      .catch((error) => {
-        console.error("Error removing user:", error);
-      });
-  };
+  const removeUserFromGroup = useCallback(
+    async (email: string, group_id: string): Promise<any> => {
+      // TODO: define a more specific return type
+      return http
+        .post(`${httpBaseURL}/removeUserFromGroup`, {
+          group_id: group_id,
+          email: email,
+        })
+        .catch((error) => {
+          console.error("Error removing user:", error);
+        });
+    },
+    []
+  );
 
-  const getGroups = async (): Promise<Group[]> => {
+  const getGroups = useCallback(async (): Promise<Group[]> => {
     return http
       .get(`${httpBaseURL}/getGroups`)
       .then((response) => response.data)
@@ -419,9 +419,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         return [];
       });
-  };
+  }, []);
 
-  const getUsers = async (): Promise<User[]> => {
+  const getUsers = useCallback(async (): Promise<User[]> => {
     return http
       .get(`${httpBaseURL}/relevantUsers`)
       .then((response) => response.data)
@@ -431,7 +431,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         return [];
       });
-  };
+  }, []);
 
   const sendMessage = useCallback(
     (packet: RawMessage) => {

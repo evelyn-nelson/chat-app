@@ -15,7 +15,7 @@ type Envelope struct {
 
 type RawMessageE2EE struct {
 	ID         uuid.UUID  `json:"id"`
-	GroupID    uuid.UUID  `json:"groupId"`
+	GroupID    uuid.UUID  `json:"group_id"`
 	MsgNonce   string     `json:"msgNonce"`   // Base64 encoded
 	Ciphertext string     `json:"ciphertext"` // Base64 encoded
 	Timestamp  string     `json:"timestamp"`
@@ -23,7 +23,7 @@ type RawMessageE2EE struct {
 	Envelopes  []Envelope `json:"envelopes"`
 }
 type ClientSentE2EMessage struct {
-	GroupID    uuid.UUID  `json:"groupId"`
+	GroupID    uuid.UUID  `json:"group_id"`
 	MsgNonce   string     `json:"msgNonce"`   // Base64 encoded
 	Ciphertext string     `json:"ciphertext"` // Base64 encoded
 	Envelopes  []Envelope `json:"envelopes"`
