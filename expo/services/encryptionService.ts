@@ -1,4 +1,4 @@
-import { RawMessage, Message } from "../types/types";
+import { RawMessage, DbMessage } from "../types/types";
 import sodium from "react-native-libsodium";
 import { Base64 } from "js-base64";
 
@@ -44,7 +44,7 @@ export const processAndDecodeIncomingMessage = (
   senderId: string,
   messageId: string,
   timestamp: string
-): Message | null => {
+): DbMessage | null => {
   const envelope = rawMessage.envelopes.find(
     (env) => env.deviceId === currentDeviceId
   );
@@ -57,9 +57,9 @@ export const processAndDecodeIncomingMessage = (
   }
 
   try {
-    const clientMessage: Message = {
+    const clientMessage: DbMessage = {
       id: messageId,
-      group_id: rawMessage.groupId,
+      group_id: rawMessage.group_id,
       sender_id: senderId,
       timestamp: timestamp,
 
@@ -87,7 +87,6 @@ export const processAndDecodeIncomingMessage = (
  * @param groupId The ID of the group this message belongs to.
  * @param recipientDevicePublicKeys An array of objects, each containing a recipient's deviceId and their long-term publicKey (Uint8Array).
  * @param senderLongTermPrivateKey The sender's long-term private key (Uint8Array).
- * @param senderUserId The sender's user ID.
  * @returns A promise that resolves to the RawMessage object (with Base64 strings).
  */
 export const encryptAndPrepareMessageForSending = async (
@@ -137,7 +136,7 @@ export const encryptAndPrepareMessageForSending = async (
     }
 
     const messageToSend = {
-      groupId: groupId,
+      group_id: groupId,
       msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
       ciphertext: uint8ArrayToBase64(ciphertextUint8Array),
       envelopes: envelopes,
@@ -152,7 +151,7 @@ export const encryptAndPrepareMessageForSending = async (
 
 // --- Decryption (For Displaying Messages) ---
 export const decryptStoredMessage = async (
-  storedMessage: Message,
+  storedMessage: DbMessage,
   deviceLongTermPrivateKey: Uint8Array
 ): Promise<string | null> => {
   try {
@@ -182,7 +181,6 @@ export const decryptStoredMessage = async (
     }
 
     return sodium.to_string(plaintextUint8Array);
-    // return sodium.to_string(plaintextUint8Array); // Use if available and preferred
   } catch (error) {
     console.error("Error during message decryption:", error);
     return null;

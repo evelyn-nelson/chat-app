@@ -857,7 +857,7 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 			}
 		}
 
-		senderID := dbMsg.UserID
+		senderID := dbMsg.SenderID
 		if *senderID == uuid.Nil {
 			log.Printf("Warning: Message %s has NULL UserID in DB", dbMsg.ID)
 			continue
@@ -872,10 +872,10 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 		messagesToClient = append(messagesToClient, RawMessageE2EE{
 			ID:         dbMsg.ID,
 			GroupID:    *groupID,
+			SenderID:   *senderID,
 			MsgNonce:   base64.StdEncoding.EncodeToString(dbMsg.MsgNonce),
 			Ciphertext: base64.StdEncoding.EncodeToString(dbMsg.Ciphertext),
-			Timestamp:  dbMsg.CreatedAt.Time.Format(time.RFC3339Nano),
-			SenderID:   *senderID,
+			Timestamp:  dbMsg.Timestamp.Time.Format(time.RFC3339Nano),
 			Envelopes:  envelopes,
 		})
 	}

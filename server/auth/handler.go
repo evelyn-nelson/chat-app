@@ -60,12 +60,12 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request: " + err.Error()})
 		return
 	}
 
 	pwd := []byte(req.Password)
-	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(pwd, 12)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Signup failed"})
 		return
@@ -105,7 +105,6 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req LoginRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request: " + err.Error()})
 		return
@@ -113,8 +112,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	user, err := h.db.GetUserByEmailInternal(ctx, req.Email)
 	if err != nil {
-		log.Printf("Login attempt failed for email %s: user not found or DB error: %v", req.Email, err)
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed: Invalid credentials"}) // Generic message
+		dummyHash := []byte("$2a$12$ZHc6p51/1IsM/4/hz/sUvezdkXuT1IF75EF5nyKyRTu7XyGDd0PM2")
+
+		_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(req.Password))
+
+		log.Printf("Login attempt for non-existent or problematic email %s (timing mitigation active): %v", req.Email, err)
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed: Invalid credentials"})
 		return
 	}
 
@@ -123,11 +126,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed: Account issue."})
 		return
 	}
+
 	pwd := []byte(user.Password.String)
 	err = bcrypt.CompareHashAndPassword(pwd, []byte(req.Password))
 	if err != nil {
 		log.Printf("Login attempt failed for email %s: incorrect password.", req.Email)
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed: Invalid credentials"}) // Generic message
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Login failed: Invalid credentials"})
 		return
 	}
 
@@ -139,7 +143,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		UserID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // Consistent expiry with signup
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 		},
 	}
 
@@ -151,5 +155,5 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": tokenString, "user_id": user.ID, "username": user.Username}) // Optionally return user info
+	c.JSON(http.StatusOK, gin.H{"token": tokenString, "user_id": user.ID, "username": user.Username})
 }

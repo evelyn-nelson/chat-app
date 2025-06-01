@@ -1,4 +1,4 @@
-import { Message, RawMessage } from "@/types/types";
+import { DbMessage, RawMessage } from "@/types/types";
 import React, {
   createContext,
   useContext,
@@ -15,19 +15,19 @@ import { CanceledError } from "axios";
 import * as encryptionService from "@/services/encryptionService";
 
 type MessageAction =
-  | { type: "ADD_MESSAGE"; payload: Message }
-  | { type: "SET_HISTORICAL_MESSAGES"; payload: Message[] }
+  | { type: "ADD_MESSAGE"; payload: DbMessage }
+  | { type: "SET_HISTORICAL_MESSAGES"; payload: DbMessage[] }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null };
 
 interface MessageState {
-  messages: Record<string, Message[]>;
+  messages: Record<string, DbMessage[]>;
   loading: boolean;
   error: string | null;
 }
 
 interface MessageStoreContextType {
-  getMessagesForGroup: (groupId: string) => Message[];
+  getMessagesForGroup: (groupId: string) => DbMessage[];
   loading: boolean;
   error: string | null;
   loadHistoricalMessages: () => Promise<void>;
@@ -71,7 +71,7 @@ const messageReducer = (
           acc[groupId].push(message);
           return acc;
         },
-        {} as Record<string, Message[]>
+        {} as Record<string, DbMessage[]>
       );
       for (const groupId in messagesByGroup) {
         messagesByGroup[groupId].sort(
@@ -126,7 +126,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
         `${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
       );
       const rawMessages: RawMessage[] = response.data;
-      const processedMessages: Message[] = [];
+      const processedMessages: DbMessage[] = [];
 
       for (const rawMsg of rawMessages) {
         const processed = encryptionService.processAndDecodeIncomingMessage(

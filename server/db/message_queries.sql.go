@@ -175,11 +175,9 @@ func (q *Queries) GetMessagesForGroup(ctx context.Context, groupID *uuid.UUID) (
 const getRelevantMessages = `-- name: GetRelevantMessages :many
 SELECT
     m.id,
-    m.user_id,
-    u_sender.username,
     m.group_id,
-    m.created_at,
-    m.updated_at,
+    m.user_id AS sender_id,
+    m.created_at AS "timestamp",
     m.ciphertext,
     m.msg_nonce,
     m.key_envelopes
@@ -193,11 +191,9 @@ WHERE u_member.id = $1
 
 type GetRelevantMessagesRow struct {
 	ID           uuid.UUID        `json:"id"`
-	UserID       *uuid.UUID       `json:"user_id"`
-	Username     string           `json:"username"`
 	GroupID      *uuid.UUID       `json:"group_id"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	SenderID     *uuid.UUID       `json:"sender_id"`
+	Timestamp    pgtype.Timestamp `json:"timestamp"`
 	Ciphertext   []byte           `json:"ciphertext"`
 	MsgNonce     []byte           `json:"msg_nonce"`
 	KeyEnvelopes []byte           `json:"key_envelopes"`
@@ -214,11 +210,9 @@ func (q *Queries) GetRelevantMessages(ctx context.Context, id uuid.UUID) ([]GetR
 		var i GetRelevantMessagesRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
-			&i.Username,
 			&i.GroupID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.SenderID,
+			&i.Timestamp,
 			&i.Ciphertext,
 			&i.MsgNonce,
 			&i.KeyEnvelopes,

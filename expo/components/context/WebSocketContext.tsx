@@ -122,6 +122,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const establishConnection = (): Promise<void> => {
     let promiseSettled = false;
+    preventRetries = false;
     let currentAttemptPreventRetries = false;
 
     return new Promise(async (resolve, reject) => {
@@ -134,7 +135,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      if (socketRef.current?.readyState === WebSocket.OPEN && connected) {
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
         if (!promiseSettled) {
           promiseSettled = true;
           resolve();
@@ -183,7 +184,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         isReconnecting.current = false;
         currentAttemptPreventRetries = true;
-        cleanup(error.message);
+        if (socketRef.current) {
+          cleanup(error.message);
+        } else {
+          isAuthenticated = false;
+          setConnected(false);
+        }
       };
 
       const connect = () => {
@@ -197,7 +203,22 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (socketRef.current) {
-          cleanup("Starting new connection attempt");
+          const oldSocket = socketRef.current;
+          socketRef.current = null;
+
+          oldSocket.onopen = null;
+          oldSocket.onmessage = null;
+          oldSocket.onclose = null;
+          oldSocket.onerror = null;
+          if (
+            oldSocket.readyState !== WebSocket.CLOSING &&
+            oldSocket.readyState !== WebSocket.CLOSED
+          ) {
+            oldSocket.close(
+              1000,
+              "Client cleanup: Starting new connection attempt"
+            );
+          }
         }
 
         const socket = new WebSocket(wsURL);
@@ -244,10 +265,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
                     "Received unexpected message during authentication phase."
                   )
                 );
-                socket.close(
-                  CLOSE_CODE_UNAUTHENTICATED,
-                  "Unexpected message pre-auth"
-                );
               }
             } else {
               if (
@@ -287,8 +304,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           if (socketRef.current !== socket && socketRef.current !== null) {
             return;
           }
+          const wasCurrentSocket = socketRef.current === socket;
 
-          cleanup(`onclose event (Code: ${event.code})`);
+          if (wasCurrentSocket) {
+            socketRef.current = null;
+          }
+
+          if (wasCurrentSocket || !socketRef.current) {
+            setConnected(false);
+          }
 
           if (
             currentAttemptPreventRetries ||
@@ -299,7 +323,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           ) {
             isReconnecting.current = false;
             if (!promiseSettled && !isAuthenticated && event.code !== 1000) {
-              safeReject(
+              promiseSettled = true;
+              reject(
                 new Error(
                   `WebSocket closed (Code: ${event.code}) before authentication completed.`
                 )
@@ -315,12 +340,19 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
                 Math.random() * 1000,
               MAX_RETRY_DELAY
             );
+            console.log(
+              `WebSocket closed unexpectedly. Retrying in ${delay.toFixed(0)}ms... (Attempt ${retryCount})`
+            );
             setTimeout(connect, delay);
           } else {
             isReconnecting.current = false;
-            safeReject(
-              new Error("WebSocket connection failed after maximum retries")
-            );
+            console.error("WebSocket connection failed after maximum retries.");
+            if (!promiseSettled) {
+              promiseSettled = true;
+              reject(
+                new Error("WebSocket connection failed after maximum retries")
+              );
+            }
           }
         };
 
@@ -440,7 +472,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       preventRetries = true;
       isReconnecting.current = false;
       if (socketRef.current) {
-        socketRef.current.close(1000, "Component unmounting");
+        const wsToClose = socketRef.current;
+        socketRef.current = null;
+        wsToClose.onclose = null;
+        wsToClose.close(1000, "Component unmounting");
       }
     };
   }, []);

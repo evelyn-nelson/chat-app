@@ -26,7 +26,9 @@ import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
-import { MessageUser } from "@/types/types";
+import { Group, MessageUser } from "@/types/types";
+import * as deviceService from "@/services/deviceService";
+import * as encryptionService from "@/services/encryptionService";
 
 const SCROLL_THRESHOLD = 200;
 const HAPTIC_THRESHOLD = -40;
@@ -41,10 +43,10 @@ type BubbleItem = {
   dateString?: string;
 };
 
-export default function ChatBox({ group_id }: { group_id: string }) {
+export default function ChatBox({ group }: { group: Group }) {
   const { user } = useGlobalStore();
   const { getMessagesForGroup } = useMessageStore();
-  const groupMessages = getMessagesForGroup(group_id);
+  const groupMessages = getMessagesForGroup(group.id);
 
   const flatListRef = useRef<FlatList<BubbleItem> | null>(null);
   const lastCountRef = useRef(groupMessages.length);
@@ -59,59 +61,183 @@ export default function ChatBox({ group_id }: { group_id: string }) {
   const swipeX = useSharedValue(0);
   const hapticTriggered = useSharedValue(false);
 
-  const bubblesWithDates = useMemo<BubbleItem[]>(() => {
-    const reversedMessages = [...groupMessages].reverse();
-    const result: BubbleItem[] = [];
+  const [devicePrivateKey, setDevicePrivateKey] = useState<Uint8Array | null>(
+    null
+  );
+  const prevPrivateKeyRef = useRef<Uint8Array | null>(null);
 
-    reversedMessages.forEach((m, index) => {
-      const messageDate = new Date(m.timestamp);
-      const dateString = messageDate.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+  const usersMapRef = useRef<Record<string, { id: string; username: string }>>(
+    {}
+  );
 
-      result.push({
-        id: m.id,
-        user: m.user,
-        text: m.content,
-        align: m.user.id === user?.id ? "right" : "left",
-        timestamp: m.timestamp,
-        type: "message",
-      });
+  useEffect(() => {
+    const loadKey = async () => {
+      try {
+        const identity = await deviceService.ensureDeviceIdentity();
+        setDevicePrivateKey(identity.privateKey);
+      } catch (error) {
+        console.error("ChatBox: Failed to load device private key:", error);
+        setDevicePrivateKey(null);
+      }
+    };
+    loadKey();
+  }, []);
 
-      const nextMessage = reversedMessages[index + 1];
-      let shouldAddSeparator = false;
+  const recipientUserIds = useMemo(() => {
+    return group.group_users.map((gu) => gu.id);
+  }, [group.group_users]);
 
-      if (!nextMessage) {
-        shouldAddSeparator = true;
-      } else {
-        const nextMessageDate = new Date(nextMessage.timestamp);
-        const nextDateString = nextMessageDate.toLocaleDateString("en-US", {
+  useEffect(() => {
+    const newMap: Record<string, { id: string; username: string }> = {};
+    if (user) {
+      newMap[user.id] = {
+        id: user.id,
+        username: user.username,
+      };
+    }
+    group.group_users.forEach((gu) => {
+      newMap[gu.id] = { id: gu.id, username: gu.username };
+    });
+    usersMapRef.current = newMap;
+  }, [group.group_users, user]);
+
+  const [displayableMessages, setDisplayableMessages] = useState<BubbleItem[]>(
+    []
+  );
+  const [decryptedContentCache, setDecryptedContentCache] = useState<
+    Map<string, string | null>
+  >(new Map());
+
+  useEffect(() => {
+    if (!devicePrivateKey) {
+      setDisplayableMessages([]);
+      if (prevPrivateKeyRef.current !== null) {
+        console.log("Private key removed, clearing decryption cache.");
+        setDecryptedContentCache(new Map());
+      }
+      prevPrivateKeyRef.current = null;
+      return;
+    }
+
+    let keyChanged = false;
+    if (prevPrivateKeyRef.current === null && devicePrivateKey !== null) {
+      keyChanged = true;
+    } else if (
+      prevPrivateKeyRef.current !== null &&
+      devicePrivateKey === null
+    ) {
+      keyChanged = true;
+    } else if (
+      prevPrivateKeyRef.current &&
+      devicePrivateKey &&
+      !prevPrivateKeyRef.current.every(
+        (val, index) => val === devicePrivateKey[index]
+      )
+    ) {
+      keyChanged = true;
+    }
+    if (keyChanged) {
+      console.log(
+        "Device private key changed or initialized, clearing decryption cache."
+      );
+      setDecryptedContentCache(new Map());
+    }
+    prevPrivateKeyRef.current = devicePrivateKey;
+
+    const decryptAndFormat = async (
+      currentCache: Map<string, string | null>
+    ) => {
+      const newDisplayableMessages: BubbleItem[] = [];
+      const newCacheEntries = new Map<string, string | null>();
+      let localCacheWasUpdated = false;
+
+      const reversedStoredMessages = [...groupMessages].reverse();
+
+      for (let i = 0; i < reversedStoredMessages.length; i++) {
+        const storedMsg = reversedStoredMessages[i];
+        let plaintext: string | null = null;
+
+        if (currentCache.has(storedMsg.id)) {
+          plaintext = currentCache.get(storedMsg.id)!;
+        } else {
+          try {
+            plaintext = await encryptionService.decryptStoredMessage(
+              storedMsg,
+              devicePrivateKey!
+            );
+          } catch (e) {
+            console.error(`Error decrypting message ID ${storedMsg.id}:`, e);
+            plaintext = "[Decryption Error]";
+          }
+          newCacheEntries.set(storedMsg.id, plaintext);
+          localCacheWasUpdated = true;
+        }
+
+        const currentPlaintext = plaintext ?? "[Decryption Failed]";
+
+        const senderInfo = usersMapRef.current[storedMsg.sender_id] || {
+          id: storedMsg.sender_id,
+          username: "Unknown User",
+        };
+        const messageUser: MessageUser = {
+          id: senderInfo.id,
+          username: senderInfo.username,
+        };
+
+        newDisplayableMessages.push({
+          id: storedMsg.id,
+          user: messageUser,
+          text: currentPlaintext,
+          align: storedMsg.sender_id === user?.id ? "right" : "left",
+          timestamp: storedMsg.timestamp,
+          type: "message",
+        });
+
+        const messageDate = new Date(storedMsg.timestamp);
+        const dateString = messageDate.toLocaleDateString("en-US", {
           weekday: "long",
           year: "numeric",
           month: "long",
           day: "numeric",
         });
-        shouldAddSeparator = dateString !== nextDateString;
+        const nextStoredMessage = reversedStoredMessages[i + 1];
+        let shouldAddSeparator = false;
+        if (!nextStoredMessage) {
+          shouldAddSeparator = true;
+        } else {
+          const nextMessageDate = new Date(nextStoredMessage.timestamp);
+          const nextDateString = nextMessageDate.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          shouldAddSeparator = dateString !== nextDateString;
+        }
+        if (shouldAddSeparator) {
+          newDisplayableMessages.push({
+            id: null,
+            user: messageUser,
+            text: "",
+            align: "left",
+            timestamp: storedMsg.timestamp,
+            type: "date-separator",
+            dateString,
+          });
+        }
       }
 
-      if (shouldAddSeparator) {
-        result.push({
-          id: null,
-          user: m.user,
-          text: "",
-          align: "left",
-          timestamp: m.timestamp,
-          type: "date-separator",
-          dateString,
-        });
-      }
-    });
+      setDisplayableMessages(newDisplayableMessages);
 
-    return result;
-  }, [groupMessages, user?.id]);
+      if (localCacheWasUpdated) {
+        setDecryptedContentCache(
+          (prevCache) => new Map([...prevCache, ...newCacheEntries])
+        );
+      }
+    };
+
+    decryptAndFormat(keyChanged ? new Map() : decryptedContentCache);
+  }, [groupMessages, devicePrivateKey, user?.id, decryptedContentCache]);
 
   const flatListProps = useMemo(
     () => ({
@@ -174,7 +300,7 @@ export default function ChatBox({ group_id }: { group_id: string }) {
       }
       scrollHandle.current = setTimeout(
         () => {
-          if (flatListRef.current && bubblesWithDates.length > 0) {
+          if (flatListRef.current && displayableMessages.length > 0) {
             flatListRef.current.scrollToIndex({
               index: 0,
               animated,
@@ -185,7 +311,7 @@ export default function ChatBox({ group_id }: { group_id: string }) {
         Platform.OS === "ios" ? 70 : 100
       );
     },
-    [bubblesWithDates.length]
+    [displayableMessages.length]
   );
 
   useEffect(() => {
@@ -252,13 +378,12 @@ export default function ChatBox({ group_id }: { group_id: string }) {
       if (item.type === "date-separator") {
         return renderDateSeparator(item.dateString!, index);
       }
-
       return (
         <ChatBubble
           prevUserId={
-            index < bubblesWithDates.length - 1 &&
-            bubblesWithDates[index + 1].type === "message"
-              ? bubblesWithDates[index + 1].user.id
+            index < displayableMessages.length - 1 &&
+            displayableMessages[index + 1].type === "message"
+              ? displayableMessages[index + 1].user.id
               : ""
           }
           user={item.user}
@@ -270,7 +395,7 @@ export default function ChatBox({ group_id }: { group_id: string }) {
         />
       );
     },
-    [bubblesWithDates, isActivelySwipping, swipeX, renderDateSeparator]
+    [displayableMessages, isActivelySwipping, swipeX, renderDateSeparator]
   );
 
   return (
@@ -285,7 +410,7 @@ export default function ChatBox({ group_id }: { group_id: string }) {
             <ReanimatedAnimated.View className="flex-1 mb-[60px] bg-gray-900 rounded-t-xl overflow-hidden relative">
               <FlatList
                 ref={flatListRef}
-                data={bubblesWithDates}
+                data={displayableMessages}
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 onScroll={handleScroll}
@@ -320,7 +445,7 @@ export default function ChatBox({ group_id }: { group_id: string }) {
         )}
 
         <View className="h-[60px] absolute bottom-0 left-0 right-0 bg-gray-900 px-2 pb-1 my-2">
-          <MessageEntry group_id={group_id} />
+          <MessageEntry group={group} recipientUserIds={recipientUserIds} />
         </View>
       </View>
     </KeyboardAvoidingView>

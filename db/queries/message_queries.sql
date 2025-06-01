@@ -40,11 +40,9 @@ WHERE m.group_id = $1;
 -- name: GetRelevantMessages :many
 SELECT
     m.id,
-    m.user_id,
-    u_sender.username,
     m.group_id,
-    m.created_at,
-    m.updated_at,
+    m.user_id AS sender_id,
+    m.created_at AS "timestamp",
     m.ciphertext,
     m.msg_nonce,
     m.key_envelopes

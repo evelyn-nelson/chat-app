@@ -1,12 +1,10 @@
 import {
   ActivityIndicator,
-  StyleSheet,
-  Text,
   View,
   Platform,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { Redirect, Stack, Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 import { User } from "@/types/types";
 import { useWebSocket } from "@/components/context/WebSocketContext";
@@ -19,7 +17,8 @@ import { useMessageStore } from "@/components/context/MessageStoreContext";
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
   const { getGroups, disconnect, getUsers } = useWebSocket();
-  const { store, refreshGroups, refreshUsers } = useGlobalStore();
+  const { store, refreshGroups, refreshUsers, loadRelevantDeviceKeys } =
+    useGlobalStore();
   const { loadHistoricalMessages } = useMessageStore();
   const [user, setUser] = useState<User | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,13 +33,12 @@ const AppLayout = () => {
         const loggedInUser = await whoami();
         if (isMounted) {
           setUser(loggedInUser);
-          if (loggedInUser) {
-            await fetchGroups();
-            await loadHistoricalMessages();
-          }
         }
       } catch (err) {
-        console.error("Error loading data: ", err);
+        console.error("Error during app initialization: ", err);
+        if (isMounted) {
+          setUser(undefined);
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -57,22 +55,17 @@ const AppLayout = () => {
   }, []);
 
   const isFetchingGroups = useRef(false);
-
   const fetchGroups = async () => {
-    if (isFetchingGroups.current) return;
+    if (isFetchingGroups.current || !user) return;
     isFetchingGroups.current = true;
-
     try {
       const data = await getGroups();
       await store.saveGroups(data);
       refreshGroups();
     } catch (error) {
       if (!(error instanceof CanceledError)) {
-        try {
-          await store.loadGroups();
-        } catch (storeError) {
-          console.error("Failed to load groups:", storeError);
-        }
+        console.error("Failed to fetch/store groups:", error);
+        await store.loadGroups();
       }
     } finally {
       isFetchingGroups.current = false;
@@ -80,42 +73,63 @@ const AppLayout = () => {
   };
 
   const isFetchingUsers = useRef(false);
-
   const fetchUsers = async () => {
-    if (isFetchingUsers.current) return;
+    if (isFetchingUsers.current || !user) return;
     isFetchingUsers.current = true;
-
     try {
       const data = await getUsers();
       await store.saveUsers(data);
       refreshUsers();
     } catch (error) {
       if (!(error instanceof CanceledError)) {
-        try {
-          await store.loadUsers();
-        } catch (storeError) {
-          console.error("Failed to load users:", storeError);
-        }
+        console.error("Failed to fetch/store users:", error);
+        await store.loadUsers();
       }
     } finally {
       isFetchingUsers.current = false;
     }
   };
 
+  // Ref and function for fetching device keys
+  const isFetchingDeviceKeys = useRef(false);
+  const fetchDeviceKeys = async () => {
+    if (isFetchingDeviceKeys.current || !user) return; // Don't fetch if no user
+    isFetchingDeviceKeys.current = true;
+    try {
+      await loadRelevantDeviceKeys();
+    } catch (error) {
+      if (!(error instanceof CanceledError)) {
+        console.error(
+          "AppLayout: Error explicitly calling fetchDeviceKeys:",
+          error
+        );
+      }
+    } finally {
+      isFetchingDeviceKeys.current = false;
+    }
+  };
+
   useEffect(() => {
-    fetchGroups();
-    fetchUsers();
+    if (user) {
+      fetchGroups();
+      fetchUsers();
+      loadHistoricalMessages();
+      fetchDeviceKeys();
 
-    const groupsIntervalId = setInterval(fetchGroups, 100000);
-    const usersIntervalId = setInterval(fetchUsers, 100000);
-    const messagesIntervalId = setInterval(loadHistoricalMessages, 30000);
+      const groupsIntervalId = setInterval(fetchGroups, 100000);
+      const usersIntervalId = setInterval(fetchUsers, 100000);
+      const messagesIntervalId = setInterval(loadHistoricalMessages, 10000);
+      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 100000);
 
-    return () => {
-      clearInterval(groupsIntervalId);
-      clearInterval(usersIntervalId);
-      clearInterval(messagesIntervalId);
-    };
-  }, []);
+      return () => {
+        clearInterval(groupsIntervalId);
+        clearInterval(usersIntervalId);
+        clearInterval(messagesIntervalId);
+        clearInterval(deviceKeysIntervalId);
+      };
+    }
+    return undefined;
+  }, [user]);
 
   if (isLoading) {
     return (

@@ -63,31 +63,30 @@ export type UserGroup = {
  * Represents an encrypted message as stored on the client device and ready for decryption.
  * This is the format for SQLite storage.
  */
-export type Message = {
+export interface DbMessage {
   id: string;
   sender_id: string;
   group_id: string;
   timestamp: string;
-
-  // E2EE Fields - for this device to decrypt the message
-  ciphertext: Uint8Array; // Encrypted message content (output of libsodium secretbox)
-  msg_nonce: Uint8Array; // Nonce used for secretbox(ciphertext)
-  sender_ephemeral_public_key: Uint8Array; // Sender's ephemeral public key used to box the sym_key
-  sym_key_encryption_nonce: Uint8Array; // Nonce used when the sender boxed the sym_key
-  sealed_symmetric_key: Uint8Array; // The per-message symmetric key, sealed by the sender for this device
-};
+  ciphertext: Uint8Array;
+  msg_nonce: Uint8Array;
+  sender_ephemeral_public_key: Uint8Array;
+  sym_key_encryption_nonce: Uint8Array;
+  sealed_symmetric_key: Uint8Array;
+}
 
 /**
  * Represents the E2EE message packet sent over WebSocket to the server.
  * All binary data is Base64 encoded for JSON serialization.
  */
+
 export type RawMessage = {
   id: string;
-  groupId: string;
-  msgNonce: string; // Nonce used for encrypting the message content (Base64 encoded)
-  ciphertext: string; // The encrypted message content (Base64 encoded)
-  timestamp: string;
+  group_id: string;
   sender_id: string;
+  timestamp: string;
+  ciphertext: string; // The encrypted message content (Base64 encoded)
+  msgNonce: string; // Nonce used for encrypting the message content (Base64 encoded)
   envelopes: Array<{
     deviceId: string; // Recipient's device identifier
     ephPubKey: string; // Sender's ephemeral public key for this box (Base64 encoded)
@@ -96,13 +95,13 @@ export type RawMessage = {
   }>;
 };
 
-export type DisplayMessage = {
+export interface UiMessage {
   id: string;
-  content: string; // Decrypted plaintext content
-  user: MessageUser;
   group_id: string;
   timestamp: string;
-};
+  user: MessageUser; // This is the one place you keep the username
+  content: string; // Plaintext
+}
 
 export type DateOptions = {
   startTime: Date | null;

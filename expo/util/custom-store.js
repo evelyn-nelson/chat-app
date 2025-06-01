@@ -7,6 +7,7 @@ export const save = async (key, value) => {
     if (Platform.OS === "web") {
       await AsyncStorage.setItem(key, value);
     } else {
+      console.log(`save ${key}, ${value}`);
       await SecureStore.setItemAsync(key, value.toString());
     }
   } catch (error) {
@@ -25,6 +26,7 @@ export const get = async (key) => {
       }
     } else {
       const result = await SecureStore.getItemAsync(key);
+      console.log(`get ${key}, ${result}`);
       if (result) {
         return result;
       } else {

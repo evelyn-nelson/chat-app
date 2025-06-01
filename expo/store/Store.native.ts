@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 
 import type { GroupRow, IStore, MessageRow, UserRow } from "./types";
-import { Group, Message, User } from "@/types/types";
+import { Group, DbMessage, User } from "@/types/types";
 
 export class Store implements IStore {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -236,7 +236,7 @@ export class Store implements IStore {
   }
 
   async saveMessages(
-    messagesToSave: Message[],
+    messagesToSave: DbMessage[],
     clearFirst: boolean = false
   ): Promise<void> {
     return this.performSerialTransaction(async (db) => {
@@ -244,23 +244,25 @@ export class Store implements IStore {
         await db.runAsync("DELETE FROM messages;");
       }
 
-      const users = Array.from(new Set(messagesToSave.map((msg) => msg.user)));
-      const group_ids = [...new Set(messagesToSave.map((msg) => msg.group_id))];
+      const userIDs = Array.from(
+        new Set(messagesToSave.map((msg) => msg.sender_id))
+      );
+      const groupIDs = [...new Set(messagesToSave.map((msg) => msg.group_id))];
 
-      const real_groups = await db.getAllAsync<{ id: string }>(
+      const realGroups = await db.getAllAsync<{ id: string }>(
         `SELECT DISTINCT(id) FROM groups;`
       );
-      const real_group_ids = real_groups.map((group) => group.id);
-      const diff_group_ids = group_ids.filter(
-        (id) => !real_group_ids.includes(id)
+      const realGroupIDs = realGroups.map((group) => group.id);
+      const diff_group_ids = groupIDs.filter(
+        (id) => !realGroupIDs.includes(id)
       );
 
-      for (const user of users) {
-        if (user && typeof user.id !== "undefined" && user.username) {
+      for (const id of userIDs) {
+        if (id) {
           await db.runAsync(
-            `INSERT INTO users (id, username) VALUES (?, ?)
-             ON CONFLICT(id) DO UPDATE SET username = excluded.username;`,
-            [user.id, user.username]
+            `INSERT INTO users (id) VALUES (?)
+             ON CONFLICT(id) DO NOTHING;`,
+            [id]
           );
         }
       }
@@ -272,15 +274,14 @@ export class Store implements IStore {
       }
       for (const message of messagesToSave) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO messages (id, user_id, group_id, timestamp, username, 
+          `INSERT OR REPLACE INTO messages (id, user_id, group_id, timestamp, 
           ciphertext, msg_nonce, sender_ephemeral_public_key, sym_key_encryption_nonce, sealed_symmetric_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             message.id,
-            message.user.id,
+            message.sender_id,
             message.group_id,
             message.timestamp,
-            message.user.username,
             message.ciphertext,
             message.msg_nonce,
             message.sender_ephemeral_public_key,
@@ -373,11 +374,11 @@ export class Store implements IStore {
     await db.runAsync("DELETE FROM users;");
   }
 
-  async loadMessages(): Promise<Message[]> {
+  async loadMessages(): Promise<DbMessage[]> {
     const db = await this.getDb();
     const result = await db.getAllAsync<MessageRow>(`
       SELECT m.id as message_id, m.group_id,
-             m.user_id, m.username, m.timestamp,
+             m.user_id, m.timestamp,
              m.ciphertext, m.msg_nonce,
              m.sender_ephemeral_public_key,
              m.sym_key_encryption_nonce,
@@ -388,10 +389,7 @@ export class Store implements IStore {
       result?.map((row) => ({
         id: row.message_id,
         group_id: row.group_id,
-        user: {
-          id: row.user_id,
-          username: row.username,
-        },
+        sender_id: row.user_id,
         timestamp: row.timestamp,
         ciphertext: row.ciphertext,
         msg_nonce: row.msg_nonce,
