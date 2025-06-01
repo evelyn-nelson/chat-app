@@ -122,10 +122,6 @@ export default function ChatBox({ group }: { group: Group }) {
     Map<string, string | null>
   >(new Map());
 
-  // ChatBox.tsx
-
-  // ... (imports and other code remain the same) ...
-
   useEffect(() => {
     const decryptAndFormatMessages = async () => {
       // 1. Handle no private key (same as before)
@@ -280,7 +276,7 @@ export default function ChatBox({ group }: { group: Group }) {
     };
 
     decryptAndFormatMessages();
-  }, [groupMessages, devicePrivateKey, user?.id, displayableMessages]);
+  }, [groupMessages, devicePrivateKey, user?.id]);
 
   const flatListProps = useMemo(
     () => ({
