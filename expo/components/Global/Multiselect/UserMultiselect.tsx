@@ -27,24 +27,17 @@ const UserMultiSelect = (props: {
     const newAvailableOptions = options.filter(isUserAvailable);
     setAvailableOptions(newAvailableOptions);
     if (currentText) {
-      const searchResults = fuse
-        .search(currentText)
-        .map((result) => result.item);
-      setFilteredOptions(searchResults.filter(isUserAvailable));
+      const localFuse = new Fuse(newAvailableOptions, {
+        keys: ["email", "username"],
+        threshold: 0.3,
+        includeScore: true,
+      });
+      const searchResults = localFuse.search(currentText).map((r) => r.item);
+      setFilteredOptions(searchResults);
     } else {
       setFilteredOptions(newAvailableOptions);
     }
   }, [excludedUserList, tags, options, currentText]);
-
-  const fuse = useMemo(
-    () =>
-      new Fuse(options, {
-        keys: ["email", "username"],
-        threshold: 0.3,
-        includeScore: true,
-      }),
-    [options]
-  );
 
   const inputRef = useRef<TextInput | null>(null);
 
@@ -69,22 +62,15 @@ const UserMultiSelect = (props: {
   const onSearchTextChange = (text: string) => {
     setCurrentText(text);
     if (text) {
-      const searchResults = fuse.search(text).map((result) => result.item);
-      setFilteredOptions(
-        searchResults.filter(
-          (user) =>
-            !excludedUserList.some((excluded) => excluded.id === user.id) &&
-            !tags.includes(user.email)
-        )
-      );
+      const localFuse = new Fuse(availableOptions, {
+        keys: ["email", "username"],
+        threshold: 0.3,
+        includeScore: true,
+      });
+      const searchResults = localFuse.search(text).map((r) => r.item);
+      setFilteredOptions(searchResults);
     } else {
-      setFilteredOptions(
-        options.filter(
-          (user) =>
-            !excludedUserList.some((excluded) => excluded.id === user.id) &&
-            !tags.includes(user.email)
-        )
-      );
+      setFilteredOptions(availableOptions);
     }
   };
 

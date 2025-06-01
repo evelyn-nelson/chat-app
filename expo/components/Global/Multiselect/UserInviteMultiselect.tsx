@@ -1,74 +1,97 @@
-import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
-import { useEffect, useState } from "react";
+import { View, Text, ActivityIndicator } from "react-native";
+import { useEffect, useState, useRef } from "react";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
-import { User } from "@/types/types";
-import UserMultiSelect from "@/components/Global/Multiselect/UserMultiselect";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import UserMultiSelect from "@/components/Global/Multiselect/UserMultiselect";
+import type { User } from "@/types/types";
 
-const UserInviteMultiselect = (props: {
+interface Props {
   placeholderText: string;
   userList: string[];
   setUserList: React.Dispatch<React.SetStateAction<string[]>>;
   excludedUserList: User[];
-}) => {
-  const { placeholderText, userList, setUserList, excludedUserList } = props;
+}
+
+export default function UserInviteMultiselect({
+  placeholderText,
+  userList,
+  setUserList,
+  excludedUserList,
+}: Props) {
   const { store, usersRefreshKey } = useGlobalStore();
-  const [contacts, setContacts] = useState<User[]>([]);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
-  const [errorLoadingContacts, setErrorLoadingContacts] = useState<
-    string | null
-  >(null);
+  const [contacts, setContacts] = useState<User[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
-    const loadContacts = async () => {
-      setIsLoadingContacts(true);
-      setErrorLoadingContacts(null);
+    let isMounted = true;
+    const load = async () => {
+      if (!hasLoadedOnce.current) {
+        setIsLoading(true);
+        setError(null);
+      }
       try {
         const users = await store.loadUsers();
+        if (!isMounted) return;
         setContacts(users);
-      } catch (error) {
-        console.error("Failed to load contacts:", error);
-        setErrorLoadingContacts(
-          "Could not load contacts. Please try again later."
-        );
+        hasLoadedOnce.current = true;
+      } catch (e) {
+        console.error("Failed to load contacts:", e);
+        if (isMounted && !hasLoadedOnce.current) {
+          setError("Could not load contacts. Please try again later.");
+        }
       } finally {
-        setIsLoadingContacts(false);
+        if (isMounted) setIsLoading(false);
       }
     };
-    loadContacts();
-  }, [usersRefreshKey, store]); // store is likely stable, usersRefreshKey triggers
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [usersRefreshKey, store]);
 
-  if (isLoadingContacts) {
+  if (contacts === null && isLoading) {
     return (
-      <View className="w-full h-32 items-center justify-center bg-gray-800 rounded-lg p-3">
+      <View
+        className="w-full h-32 bg-gray-800 rounded-lg p-3 
+                       justify-center items-center"
+      >
         <ActivityIndicator size="small" color="#9CA3AF" />
-        <Text className="text-gray-400 mt-2">Loading contacts...</Text>
+        <Text className="text-gray-400 mt-2">Loading contacts…</Text>
       </View>
     );
   }
 
-  if (errorLoadingContacts) {
+  if (contacts === null && error) {
     return (
-      <View className="w-full h-32 items-center justify-center bg-gray-800 rounded-lg p-3">
+      <View
+        className="w-full h-32 bg-gray-800 rounded-lg p-3 
+                       justify-center items-center"
+      >
         <Ionicons name="warning-outline" size={24} color="#F87171" />
-        <Text className="text-red-400 mt-2 text-center">
-          {errorLoadingContacts}
-        </Text>
+        <Text className="text-red-400 mt-2 text-center">{error}</Text>
       </View>
     );
   }
 
   return (
-    <View className="w-full">
+    <View className="w-full relative">
+      {isLoading && (
+        <View
+          className="absolute inset-0 justify-center 
+                           items-center bg-gray-800/50 rounded-lg"
+        >
+          <ActivityIndicator size="small" color="#9CA3AF" />
+        </View>
+      )}
       <UserMultiSelect
         placeholderText={placeholderText}
-        tags={userList}
-        options={contacts}
+        tags={userList ?? []}
+        options={contacts! ?? []}
         setTags={setUserList}
-        excludedUserList={excludedUserList}
+        excludedUserList={excludedUserList ?? []}
       />
     </View>
   );
-};
-
-export default UserInviteMultiselect;
+}
