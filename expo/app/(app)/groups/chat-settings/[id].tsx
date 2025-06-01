@@ -98,8 +98,6 @@ const ChatSettings = () => {
     );
   }
 
-  // Group not found or error loading group
-  // `group === null` indicates an attempt was made but failed or data not found.
   if (group === null) {
     return (
       <ExpoRouterModal title="Error">
@@ -110,9 +108,6 @@ const ChatSettings = () => {
     );
   }
 
-  // If group is still undefined after isLoading is false (e.g. id became null), treat as error/not found.
-  // This case should ideally be covered by `group === null` after the effect runs.
-  // Redundant if the useEffect correctly sets group to null when id is missing.
   if (group === undefined && !isLoading) {
     return (
       <ExpoRouterModal title="Error">
@@ -123,8 +118,6 @@ const ChatSettings = () => {
     );
   }
 
-  // Group data is available, render the settings menu
-  // At this point, group should be a valid Group object.
   if (group) {
     return (
       <ExpoRouterModal title="Group Settings">
@@ -133,24 +126,16 @@ const ChatSettings = () => {
     );
   }
 
-  // Fallback for any unexpected state, though ideally covered above.
-  // Or, if `isLoading` is true but `group` has old data, you might still show loading.
-  // The primary loading condition `isLoading && group === undefined` handles initial load.
-  // If you want to show loading overlay even when displaying stale data during refresh:
   if (isLoading) {
-    // This will show loading if a refresh is happening and group has stale data
     return (
       <ExpoRouterModal title="Refreshing Settings...">
         <View className="flex-1 justify-center items-center p-4">
           <ActivityIndicator size="large" color="#3B82F6" />
-          {/* Optionally, you could render ChatSettingsMenu with stale 'group' data underneath */}
-          {/* if 'group' is not undefined/null and you prefer that UX during refresh */}
         </View>
       </ExpoRouterModal>
     );
   }
 
-  // Should not be reached if logic above is complete
   return null;
 };
 
