@@ -186,6 +186,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const handleNewRawMessage = async (rawMsg: RawMessage) => {
+      console.log("test", rawMsg);
       if (!globalDeviceId) {
         console.error(
           "handleNewRawMessage: Device ID not available, cannot process message."

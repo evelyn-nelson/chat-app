@@ -268,7 +268,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
               }
             } else {
               if (
-                parsedData.groupId &&
+                parsedData.group_id &&
                 parsedData.ciphertext &&
                 parsedData.envelopes &&
                 Array.isArray(parsedData.envelopes)

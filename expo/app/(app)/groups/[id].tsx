@@ -70,7 +70,7 @@ const GroupPage = () => {
     return <Redirect href={"/(auth)"} />;
   }
 
-  if (isLoading || currentGroup === undefined) {
+  if ((isLoading && allGroups === null) || currentGroup === undefined) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-900">
         <ActivityIndicator size="large" color="#007AFF" />
