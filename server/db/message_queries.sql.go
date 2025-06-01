@@ -14,27 +14,47 @@ import (
 
 const deleteMessage = `-- name: DeleteMessage :one
 DELETE FROM messages
-WHERE id = $1 RETURNING id, content, user_id, group_id, created_at, updated_at
+WHERE id = $1
+RETURNING id, user_id, group_id, created_at
 `
 
-func (q *Queries) DeleteMessage(ctx context.Context, id uuid.UUID) (Message, error) {
+type DeleteMessageRow struct {
+	ID        uuid.UUID        `json:"id"`
+	UserID    *uuid.UUID       `json:"user_id"`
+	GroupID   *uuid.UUID       `json:"group_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+// Deletes a message by its ID.
+// Returns the deleted message's core fields (E2EE fields might be large to return).
+func (q *Queries) DeleteMessage(ctx context.Context, id uuid.UUID) (DeleteMessageRow, error) {
 	row := q.db.QueryRow(ctx, deleteMessage, id)
-	var i Message
+	var i DeleteMessageRow
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.UserID,
 		&i.GroupID,
 		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getAllMessages = `-- name: GetAllMessages :many
-SELECT id, content, user_id, group_id, created_at, updated_at FROM messages
+SELECT
+    id,
+    user_id,
+    group_id,
+    created_at,
+    updated_at,
+    ciphertext,
+    msg_nonce,
+    key_envelopes
+FROM messages
+ORDER BY created_at DESC
 `
 
+// Retrieves all messages. Use with caution on large datasets.
+// Primarily for admin or debugging.
 func (q *Queries) GetAllMessages(ctx context.Context) ([]Message, error) {
 	rows, err := q.db.Query(ctx, getAllMessages)
 	if err != nil {
@@ -46,11 +66,13 @@ func (q *Queries) GetAllMessages(ctx context.Context) ([]Message, error) {
 		var i Message
 		if err := rows.Scan(
 			&i.ID,
-			&i.Content,
 			&i.UserID,
 			&i.GroupID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Ciphertext,
+			&i.MsgNonce,
+			&i.KeyEnvelopes,
 		); err != nil {
 			return nil, err
 		}
@@ -63,7 +85,17 @@ func (q *Queries) GetAllMessages(ctx context.Context) ([]Message, error) {
 }
 
 const getMessageById = `-- name: GetMessageById :one
-SELECT id, content, user_id, group_id, created_at, updated_at FROM messages WHERE id = $1
+SELECT
+    id,
+    user_id,
+    group_id,
+    created_at,
+    updated_at,
+    ciphertext,
+    msg_nonce,
+    key_envelopes
+FROM messages
+WHERE id = $1
 `
 
 func (q *Queries) GetMessageById(ctx context.Context, id uuid.UUID) (Message, error) {
@@ -71,34 +103,105 @@ func (q *Queries) GetMessageById(ctx context.Context, id uuid.UUID) (Message, er
 	var i Message
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.UserID,
 		&i.GroupID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Ciphertext,
+		&i.MsgNonce,
+		&i.KeyEnvelopes,
 	)
 	return i, err
 }
 
-const getRelevantMessages = `-- name: GetRelevantMessages :many
-SELECT m.id, m.content, m.user_id, u2.username, m.group_id, m.created_at
+const getMessagesForGroup = `-- name: GetMessagesForGroup :many
+SELECT
+    m.id,
+    m.user_id,
+    u.username,
+    m.group_id,
+    m.created_at,
+    m.updated_at,
+    m.ciphertext,
+    m.msg_nonce,
+    m.key_envelopes
 FROM messages m
-JOIN user_groups ug ON ug.group_id = m.group_id AND ug.user_id = $1
-JOIN users u ON u.id = ug.user_id
-JOIN users u2 ON u2.id = m.user_id
+JOIN users u ON m.user_id = u.id
+WHERE m.group_id = $1
+`
+
+type GetMessagesForGroupRow struct {
+	ID           uuid.UUID        `json:"id"`
+	UserID       *uuid.UUID       `json:"user_id"`
+	Username     string           `json:"username"`
+	GroupID      *uuid.UUID       `json:"group_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	Ciphertext   []byte           `json:"ciphertext"`
+	MsgNonce     []byte           `json:"msg_nonce"`
+	KeyEnvelopes []byte           `json:"key_envelopes"`
+}
+
+func (q *Queries) GetMessagesForGroup(ctx context.Context, groupID *uuid.UUID) ([]GetMessagesForGroupRow, error) {
+	rows, err := q.db.Query(ctx, getMessagesForGroup, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMessagesForGroupRow
+	for rows.Next() {
+		var i GetMessagesForGroupRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Username,
+			&i.GroupID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Ciphertext,
+			&i.MsgNonce,
+			&i.KeyEnvelopes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRelevantMessages = `-- name: GetRelevantMessages :many
+SELECT
+    m.id,
+    m.group_id,
+    m.user_id AS sender_id,
+    m.created_at AS "timestamp",
+    m.ciphertext,
+    m.msg_nonce,
+    m.key_envelopes
+FROM messages m
+JOIN user_groups ug ON ug.group_id = m.group_id
+JOIN users u_member ON ug.user_id = u_member.id 
+JOIN users u_sender ON m.user_id = u_sender.id
+JOIN groups g ON m.group_id = g.id
+WHERE u_member.id = $1
+AND m.created_at > ug.created_at
 `
 
 type GetRelevantMessagesRow struct {
-	ID        uuid.UUID        `json:"id"`
-	Content   string           `json:"content"`
-	UserID    *uuid.UUID       `json:"user_id"`
-	Username  string           `json:"username"`
-	GroupID   *uuid.UUID       `json:"group_id"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	ID           uuid.UUID        `json:"id"`
+	GroupID      *uuid.UUID       `json:"group_id"`
+	SenderID     *uuid.UUID       `json:"sender_id"`
+	Timestamp    pgtype.Timestamp `json:"timestamp"`
+	Ciphertext   []byte           `json:"ciphertext"`
+	MsgNonce     []byte           `json:"msg_nonce"`
+	KeyEnvelopes []byte           `json:"key_envelopes"`
 }
 
-func (q *Queries) GetRelevantMessages(ctx context.Context, userID *uuid.UUID) ([]GetRelevantMessagesRow, error) {
-	rows, err := q.db.Query(ctx, getRelevantMessages, userID)
+func (q *Queries) GetRelevantMessages(ctx context.Context, id uuid.UUID) ([]GetRelevantMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getRelevantMessages, id)
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +211,12 @@ func (q *Queries) GetRelevantMessages(ctx context.Context, userID *uuid.UUID) ([
 		var i GetRelevantMessagesRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Content,
-			&i.UserID,
-			&i.Username,
 			&i.GroupID,
-			&i.CreatedAt,
+			&i.SenderID,
+			&i.Timestamp,
+			&i.Ciphertext,
+			&i.MsgNonce,
+			&i.KeyEnvelopes,
 		); err != nil {
 			return nil, err
 		}
@@ -125,25 +229,43 @@ func (q *Queries) GetRelevantMessages(ctx context.Context, userID *uuid.UUID) ([
 }
 
 const insertMessage = `-- name: InsertMessage :one
-INSERT INTO messages ("user_id", "group_id", "content") VALUES ($1,$2,$3) RETURNING id, content, user_id, group_id, created_at, updated_at
+INSERT INTO messages (
+    user_id,
+    group_id,
+    ciphertext,
+    msg_nonce,
+    key_envelopes
+) VALUES (
+    $1, $2, $3, $4, $5
+) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, msg_nonce, key_envelopes
 `
 
 type InsertMessageParams struct {
-	UserID  *uuid.UUID `json:"user_id"`
-	GroupID *uuid.UUID `json:"group_id"`
-	Content string     `json:"content"`
+	UserID       *uuid.UUID `json:"user_id"`
+	GroupID      *uuid.UUID `json:"group_id"`
+	Ciphertext   []byte     `json:"ciphertext"`
+	MsgNonce     []byte     `json:"msg_nonce"`
+	KeyEnvelopes []byte     `json:"key_envelopes"`
 }
 
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (Message, error) {
-	row := q.db.QueryRow(ctx, insertMessage, arg.UserID, arg.GroupID, arg.Content)
+	row := q.db.QueryRow(ctx, insertMessage,
+		arg.UserID,
+		arg.GroupID,
+		arg.Ciphertext,
+		arg.MsgNonce,
+		arg.KeyEnvelopes,
+	)
 	var i Message
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.UserID,
 		&i.GroupID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Ciphertext,
+		&i.MsgNonce,
+		&i.KeyEnvelopes,
 	)
 	return i, err
 }

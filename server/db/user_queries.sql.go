@@ -160,6 +160,60 @@ func (q *Queries) GetAllUsersInternal(ctx context.Context) ([]GetAllUsersInterna
 	return items, nil
 }
 
+const getRelevantUserDeviceKeys = `-- name: GetRelevantUserDeviceKeys :many
+WITH user_target_groups AS (
+    SELECT ug.group_id
+    FROM user_groups ug
+    WHERE ug.user_id = $1
+),
+relevant_users AS (
+    SELECT DISTINCT ug.user_id
+    FROM user_groups ug
+    JOIN user_target_groups utg ON ug.group_id = utg.group_id
+)
+SELECT
+    ru.user_id,
+    jsonb_agg(
+        jsonb_build_object(
+            'device_identifier', dk.device_identifier,
+            'public_key', encode(dk.public_key, 'base64')
+        ) ORDER BY dk.created_at DESC
+    ) AS device_keys
+FROM
+    relevant_users ru
+JOIN
+    device_keys dk ON ru.user_id = dk.user_id
+GROUP BY
+    ru.user_id
+HAVING
+    count(dk.id) > 0
+`
+
+type GetRelevantUserDeviceKeysRow struct {
+	UserID     *uuid.UUID `json:"user_id"`
+	DeviceKeys []byte     `json:"device_keys"`
+}
+
+func (q *Queries) GetRelevantUserDeviceKeys(ctx context.Context, userID *uuid.UUID) ([]GetRelevantUserDeviceKeysRow, error) {
+	rows, err := q.db.Query(ctx, getRelevantUserDeviceKeys, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRelevantUserDeviceKeysRow
+	for rows.Next() {
+		var i GetRelevantUserDeviceKeysRow
+		if err := rows.Scan(&i.UserID, &i.DeviceKeys); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRelevantUsers = `-- name: GetRelevantUsers :many
 WITH s AS (
     SELECT g.id FROM groups g

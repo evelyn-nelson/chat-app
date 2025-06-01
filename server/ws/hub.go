@@ -3,6 +3,7 @@ package ws
 import (
 	"chat-app-server/db"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,7 +51,7 @@ type PubSubMessage struct {
 }
 
 type ChatMessagePayload struct {
-	Message *Message `json:"message"`
+	Message *RawMessageE2EE `json:"message"`
 }
 
 type UserGroupEventPayload struct {
@@ -73,7 +74,7 @@ type Hub struct {
 	Groups                  map[uuid.UUID]*Group
 	Register                chan *Client
 	Unregister              chan *Client
-	Broadcast               chan *Message
+	Broadcast               chan *RawMessageE2EE
 	RemoveUserFromGroupChan chan *RemoveClientFromGroupMsg
 	AddUserToGroupChan      chan *AddClientToGroupMsg
 	InitializeGroupChan     chan *InitializeGroupMsg
@@ -110,7 +111,7 @@ func NewHub(
 		Groups:                  make(map[uuid.UUID]*Group),
 		Register:                make(chan *Client),
 		Unregister:              make(chan *Client),
-		Broadcast:               make(chan *Message, 256),
+		Broadcast:               make(chan *RawMessageE2EE, 256),
 		RemoveUserFromGroupChan: make(chan *RemoveClientFromGroupMsg),
 		AddUserToGroupChan:      make(chan *AddClientToGroupMsg),
 		InitializeGroupChan:     make(chan *InitializeGroupMsg),
@@ -129,7 +130,7 @@ func NewHub(
 	// For simplicity now, let's assume one instance does it or it's idempotent.
 	// A better approach for scaled envs might be a leader election or a separate seeding service.
 	if err := hub.synchronizeDbToRedis(); err != nil {
-		// Log the error, but the hub might still be ableto function,
+		// Log the error, but the hub might still be able to function,
 		// relying on runtime updates to Redis.
 		// However, this could lead to inconsistencies if Redis was empty.
 		log.Printf("Hub %s: CRITICAL - Failed to synchronize DB to Redis on startup: %v. Redis might be out of sync.", serverID, err)
@@ -288,7 +289,7 @@ func mapToStruct(data interface{}, result interface{}) error {
 	return json.Unmarshal(b, result)
 }
 
-func (h *Hub) deliverChatMessage(message *Message) {
+func (h *Hub) deliverChatMessage(message *RawMessageE2EE) {
 	h.mutex.RLock()
 	group, groupExists := h.Groups[message.GroupID]
 	h.mutex.RUnlock()
@@ -309,7 +310,7 @@ func (h *Hub) deliverChatMessage(message *Message) {
 			select {
 			case client.Message <- message:
 			default:
-				log.Printf("Hub %s: Client %d message channel full for group %d. Message dropped.", h.serverID, client.User.ID, message.GroupID)
+				log.Printf("Hub %s: Client %d message channel full for group %d. E2EE Message ID %s dropped.", h.serverID, client.User.ID, message.GroupID, message.ID)
 			}
 		}
 	}
@@ -476,18 +477,39 @@ func (h *Hub) Run() {
 			h.mutex.Unlock()
 
 		case message := <-h.Broadcast:
-			savedMessage, err := h.db.InsertMessage(h.ctx, db.InsertMessageParams{
-				UserID:  &message.User.ID,
-				GroupID: &message.GroupID,
-				Content: message.Content,
-			})
+			cipherBytes, err := base64.StdEncoding.DecodeString(message.Ciphertext)
 			if err != nil {
-				log.Printf("Error saving message: %v", err)
+				log.Printf("Error decoding ciphertext base64 for message in group %s: %v", message.GroupID, err)
+				continue
+			}
+			nonceBytes, err := base64.StdEncoding.DecodeString(message.MsgNonce)
+			if err != nil {
+				log.Printf("Error decoding msgNonce base64 for message in group %s: %v", message.GroupID, err)
+				continue
+			}
+
+			keyEnvelopesJSON, err := json.Marshal(message.Envelopes)
+			if err != nil {
+				log.Printf("Error marshalling key_envelopes for message in group %s: %v", message.GroupID, err)
+				continue
+			}
+
+			insertParams := db.InsertMessageParams{
+				UserID:       &message.SenderID,
+				GroupID:      &message.GroupID,
+				Ciphertext:   cipherBytes,
+				MsgNonce:     nonceBytes,
+				KeyEnvelopes: keyEnvelopesJSON,
+			}
+
+			savedMessage, err := h.db.InsertMessage(h.ctx, insertParams)
+			if err != nil {
+				log.Printf("Error saving E2EE message: %v", err)
 				continue
 			}
 
 			message.ID = savedMessage.ID
-			message.Timestamp = savedMessage.CreatedAt
+			message.Timestamp = savedMessage.CreatedAt.Time.Format(time.RFC3339Nano)
 
 			payload := ChatMessagePayload{Message: message}
 			pubSubMsg := PubSubMessage{
@@ -497,14 +519,14 @@ func (h *Hub) Run() {
 			}
 			serializedMsg, err := json.Marshal(pubSubMsg)
 			if err != nil {
-				log.Printf("Hub %s: Error marshalling chat message for PubSub: %v", h.serverID, err)
+				log.Printf("Hub %s: Error marshalling E2EE chat message for PubSub: %v", h.serverID, err)
 				continue
 			}
 			channel := pubSubGroupMessagesChannel + ":" + message.GroupID.String()
 			if err := h.redisClient.Publish(h.ctx, channel, serializedMsg).Err(); err != nil {
-				log.Printf("Hub %s: Error publishing message to Redis PubSub channel %s: %v", h.serverID, channel, err)
+				log.Printf("Hub %s: Error publishing E2EE message to Redis PubSub channel %s: %v", h.serverID, channel, err)
 			} else {
-				log.Printf("Hub %s: Published message for group %d to Redis PubSub channel %s", h.serverID, message.GroupID, channel)
+				log.Printf("Hub %s: Published E2EE message for group %d to Redis PubSub channel %s", h.serverID, message.GroupID, channel)
 			}
 
 		case removeMsg := <-h.RemoveUserFromGroupChan:

@@ -57,3 +57,31 @@ SELECT u.id, u.username, u.email, u.created_at, jsonb_object_agg(ug.group_id, ug
 JOIN user_groups ug ON ug.user_id = u.id
 JOIN s ON s.id = group_id
 GROUP BY u.id;
+
+-- name: GetRelevantUserDeviceKeys :many
+WITH user_target_groups AS (
+    SELECT ug.group_id
+    FROM user_groups ug
+    WHERE ug.user_id = $1
+),
+relevant_users AS (
+    SELECT DISTINCT ug.user_id
+    FROM user_groups ug
+    JOIN user_target_groups utg ON ug.group_id = utg.group_id
+)
+SELECT
+    ru.user_id,
+    jsonb_agg(
+        jsonb_build_object(
+            'device_identifier', dk.device_identifier,
+            'public_key', encode(dk.public_key, 'base64')
+        ) ORDER BY dk.created_at DESC
+    ) AS device_keys
+FROM
+    relevant_users ru
+JOIN
+    device_keys dk ON ru.user_id = dk.user_id
+GROUP BY
+    ru.user_id
+HAVING
+    count(dk.id) > 0; 

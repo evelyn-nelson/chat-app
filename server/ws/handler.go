@@ -6,6 +6,7 @@ import (
 	"chat-app-server/util"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log"
@@ -835,29 +836,48 @@ func (h *Handler) GetRelevantMessages(c *gin.Context) {
 		return
 	}
 
-	dbMessages, err := h.db.GetRelevantMessages(ctx, &user.ID)
+	dbMessages, err := h.db.GetRelevantMessages(ctx, user.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			dbMessages = make([]db.GetRelevantMessagesRow, 0)
-		} else {
-			log.Printf("Error retrieving relevant messages for user %d: %v", user.ID, err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve relevant messages"})
+			c.JSON(http.StatusOK, []RawMessageE2EE{}) // Send empty slice
 			return
 		}
+		log.Printf("Error retrieving relevant E2EE messages for user %d: %v", user.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve relevant messages"})
+		return
 	}
 
-	messages := make([]Message, 0, len(dbMessages))
+	messagesToClient := make([]RawMessageE2EE, 0, len(dbMessages))
 	for _, dbMsg := range dbMessages {
-		messages = append(messages, Message{
-			ID:        dbMsg.ID,
-			Content:   dbMsg.Content,
-			GroupID:   *dbMsg.GroupID,
-			User:      MessageUser{ID: *dbMsg.UserID, Username: dbMsg.Username},
-			Timestamp: dbMsg.CreatedAt,
+		var envelopes []Envelope
+		if len(dbMsg.KeyEnvelopes) > 0 {
+			if err := json.Unmarshal(dbMsg.KeyEnvelopes, &envelopes); err != nil {
+				log.Printf("Error unmarshalling key_envelopes for message %s: %v", dbMsg.ID, err)
+				continue
+			}
+		}
+
+		senderID := dbMsg.SenderID
+		if *senderID == uuid.Nil {
+			log.Printf("Warning: Message %s has NULL UserID in DB", dbMsg.ID)
+			continue
+		}
+
+		groupID := dbMsg.GroupID
+		if *groupID == uuid.Nil {
+			log.Printf("Warning: Message %s has NULL GroupID in DB", dbMsg.ID)
+			continue
+		}
+
+		messagesToClient = append(messagesToClient, RawMessageE2EE{
+			ID:         dbMsg.ID,
+			GroupID:    *groupID,
+			SenderID:   *senderID,
+			MsgNonce:   base64.StdEncoding.EncodeToString(dbMsg.MsgNonce),
+			Ciphertext: base64.StdEncoding.EncodeToString(dbMsg.Ciphertext),
+			Timestamp:  dbMsg.Timestamp.Time.Format(time.RFC3339Nano),
+			Envelopes:  envelopes,
 		})
 	}
-	if messages == nil {
-		messages = make([]Message, 0)
-	}
-	c.JSON(http.StatusOK, messages)
+	c.JSON(http.StatusOK, messagesToClient)
 }

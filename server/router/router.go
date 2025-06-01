@@ -32,6 +32,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	apiRoutes.Use(auth.JWTAuthMiddleware())
 
 	apiRoutes.GET("/users/whoami", api.WhoAmI)
+	apiRoutes.GET("/users/device-keys", api.GetRelevantDeviceKeys)
 
 	// auth routes group
 	authRoutes := r.Group("/auth/")

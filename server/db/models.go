@@ -9,6 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DeviceKey struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	// Client-generated unique identifier for the device
+	DeviceIdentifier string `json:"device_identifier"`
+	// Curve25519 public key bytes for E2EE
+	PublicKey  []byte           `json:"public_key"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	LastSeenAt pgtype.Timestamp `json:"last_seen_at"`
+}
+
 type Group struct {
 	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
@@ -23,11 +34,16 @@ type Group struct {
 
 type Message struct {
 	ID        uuid.UUID        `json:"id"`
-	Content   string           `json:"content"`
 	UserID    *uuid.UUID       `json:"user_id"`
 	GroupID   *uuid.UUID       `json:"group_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	// Encrypted message content (libsodium secretbox output)
+	Ciphertext []byte `json:"ciphertext"`
+	// Nonce used for symmetric encryption of the ciphertext
+	MsgNonce []byte `json:"msg_nonce"`
+	// JSON array of per-recipient sealed symmetric keys. Each element: {deviceId, ephPubKey, keyNonce, sealedKey}
+	KeyEnvelopes []byte `json:"key_envelopes"`
 }
 
 type User struct {

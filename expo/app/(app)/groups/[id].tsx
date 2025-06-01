@@ -3,7 +3,7 @@ import ChatBox from "@/components/ChatBox/ChatBox";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { Group } from "@/types/types";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { validate } from "uuid";
 
@@ -11,9 +11,7 @@ const GroupPage = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, store, groupsRefreshKey } = useGlobalStore();
 
-  const [currentGroup, setCurrentGroup] = useState<Group | null | undefined>(
-    undefined
-  );
+  const [allGroups, setAllGroups] = useState<Group[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,39 +23,38 @@ const GroupPage = () => {
     }
 
     if (!validate(id)) {
-      setCurrentGroup(null);
+      setAllGroups(null);
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
     let isMounted = true;
+    setIsLoading(true);
 
     store
       .loadGroups()
-      .then((savedGroups) => {
-        if (!isMounted) return;
-        if (savedGroups && savedGroups.length > 0) {
-          const foundGroup = savedGroups.find((g) => g.id.toString() === id);
-          setCurrentGroup(foundGroup || null);
-        } else {
-          setCurrentGroup(null);
+      .then((groups) => {
+        if (isMounted) {
+          setAllGroups(groups ?? []);
         }
       })
       .catch((error) => {
-        if (!isMounted) return;
-        console.error("GroupPage: Error loading groups: ", error);
-        setCurrentGroup(null);
+        console.error("GroupPage: Error loading groups:", error);
+        if (isMounted) setAllGroups([]);
       })
       .finally(() => {
-        if (!isMounted) return;
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       });
 
     return () => {
       isMounted = false;
     };
   }, [id, store, groupsRefreshKey, user]);
+
+  const currentGroup = useMemo(() => {
+    if (!id || !allGroups) return undefined;
+    return allGroups.find((g) => g.id.toString() === id) || null;
+  }, [id, allGroups]);
 
   useEffect(() => {
     if (!isLoading && currentGroup === null) {
@@ -67,13 +64,13 @@ const GroupPage = () => {
         router.replace("/groups");
       }
     }
-  }, [isLoading, currentGroup, id]);
+  }, [isLoading, currentGroup]);
 
   if (!user) {
     return <Redirect href={"/(auth)"} />;
   }
 
-  if (isLoading || currentGroup === undefined) {
+  if ((isLoading && allGroups === null) || currentGroup === undefined) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-900">
         <ActivityIndicator size="large" color="#007AFF" />
@@ -92,7 +89,7 @@ const GroupPage = () => {
 
   return (
     <View className="flex-1 justify-end bg-gray-900">
-      {user && <ChatBox group_id={currentGroup.id.toString()} />}
+      <ChatBox group={currentGroup} />
     </View>
   );
 };

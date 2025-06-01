@@ -1,8 +1,7 @@
 import {
-  Message,
+  RawMessage,
   Group,
   User,
-  UserGroup,
   UpdateGroupParams,
   CreateGroupParams,
 } from "@/types/types";
@@ -14,15 +13,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import http from "../../util/custom-axios";
+import http from "@/util/custom-axios";
 import { get } from "@/util/custom-store";
 import { CanceledError } from "axios";
 
 interface WebSocketContextType {
-  sendMessage: (msg: string) => void;
+  sendMessage: (packet: RawMessage) => void;
   connected: boolean;
-  onMessage: (callback: (message: Message) => void) => void;
-  removeMessageHandler: (callback: (message: Message) => void) => void;
+  onMessage: (callback: (packet: RawMessage) => void) => void;
+  removeMessageHandler: (callback: (packet: RawMessage) => void) => void;
   establishConnection: () => Promise<void>;
   disconnect: () => void;
   createGroup: (
@@ -57,90 +56,78 @@ const MAX_RETRY_DELAY = 30000;
 
 const CLOSE_CODE_AUTH_FAILED = 4001;
 const CLOSE_CODE_UNAUTHENTICATED = 4003;
+let preventRetries = false;
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const messageHandlersRef = useRef<((message: Message) => void)[]>([]);
+  const messageHandlersRef = useRef<((packet: RawMessage) => void)[]>([]);
   const isReconnecting = useRef(false);
 
-  const createGroup = async (
-    name: string,
-    startTime: Date,
-    endTime: Date,
-    description?: string | null,
-    location?: string | null,
-    imageUrl?: string | null
-  ): Promise<Group | undefined> => {
-    const httpURL = `${httpBaseURL}/createGroup`;
+  const createGroup = useCallback(
+    async (
+      name: string,
+      startTime: Date,
+      endTime: Date,
+      description?: string | null,
+      location?: string | null,
+      imageUrl?: string | null
+    ): Promise<Group | undefined> => {
+      const httpURL = `${httpBaseURL}/createGroup`;
+      const payload: CreateGroupParams = {
+        name,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        ...(description !== undefined && { description }),
+        ...(location !== undefined && { location }),
+        ...(imageUrl !== undefined && { image_url: imageUrl }),
+      };
+      return http
+        .post(httpURL, payload)
+        .then((response) => response.data)
+        .catch((error) => {
+          console.error("Error creating group:", error);
+          return undefined;
+        });
+    },
+    []
+  );
 
-    const payload: CreateGroupParams = {
-      name,
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      ...(description !== undefined && { description }),
-      ...(location !== undefined && { location }),
-      ...(imageUrl !== undefined && { image_url: imageUrl }),
-    };
+  const updateGroup = useCallback(
+    async (
+      id: string,
+      updateParams: UpdateGroupParams
+    ): Promise<Group | undefined> => {
+      const httpURL = `${httpBaseURL}/updateGroup/${id}`;
+      if (
+        !Object.values(updateParams).some(
+          (value) => value !== undefined && value !== null
+        )
+      ) {
+        console.error("Invalid update input: No parameters provided.");
+        return undefined;
+      }
+      return http
+        .put(httpURL, updateParams)
+        .then((response) => response.data)
+        .catch((error) => {
+          console.error("Error updating group:", error);
+          return undefined;
+        });
+    },
+    []
+  );
 
-    const group = http
-      .post(httpURL, payload)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
-      .catch((error) => {
-        console.error("error: ", error);
-        return;
-      });
-
-    return group;
-  };
-
-  const updateGroup = async (
-    id: string,
-    updateParams: UpdateGroupParams
-  ): Promise<Group | undefined> => {
-    const httpURL = `${httpBaseURL}/updateGroup/${id}`;
-    if (
-      !(
-        updateParams.name ||
-        updateParams.start_time ||
-        updateParams.end_time ||
-        updateParams.description ||
-        updateParams.location ||
-        updateParams.image_url
-      )
-    ) {
-      console.error("Invalid input");
-      return undefined;
-    }
-    const group = http
-      .put(httpURL, updateParams)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
-      .catch((error) => {
-        console.error("error: ", error);
-        return;
-      });
-
-    return group;
-  };
-
-  const establishConnection = (): Promise<void> => {
+  const establishConnection = useCallback((): Promise<void> => {
     let promiseSettled = false;
-    let preventRetries = false;
+    preventRetries = false;
+    let currentAttemptPreventRetries = false;
 
     return new Promise(async (resolve, reject) => {
       const token = await get("jwt");
       if (!token) {
-        console.error(
-          "No JWT token found, cannot establish WebSocket connection."
-        );
         if (!promiseSettled) {
           promiseSettled = true;
           reject(new Error("Authentication token not found."));
@@ -148,8 +135,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      if (socketRef.current?.readyState === WebSocket.OPEN && connected) {
-        console.log("WebSocket already open and connected.");
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
         if (!promiseSettled) {
           promiseSettled = true;
           resolve();
@@ -158,16 +144,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (isReconnecting.current) {
-        console.log("Already attempting connection/reconnection, waiting...");
+        console.log("Connection attempt already in progress.");
+        if (!promiseSettled) {
+          reject(new Error("Connection attempt already in progress."));
+        }
         return;
       }
 
-      console.log("Attempting to establish WebSocket connection...");
       isReconnecting.current = true;
-      preventRetries = false;
+      currentAttemptPreventRetries = false;
 
       const wsURL = `${wsBaseURL}/establishConnection`;
-
       let retryCount = 0;
       let isAuthenticated = false;
 
@@ -175,9 +162,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         if (socketRef.current) {
           const ws = socketRef.current;
           socketRef.current = null;
-          console.log(
-            `Cleaning up socket instance. Reason: ${reason || "N/A"}`
-          );
           ws.onopen = null;
           ws.onmessage = null;
           ws.onclose = null;
@@ -199,284 +183,299 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           reject(error);
         }
         isReconnecting.current = false;
-        preventRetries = true;
-        cleanup(error.message);
+        currentAttemptPreventRetries = true;
+        if (socketRef.current) {
+          cleanup(error.message);
+        } else {
+          isAuthenticated = false;
+          setConnected(false);
+        }
       };
 
       const connect = () => {
-        if (socketRef.current) {
-          cleanup("Starting new connection attempt");
+        if (currentAttemptPreventRetries || preventRetries) {
+          console.log("Retries prevented for current connection flow.");
+          isReconnecting.current = false;
+          if (!promiseSettled && !isAuthenticated) {
+            safeReject(new Error("Connection retries aborted."));
+          }
+          return;
         }
 
-        console.log(`Connecting to ${wsURL}... (Attempt ${retryCount + 1})`);
+        if (socketRef.current) {
+          const oldSocket = socketRef.current;
+          socketRef.current = null;
+
+          oldSocket.onopen = null;
+          oldSocket.onmessage = null;
+          oldSocket.onclose = null;
+          oldSocket.onerror = null;
+          if (
+            oldSocket.readyState !== WebSocket.CLOSING &&
+            oldSocket.readyState !== WebSocket.CLOSED
+          ) {
+            oldSocket.close(
+              1000,
+              "Client cleanup: Starting new connection attempt"
+            );
+          }
+        }
+
         const socket = new WebSocket(wsURL);
         socketRef.current = socket;
 
         socket.onopen = () => {
-          if (socketRef.current !== socket) {
-            console.warn(
-              "onopen triggered for an outdated socket instance. Ignoring."
-            );
-            return;
-          }
-          console.log(
-            "WebSocket connection opened. Sending authentication message..."
-          );
+          if (socketRef.current !== socket) return;
           try {
             socket.send(JSON.stringify({ type: "auth", token: token }));
           } catch (error) {
-            console.error("Failed to send auth message:", error);
             safeReject(new Error("Failed to send authentication message."));
             socket.close(CLOSE_CODE_AUTH_FAILED, "Failed to send auth");
           }
         };
 
         socket.onmessage = (event) => {
-          if (socketRef.current !== socket) {
-            console.warn(
-              "onmessage triggered for an outdated socket instance. Ignoring."
-            );
-            return;
-          }
+          if (socketRef.current !== socket) return;
           try {
-            const parsedMessage = JSON.parse(event.data);
+            const parsedData = JSON.parse(event.data as string);
 
             if (!isAuthenticated) {
-              if (parsedMessage.type === "auth_success") {
-                console.log("WebSocket authenticated successfully.");
+              if (parsedData.type === "auth_success") {
                 isAuthenticated = true;
                 setConnected(true);
                 isReconnecting.current = false;
                 retryCount = 0;
+                preventRetries = false;
                 if (!promiseSettled) {
                   promiseSettled = true;
                   resolve();
                 }
-              } else if (parsedMessage.type === "auth_failure") {
-                console.error(
-                  "WebSocket authentication failed:",
-                  parsedMessage.error || "No reason provided."
-                );
+              } else if (parsedData.type === "auth_failure") {
                 preventRetries = true;
                 safeReject(
                   new Error(
-                    `Authentication failed: ${parsedMessage.error || "Unknown reason"}`
+                    `Authentication failed: ${parsedData.error || "Unknown reason"}`
                   )
                 );
                 socket.close(CLOSE_CODE_AUTH_FAILED, "Authentication Failed");
               } else {
-                console.error(
-                  "Received unexpected message before authentication:",
-                  parsedMessage
-                );
                 preventRetries = true;
                 safeReject(
                   new Error(
                     "Received unexpected message during authentication phase."
                   )
                 );
-                socket.close(
-                  CLOSE_CODE_UNAUTHENTICATED,
-                  "Unexpected message pre-auth"
-                );
               }
             } else {
-              messageHandlersRef.current.forEach((handler, index) => {
-                try {
-                  handler(parsedMessage);
-                } catch (handlerError) {
-                  console.error(
-                    `Error in message handler ${index}:`,
-                    handlerError
-                  );
-                }
-              });
+              if (
+                parsedData.group_id &&
+                parsedData.ciphertext &&
+                parsedData.envelopes &&
+                Array.isArray(parsedData.envelopes)
+              ) {
+                messageHandlersRef.current.forEach((handler) => {
+                  try {
+                    handler(parsedData as RawMessage);
+                  } catch (handlerError) {
+                    console.error("Error in message handler:", handlerError);
+                  }
+                });
+              } else if (parsedData.type && parsedData.type === "error") {
+                console.error(
+                  "Received operational error from server:",
+                  parsedData.message
+                );
+              } else {
+                console.warn(
+                  "Received non-message data or malformed E2EE packet after auth:",
+                  parsedData
+                );
+              }
             }
           } catch (error) {
             console.error(
               "Error parsing WebSocket message or in handler:",
               error
             );
-            safeReject(new Error("Failed to process incoming message."));
-            socket.close(1011, "Message processing error");
           }
         };
 
         socket.onclose = (event) => {
           if (socketRef.current !== socket && socketRef.current !== null) {
-            console.warn(
-              `onclose triggered for an outdated socket instance (Code: ${event.code}). Ignoring.`
-            );
             return;
           }
+          const wasCurrentSocket = socketRef.current === socket;
 
-          console.log(
-            `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`
-          );
-          cleanup(`onclose event (Code: ${event.code})`);
+          if (wasCurrentSocket) {
+            socketRef.current = null;
+          }
 
-          if (preventRetries || event.code === 1000) {
-            console.log("Retries prevented or connection closed normally.");
+          if (wasCurrentSocket || !socketRef.current) {
+            setConnected(false);
+          }
+
+          if (
+            currentAttemptPreventRetries ||
+            preventRetries ||
+            event.code === 1000 ||
+            event.code === CLOSE_CODE_AUTH_FAILED ||
+            event.code === CLOSE_CODE_UNAUTHENTICATED
+          ) {
             isReconnecting.current = false;
             if (!promiseSettled && !isAuthenticated && event.code !== 1000) {
-              safeReject(
+              promiseSettled = true;
+              reject(
                 new Error(
-                  `WebSocket closed unexpectedly (Code: ${event.code}) before authentication completed.`
-                )
-              );
-            } else if (!promiseSettled && event.code === 1000) {
-              safeReject(
-                new Error(
-                  `WebSocket closed normally (Code: 1000) before authentication completed.`
+                  `WebSocket closed (Code: ${event.code}) before authentication completed.`
                 )
               );
             }
             return;
           }
 
-          // --- Retry Logic ---
           retryCount++;
           if (retryCount <= MAX_RETRIES) {
-            // Exponential backoff with jitter and cap
             const delay = Math.min(
               INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1) +
                 Math.random() * 1000,
               MAX_RETRY_DELAY
             );
             console.log(
-              `Connection closed unexpectedly. Retrying connection in ${Math.round(delay)} ms... (Attempt ${retryCount} of ${MAX_RETRIES})`
+              `WebSocket closed unexpectedly. Retrying in ${delay.toFixed(0)}ms... (Attempt ${retryCount})`
             );
             setTimeout(connect, delay);
           } else {
-            console.error("WebSocket connection failed after maximum retries.");
             isReconnecting.current = false;
-            safeReject(
-              new Error("WebSocket connection failed after maximum retries")
-            );
+            console.error("WebSocket connection failed after maximum retries.");
+            if (!promiseSettled) {
+              promiseSettled = true;
+              reject(
+                new Error("WebSocket connection failed after maximum retries")
+              );
+            }
           }
         };
 
         socket.onerror = (event) => {
-          if (socketRef.current !== socket) {
-            console.warn(
-              "onerror triggered for an outdated socket instance. Ignoring."
-            );
-            return;
-          }
+          if (socketRef.current !== socket) return;
           console.error("WebSocket error:", event);
         };
       };
-
       connect();
     });
-  };
+  }, [setConnected]);
 
-  const leaveGroup = async (group_id: string) => {
-    http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
-      console.error(error);
+  const leaveGroup = useCallback(async (group_id: string) => {
+    return http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
+      console.error("Error leaving group:", error);
     });
-  };
+  }, []);
 
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
+    preventRetries = true;
     isReconnecting.current = false;
     if (socketRef.current) {
-      socketRef.current.close(1000);
-      socketRef.current = null;
+      socketRef.current.close(1000, "User initiated disconnect");
     }
-  };
+  }, [setConnected]);
 
-  const inviteUsersToGroup = async (
-    emails: string[],
-    group_id: string
-  ): Promise<any> => {
+  const inviteUsersToGroup = useCallback(
+    async (emails: string[], group_id: string): Promise<any> => {
+      // TODO: define a more specific return type
+      return http
+        .post(`${httpBaseURL}/inviteUsersToGroup`, {
+          group_id: group_id,
+          emails: emails,
+        })
+        .catch((error) => {
+          console.error("Error inviting users:", error);
+        });
+    },
+    []
+  );
+
+  const removeUserFromGroup = useCallback(
+    async (email: string, group_id: string): Promise<any> => {
+      // TODO: define a more specific return type
+      return http
+        .post(`${httpBaseURL}/removeUserFromGroup`, {
+          group_id: group_id,
+          email: email,
+        })
+        .catch((error) => {
+          console.error("Error removing user:", error);
+        });
+    },
+    []
+  );
+
+  const getGroups = useCallback(async (): Promise<Group[]> => {
     return http
-      .post(`${httpBaseURL}/inviteUsersToGroup`, {
-        group_id: group_id,
-        emails: emails,
-      })
-      .catch((error) => {
-        console.error(error);
-      });
-  };
-
-  const removeUserFromGroup = async (
-    email: string,
-    group_id: string
-  ): Promise<any> => {
-    return http
-      .post(`${httpBaseURL}/removeUserFromGroup`, {
-        group_id: group_id,
-        email: email,
-      })
-      .catch((error) => {
-        console.error(error);
-      });
-  };
-
-  const getGroups = async (): Promise<Group[]> => {
-    const groups = http
       .get(`${httpBaseURL}/getGroups`)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
+      .then((response) => response.data)
       .catch((error) => {
         if (!(error instanceof CanceledError)) {
           console.error("Error loading groups:", error);
         }
         return [];
       });
-    return groups;
-  };
+  }, []);
 
-  const getUsers = async (): Promise<User[]> => {
-    const users = http
+  const getUsers = useCallback(async (): Promise<User[]> => {
+    return http
       .get(`${httpBaseURL}/relevantUsers`)
-      .then((response) => {
-        const { data } = response;
-        return data;
-      })
+      .then((response) => response.data)
       .catch((error) => {
         if (!(error instanceof CanceledError)) {
-          console.error("Error loading groups:", error);
+          console.error("Error loading relevant users:", error);
         }
         return [];
       });
-    return users;
-  };
+  }, []);
 
-  const sendMessage = (msg: string) => {
-    const socket = socketRef.current;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      try {
-        socket.send(msg);
-      } catch (error) {
-        console.error("Error sending message:", error);
+  const sendMessage = useCallback(
+    (packet: RawMessage) => {
+      const socket = socketRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN && connected) {
+        try {
+          socket.send(JSON.stringify(packet));
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
+      } else {
+        console.error(
+          "WebSocket is not connected or not authenticated. Message not sent."
+        );
       }
-    } else {
-      console.error("WebSocket is not initialized.");
-    }
-  };
+    },
+    [connected]
+  );
 
-  const onMessage = useCallback((handler: (message: Message) => void) => {
-    if (!messageHandlersRef.current.includes(handler)) {
-      messageHandlersRef.current = [...messageHandlersRef.current, handler];
+  const onMessage = useCallback((callback: (packet: RawMessage) => void) => {
+    if (!messageHandlersRef.current.includes(callback)) {
+      messageHandlersRef.current = [...messageHandlersRef.current, callback];
     }
   }, []);
 
   const removeMessageHandler = useCallback(
-    (handler: (message: Message) => void) => {
+    (callback: (packet: RawMessage) => void) => {
       messageHandlersRef.current = messageHandlersRef.current.filter(
-        (h) => h !== handler
+        (h) => h !== callback
       );
     },
     []
   );
 
   useEffect(() => {
+    preventRetries = false;
     return () => {
+      preventRetries = true;
+      isReconnecting.current = false;
       if (socketRef.current) {
-        socketRef.current.close();
+        const wsToClose = socketRef.current;
+        socketRef.current = null;
+        wsToClose.onclose = null;
+        wsToClose.close(1000, "Component unmounting");
       }
     };
   }, []);

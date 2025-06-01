@@ -1,0 +1,7 @@
+ALTER TABLE messages
+ADD COLUMN content TEXT NULL;
+
+ALTER TABLE messages
+DROP COLUMN IF EXISTS key_envelopes,
+DROP COLUMN IF EXISTS msg_nonce,
+DROP COLUMN IF EXISTS ciphertext;
