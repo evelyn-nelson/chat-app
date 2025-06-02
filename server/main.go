@@ -4,6 +4,7 @@ import (
 	"chat-app-server/auth"
 	"chat-app-server/db"
 	"chat-app-server/router"
+	"chat-app-server/s3handler"
 	"chat-app-server/server"
 	"chat-app-server/ws"
 	"context"
@@ -60,6 +61,8 @@ func main() {
 	go hub.Run()
 
 	api := server.NewAPI(db, ctx, connPool)
+
+	S3Handler := s3handler.NewS3Handler(db, ctx, connPool)
 
 	defer connPool.Close()
 
