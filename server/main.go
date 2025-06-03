@@ -67,7 +67,7 @@ func main() {
 	cfg, _ := config.LoadDefaultConfig(context.Background())
 	store := s3store.New(cfg, os.Getenv("S3_BUCKET"))
 
-	imageHandler := images.NewImageHandler(store)
+	imageHandler := images.NewImageHandler(store, db, ctx, connPool)
 
 	defer connPool.Close()
 
