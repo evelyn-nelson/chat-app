@@ -75,7 +75,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       location?: string | null,
       imageUrl?: string | null
     ): Promise<Group | undefined> => {
-      const httpURL = `${httpBaseURL}/createGroup`;
+      const httpURL = `${httpBaseURL}/create-group`;
       const payload: CreateGroupParams = {
         name,
         start_time: startTime.toISOString(),
@@ -100,7 +100,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       id: string,
       updateParams: UpdateGroupParams
     ): Promise<Group | undefined> => {
-      const httpURL = `${httpBaseURL}/updateGroup/${id}`;
+      const httpURL = `${httpBaseURL}/update-group/${id}`;
       if (
         !Object.values(updateParams).some(
           (value) => value !== undefined && value !== null
@@ -383,7 +383,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     async (emails: string[], group_id: string): Promise<any> => {
       // TODO: define a more specific return type
       return http
-        .post(`${httpBaseURL}/inviteUsersToGroup`, {
+        .post(`${httpBaseURL}/invite-users-to-group`, {
           group_id: group_id,
           emails: emails,
         })
@@ -398,7 +398,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     async (email: string, group_id: string): Promise<any> => {
       // TODO: define a more specific return type
       return http
-        .post(`${httpBaseURL}/removeUserFromGroup`, {
+        .post(`${httpBaseURL}/remove-user-from-group`, {
           group_id: group_id,
           email: email,
         })
