@@ -5,8 +5,12 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./server:/app
+      - ~/.aws:/root/.aws:ro
     env_file:
       - ".env"
+    environment:
+      - AWS_PROFILE=s3-local-637423634719
+      - AWS_REGION=us-east-1 # Replace with your S3 bucket's region if different
     depends_on:
       db:
         condition: service_healthy

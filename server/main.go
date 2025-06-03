@@ -64,7 +64,11 @@ func main() {
 
 	api := server.NewAPI(db, ctx, connPool)
 
-	cfg, _ := config.LoadDefaultConfig(context.Background())
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to AWS: %v\n", err)
+		os.Exit(1)
+	}
 	store := s3store.New(cfg, os.Getenv("S3_BUCKET"))
 
 	imageHandler := images.NewImageHandler(store, db, ctx, connPool)
