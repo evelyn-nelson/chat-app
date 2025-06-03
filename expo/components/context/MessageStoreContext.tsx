@@ -125,7 +125,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
       try {
         const response = await http.get<RawMessage[]>(
-          `${process.env.EXPO_PUBLIC_HOST}/ws/relevantMessages`
+          `${process.env.EXPO_PUBLIC_HOST}/ws/relevant-messages`
         );
         const rawMessages: RawMessage[] = response.data;
         const processedMessages: DbMessage[] = [];

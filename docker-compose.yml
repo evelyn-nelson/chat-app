@@ -46,7 +46,7 @@ services:
   migrate:
     image: migrate/migrate
     volumes:
-      - ./db/migrations:/migrations # Mounts your migration files
+      - ./db/migrations:/migrations
 
     command:
       [

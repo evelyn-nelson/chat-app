@@ -154,7 +154,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       isReconnecting.current = true;
       currentAttemptPreventRetries = false;
 
-      const wsURL = `${wsBaseURL}/establishConnection`;
+      const wsURL = `${wsBaseURL}/establish-connection`;
       let retryCount = 0;
       let isAuthenticated = false;
 
@@ -366,7 +366,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [setConnected]);
 
   const leaveGroup = useCallback(async (group_id: string) => {
-    return http.post(`${httpBaseURL}/leaveGroup/${group_id}`).catch((error) => {
+    return http.post(`${httpBaseURL}/leave-group/${group_id}`).catch((error) => {
       console.error("Error leaving group:", error);
     });
   }, []);
@@ -411,7 +411,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getGroups = useCallback(async (): Promise<Group[]> => {
     return http
-      .get(`${httpBaseURL}/getGroups`)
+      .get(`${httpBaseURL}/get-groups`)
       .then((response) => response.data)
       .catch((error) => {
         if (!(error instanceof CanceledError)) {
@@ -423,7 +423,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getUsers = useCallback(async (): Promise<User[]> => {
     return http
-      .get(`${httpBaseURL}/relevantUsers`)
+      .get(`${httpBaseURL}/relevant-users`)
       .then((response) => response.data)
       .catch((error) => {
         if (!(error instanceof CanceledError)) {
