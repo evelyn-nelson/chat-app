@@ -61,7 +61,7 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	imageRoutes := r.Group("/images")
 	imageRoutes.Use(auth.JWTAuthMiddleware())
 	imageRoutes.POST("/presign-upload", imageHandler.PresignUpload)
-
+	imageRoutes.POST("/presign-download", imageHandler.PresignDownload)
 }
 
 func Start(addr string) error {
