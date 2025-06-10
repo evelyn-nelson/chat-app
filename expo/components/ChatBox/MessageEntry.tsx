@@ -7,9 +7,8 @@ import {
   Text,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useWebSocket } from "../context/WebSocketContext";
 import { useGlobalStore } from "../context/GlobalStoreContext";
-import { Group, RawMessage } from "@/types/types";
+import { Group } from "@/types/types";
 import { useSendMessage } from "@/hooks/useSendMessage";
 
 const MessageEntry = ({

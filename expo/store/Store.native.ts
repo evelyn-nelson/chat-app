@@ -19,7 +19,7 @@ export class Store implements IStore {
       throw new Error("Database not available for initialization.");
     }
 
-    const TARGET_DATABASE_VERSION = 5;
+    const TARGET_DATABASE_VERSION = 6;
 
     let { user_version: currentDbVersion } = (await this.db.getFirstAsync<{
       user_version: number;
@@ -42,9 +42,31 @@ export class Store implements IStore {
       await this.db.execAsync(`
       PRAGMA journal_mode = 'wal';
       PRAGMA foreign_keys = ON;
-      CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, username TEXT, email TEXT, created_at TEXT, updated_at TEXT, group_admin_map TEXT);
-      CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY NOT NULL, name TEXT, admin BOOLEAN DEFAULT FALSE, group_users TEXT NOT NULL DEFAULT '[]', created_at TEXT, updated_at TEXT);
-      CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, user_id TEXT NOT NULL, group_id TEXT NOT NULL, timestamp TEXT NOT NULL, FOREIGN KEY(group_id) REFERENCES groups(id), FOREIGN KEY(user_id) REFERENCES users(id));
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY NOT NULL,
+        username TEXT, 
+        email TEXT, 
+        created_at TEXT, 
+        updated_at TEXT, 
+        group_admin_map TEXT
+      );
+      CREATE TABLE IF NOT EXISTS groups (
+        id TEXT PRIMARY KEY NOT NULL, 
+        name TEXT, 
+        admin BOOLEAN DEFAULT FALSE, 
+        group_users TEXT NOT NULL DEFAULT '[]', 
+        created_at TEXT, 
+        updated_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY NOT NULL, 
+        content TEXT NOT NULL, 
+        user_id TEXT NOT NULL, 
+        group_id TEXT NOT NULL, 
+        timestamp TEXT NOT NULL, 
+        FOREIGN KEY(group_id) REFERENCES groups(id), 
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      );
     `);
       await this.db.execAsync(`PRAGMA user_version = 1`);
       currentDbVersion = 1;
@@ -154,6 +176,23 @@ export class Store implements IStore {
         await this.db.execAsync("ROLLBACK;");
         console.error("Error migrating database to version 5:", e);
         throw e;
+      }
+    }
+
+    if (currentDbVersion === 5) {
+      console.log("Migrating to version 6 (Images support)...");
+      await this.db.execAsync("BEGIN TRANSACTION;");
+      try {
+        await this.db.execAsync(`
+          ALTER TABLE messages ADD COLUMN message_type TEXT NOT NULL DEFAULT 'text';
+        `);
+        await this.db.execAsync("COMMIT;");
+        await this.db.execAsync(`PRAGMA user_version = 6`);
+        currentDbVersion = 6;
+        console.log("Successfully migrated to version 6.");
+      } catch (error) {
+        await this.db.execAsync("ROLLBACK;");
+        console.error("Error migrating database to version 6:", error);
       }
     }
 
@@ -275,14 +314,15 @@ export class Store implements IStore {
       for (const message of messagesToSave) {
         await db.runAsync(
           `INSERT OR REPLACE INTO messages (id, user_id, group_id, timestamp, 
-          ciphertext, msg_nonce, sender_ephemeral_public_key, sym_key_encryption_nonce, sealed_symmetric_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ciphertext, message_type, msg_nonce, sender_ephemeral_public_key, sym_key_encryption_nonce, sealed_symmetric_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             message.id,
             message.sender_id,
             message.group_id,
             message.timestamp,
             message.ciphertext,
+            message.message_type,
             message.msg_nonce,
             message.sender_ephemeral_public_key,
             message.sym_key_encryption_nonce,
@@ -378,11 +418,13 @@ export class Store implements IStore {
     const db = await this.getDb();
     const result = await db.getAllAsync<MessageRow>(`
       SELECT m.id as message_id, m.group_id,
-             m.user_id, m.timestamp,
-             m.ciphertext, m.msg_nonce,
-             m.sender_ephemeral_public_key,
-             m.sym_key_encryption_nonce,
-             m.sealed_symmetric_key
+            m.user_id, m.timestamp,
+            m.ciphertext, 
+            m.message_type,
+            m.msg_nonce,
+            m.sender_ephemeral_public_key,
+            m.sym_key_encryption_nonce,
+            m.sealed_symmetric_key
       FROM messages AS m
     `);
     return (
@@ -392,6 +434,7 @@ export class Store implements IStore {
         sender_id: row.user_id,
         timestamp: row.timestamp,
         ciphertext: row.ciphertext,
+        message_type: row.message_type,
         msg_nonce: row.msg_nonce,
         sender_ephemeral_public_key: row.sender_ephemeral_public_key,
         sym_key_encryption_nonce: row.sym_key_encryption_nonce,

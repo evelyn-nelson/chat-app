@@ -1,4 +1,4 @@
-import { Group, Message, User } from "@/types/types";
+import { Group, DbMessage, User, MessageType } from "@/types/types";
 
 export interface IStore {
   /**
@@ -7,9 +7,9 @@ export interface IStore {
    * @param clearFirst If true, existing messages will be cleared before saving the new ones.
    *                   Otherwise, messages are typically upserted or merged.
    */
-  saveMessages(messages: Message[], clearFirst?: boolean): Promise<void>;
+  saveMessages(messages: DbMessage[], clearFirst?: boolean): Promise<void>;
 
-  loadMessages(): Promise<Message[]>;
+  loadMessages(): Promise<DbMessage[]>;
   clearMessages(): Promise<void>;
 
   /**
@@ -44,6 +44,7 @@ export interface MessageRow {
   timestamp: string;
   username: string;
   ciphertext: Uint8Array;
+  message_type: MessageType;
   msg_nonce: Uint8Array;
   sender_ephemeral_public_key: Uint8Array;
   sym_key_encryption_nonce: Uint8Array;

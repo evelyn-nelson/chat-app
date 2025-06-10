@@ -57,7 +57,7 @@ export type UserGroup = {
   updated_at: string;
 };
 
-// --- Message Related Types (Modified for E2EE) ---
+// --- Message Related Types ---
 
 /**
  * Represents an encrypted message as stored on the client device and ready for decryption.
@@ -69,6 +69,7 @@ export interface DbMessage {
   group_id: string;
   timestamp: string;
   ciphertext: Uint8Array;
+  message_type: MessageType;
   msg_nonce: Uint8Array;
   sender_ephemeral_public_key: Uint8Array;
   sym_key_encryption_nonce: Uint8Array;
@@ -80,12 +81,15 @@ export interface DbMessage {
  * All binary data is Base64 encoded for JSON serialization.
  */
 
+export type MessageType = "text" | "image" | "control";
+
 export type RawMessage = {
   id: string;
   group_id: string;
   sender_id: string;
   timestamp: string;
   ciphertext: string; // The encrypted message content (Base64 encoded)
+  messageType: MessageType;
   msgNonce: string; // Nonce used for encrypting the message content (Base64 encoded)
   envelopes: Array<{
     deviceId: string; // Recipient's device identifier
@@ -95,13 +99,36 @@ export type RawMessage = {
   }>;
 };
 
-export interface UiMessage {
+export type ImageMessageContent = {
+  objectKey: string;
+  mimeType: string;
+  decryptionKey: string; // Base64 encoded
+  nonce: string; // Base64 encoded
+  width?: number;
+  height?: number;
+  size?: number;
+};
+
+interface BaseUiMessage {
   id: string;
   group_id: string;
   timestamp: string;
-  user: MessageUser; // This is the one place you keep the username
+  user: MessageUser;
+}
+
+export interface TextUiMessage extends BaseUiMessage {
+  type: "text";
   content: string; // Plaintext
 }
+
+export interface ImageUiMessage extends BaseUiMessage {
+  type: "image";
+  content: ImageMessageContent;
+  localUri?: string;
+  status: "downloading" | "decrypting" | "ready" | "error";
+}
+
+export type UiMessage = TextUiMessage | ImageUiMessage;
 
 export type DateOptions = {
   startTime: Date | null;

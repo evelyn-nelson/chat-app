@@ -64,6 +64,7 @@ export const processAndDecodeIncomingMessage = (
       timestamp: timestamp,
 
       ciphertext: base64ToUint8Array(rawMessage.ciphertext),
+      message_type: rawMessage.messageType,
       msg_nonce: base64ToUint8Array(rawMessage.msgNonce),
 
       sender_ephemeral_public_key: base64ToUint8Array(envelope.ephPubKey),
