@@ -2,6 +2,7 @@ package ws
 
 import (
 	"chat-app-server/db"
+	"chat-app-server/util"
 	"context"
 	"errors"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/jackc/pgx/v5"
 )
 
 type Client struct {
@@ -137,20 +137,17 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 			}
 			return
 		}
-		fmt.Println("groupId", clientMsg.GroupID.String())
-		fmt.Println("userId", c.User.ID.String())
-		_, dbErr := queries.GetUserGroupByGroupIDAndUserID(c.ctx, db.GetUserGroupByGroupIDAndUserIDParams{
-			UserID:  &c.User.ID,
-			GroupID: &clientMsg.GroupID,
-		})
-		if dbErr != nil {
-			if errors.Is(dbErr, pgx.ErrNoRows) {
-				log.Printf("Client %d (%s) attempted to send E2EE message to unauthorized group %d. Discarding.",
-					c.User.ID, c.User.Username, clientMsg.GroupID)
-			} else {
-				log.Printf("Client %d (%s): DB error checking group %d authorization for E2EE message: %v. Discarding.",
-					c.User.ID, c.User.Username, clientMsg.GroupID, dbErr)
-			}
+
+		isMember, err := util.UserInGroup(c.ctx, c.User.ID, clientMsg.GroupID, queries)
+		if err != nil {
+			log.Printf("Client %d (%s): DB error checking group %d authorization for E2EE message: %v. Discarding.",
+				c.User.ID, c.User.Username, clientMsg.GroupID, err)
+			continue
+		}
+
+		if !isMember {
+			log.Printf("Client %d (%s) attempted to send E2EE message to unauthorized group %d. Discarding.",
+				c.User.ID, c.User.Username, clientMsg.GroupID)
 			continue
 		}
 

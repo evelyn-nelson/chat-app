@@ -667,11 +667,8 @@ func (h *Handler) GetUsersInGroup(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or unauthorized"})
 		return
 	}
-	_, err = h.db.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
-		UserID:  &user.ID,
-		GroupID: &groupID,
-	})
-	if err != nil {
+	isMember, err := util.UserInGroup(ctx, user.ID, groupID, h.db)
+	if err != nil || !isMember {
 		log.Printf("Error retrieving users for group %d: %v", groupID, err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "User does not have access to this group"})
 		return

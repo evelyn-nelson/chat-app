@@ -2,12 +2,14 @@ package util
 
 import (
 	"chat-app-server/db"
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -29,6 +31,22 @@ func GetUser(c *gin.Context, queries *db.Queries) (db.GetUserByIdRow, error) {
 		}
 		return user, nil
 	}
+}
+
+func UserInGroup(ctx context.Context, userID uuid.UUID, groupID uuid.UUID, queries *db.Queries) (bool, error) {
+	_, dbErr := queries.GetUserGroupByGroupIDAndUserID(ctx, db.GetUserGroupByGroupIDAndUserIDParams{
+		UserID:  &userID,
+		GroupID: &groupID,
+	})
+
+	if dbErr != nil {
+		if errors.Is(dbErr, pgx.ErrNoRows) {
+			return false, nil
+		} else {
+			return false, dbErr
+		}
+	}
+	return true, nil
 }
 
 func NullablePgText(s *string) pgtype.Text {
