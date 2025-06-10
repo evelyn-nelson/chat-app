@@ -342,9 +342,7 @@ const ChatSettingsMenu = (props: {
   );
 
   return (
-    <View
-      className={`w-full pb-4 ${Platform.OS === "web" ? "max-w-[500px]" : ""}`}
-    >
+    <View className={"w-full pb-4"}>
       {/* Group Image Display/Edit */}
       <View className="items-center my-4">
         <Pressable
