@@ -3,11 +3,12 @@ INSERT INTO messages (
     user_id,
     group_id,
     ciphertext,
+    message_type,
     msg_nonce,
     key_envelopes
 ) VALUES (
-    $1, $2, $3, $4, $5
-) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, msg_nonce, key_envelopes;
+    $1, $2, $3, $4, $5, $6
+) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, message_type, msg_nonce, key_envelopes;
 
 -- name: GetMessageById :one
 SELECT
@@ -17,6 +18,7 @@ SELECT
     created_at,
     updated_at,
     ciphertext,
+    message_type,
     msg_nonce,
     key_envelopes
 FROM messages
@@ -31,6 +33,7 @@ SELECT
     m.created_at,
     m.updated_at,
     m.ciphertext,
+    m.message_type,
     m.msg_nonce,
     m.key_envelopes
 FROM messages m
@@ -44,6 +47,7 @@ SELECT
     m.user_id AS sender_id,
     m.created_at AS "timestamp",
     m.ciphertext,
+    m.message_type,
     m.msg_nonce,
     m.key_envelopes
 FROM messages m
@@ -72,6 +76,7 @@ SELECT
     created_at,
     updated_at,
     ciphertext,
+    message_type,
     msg_nonce,
     key_envelopes
 FROM messages

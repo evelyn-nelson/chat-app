@@ -47,23 +47,36 @@ SELECT
     created_at,
     updated_at,
     ciphertext,
+    message_type,
     msg_nonce,
     key_envelopes
 FROM messages
 ORDER BY created_at DESC
 `
 
+type GetAllMessagesRow struct {
+	ID           uuid.UUID        `json:"id"`
+	UserID       *uuid.UUID       `json:"user_id"`
+	GroupID      *uuid.UUID       `json:"group_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	Ciphertext   []byte           `json:"ciphertext"`
+	MessageType  MessageType      `json:"message_type"`
+	MsgNonce     []byte           `json:"msg_nonce"`
+	KeyEnvelopes []byte           `json:"key_envelopes"`
+}
+
 // Retrieves all messages. Use with caution on large datasets.
 // Primarily for admin or debugging.
-func (q *Queries) GetAllMessages(ctx context.Context) ([]Message, error) {
+func (q *Queries) GetAllMessages(ctx context.Context) ([]GetAllMessagesRow, error) {
 	rows, err := q.db.Query(ctx, getAllMessages)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Message
+	var items []GetAllMessagesRow
 	for rows.Next() {
-		var i Message
+		var i GetAllMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -71,6 +84,7 @@ func (q *Queries) GetAllMessages(ctx context.Context) ([]Message, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Ciphertext,
+			&i.MessageType,
 			&i.MsgNonce,
 			&i.KeyEnvelopes,
 		); err != nil {
@@ -92,15 +106,28 @@ SELECT
     created_at,
     updated_at,
     ciphertext,
+    message_type,
     msg_nonce,
     key_envelopes
 FROM messages
 WHERE id = $1
 `
 
-func (q *Queries) GetMessageById(ctx context.Context, id uuid.UUID) (Message, error) {
+type GetMessageByIdRow struct {
+	ID           uuid.UUID        `json:"id"`
+	UserID       *uuid.UUID       `json:"user_id"`
+	GroupID      *uuid.UUID       `json:"group_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	Ciphertext   []byte           `json:"ciphertext"`
+	MessageType  MessageType      `json:"message_type"`
+	MsgNonce     []byte           `json:"msg_nonce"`
+	KeyEnvelopes []byte           `json:"key_envelopes"`
+}
+
+func (q *Queries) GetMessageById(ctx context.Context, id uuid.UUID) (GetMessageByIdRow, error) {
 	row := q.db.QueryRow(ctx, getMessageById, id)
-	var i Message
+	var i GetMessageByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -108,6 +135,7 @@ func (q *Queries) GetMessageById(ctx context.Context, id uuid.UUID) (Message, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ciphertext,
+		&i.MessageType,
 		&i.MsgNonce,
 		&i.KeyEnvelopes,
 	)
@@ -123,6 +151,7 @@ SELECT
     m.created_at,
     m.updated_at,
     m.ciphertext,
+    m.message_type,
     m.msg_nonce,
     m.key_envelopes
 FROM messages m
@@ -138,6 +167,7 @@ type GetMessagesForGroupRow struct {
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	Ciphertext   []byte           `json:"ciphertext"`
+	MessageType  MessageType      `json:"message_type"`
 	MsgNonce     []byte           `json:"msg_nonce"`
 	KeyEnvelopes []byte           `json:"key_envelopes"`
 }
@@ -159,6 +189,7 @@ func (q *Queries) GetMessagesForGroup(ctx context.Context, groupID *uuid.UUID) (
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Ciphertext,
+			&i.MessageType,
 			&i.MsgNonce,
 			&i.KeyEnvelopes,
 		); err != nil {
@@ -179,6 +210,7 @@ SELECT
     m.user_id AS sender_id,
     m.created_at AS "timestamp",
     m.ciphertext,
+    m.message_type,
     m.msg_nonce,
     m.key_envelopes
 FROM messages m
@@ -196,6 +228,7 @@ type GetRelevantMessagesRow struct {
 	SenderID     *uuid.UUID       `json:"sender_id"`
 	Timestamp    pgtype.Timestamp `json:"timestamp"`
 	Ciphertext   []byte           `json:"ciphertext"`
+	MessageType  MessageType      `json:"message_type"`
 	MsgNonce     []byte           `json:"msg_nonce"`
 	KeyEnvelopes []byte           `json:"key_envelopes"`
 }
@@ -215,6 +248,7 @@ func (q *Queries) GetRelevantMessages(ctx context.Context, id uuid.UUID) ([]GetR
 			&i.SenderID,
 			&i.Timestamp,
 			&i.Ciphertext,
+			&i.MessageType,
 			&i.MsgNonce,
 			&i.KeyEnvelopes,
 		); err != nil {
@@ -233,30 +267,45 @@ INSERT INTO messages (
     user_id,
     group_id,
     ciphertext,
+    message_type,
     msg_nonce,
     key_envelopes
 ) VALUES (
-    $1, $2, $3, $4, $5
-) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, msg_nonce, key_envelopes
+    $1, $2, $3, $4, $5, $6
+) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, message_type, msg_nonce, key_envelopes
 `
 
 type InsertMessageParams struct {
-	UserID       *uuid.UUID `json:"user_id"`
-	GroupID      *uuid.UUID `json:"group_id"`
-	Ciphertext   []byte     `json:"ciphertext"`
-	MsgNonce     []byte     `json:"msg_nonce"`
-	KeyEnvelopes []byte     `json:"key_envelopes"`
+	UserID       *uuid.UUID  `json:"user_id"`
+	GroupID      *uuid.UUID  `json:"group_id"`
+	Ciphertext   []byte      `json:"ciphertext"`
+	MessageType  MessageType `json:"message_type"`
+	MsgNonce     []byte      `json:"msg_nonce"`
+	KeyEnvelopes []byte      `json:"key_envelopes"`
 }
 
-func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (Message, error) {
+type InsertMessageRow struct {
+	ID           uuid.UUID        `json:"id"`
+	UserID       *uuid.UUID       `json:"user_id"`
+	GroupID      *uuid.UUID       `json:"group_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	Ciphertext   []byte           `json:"ciphertext"`
+	MessageType  MessageType      `json:"message_type"`
+	MsgNonce     []byte           `json:"msg_nonce"`
+	KeyEnvelopes []byte           `json:"key_envelopes"`
+}
+
+func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error) {
 	row := q.db.QueryRow(ctx, insertMessage,
 		arg.UserID,
 		arg.GroupID,
 		arg.Ciphertext,
+		arg.MessageType,
 		arg.MsgNonce,
 		arg.KeyEnvelopes,
 	)
-	var i Message
+	var i InsertMessageRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -264,6 +313,7 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (M
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ciphertext,
+		&i.MessageType,
 		&i.MsgNonce,
 		&i.KeyEnvelopes,
 	)
