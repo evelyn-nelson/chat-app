@@ -24,6 +24,8 @@ type ImageHandler struct {
 	conn  *pgxpool.Pool
 }
 
+const MaxImageBytes = 5 * 1024 * 1024
+
 func NewImageHandler(
 	store s3store.Store,
 	db *db.Queries,
@@ -41,6 +43,7 @@ func NewImageHandler(
 type presignUploadReq struct {
 	Filename string    `json:"filename" binding:"required"`
 	GroupID  uuid.UUID `json:"groupId" binding:"required"`
+	Size     int64     `json:"size" binding:"required"`
 	Expires  int       `json:"expires"`
 }
 
@@ -101,6 +104,14 @@ func (h *ImageHandler) PresignUpload(c *gin.Context) {
 		return
 	}
 
+	if req.Size <= 0 || req.Size > MaxImageBytes {
+		c.JSON(
+			http.StatusBadRequest,
+			gin.H{"message": "File has invalid size"},
+		)
+		return
+	}
+
 	ext := getSafeExtension(req.Filename)
 	if req.Filename != "" && ext == "" {
 		c.JSON(
@@ -128,7 +139,7 @@ func (h *ImageHandler) PresignUpload(c *gin.Context) {
 		expiresDuration = maxExpiration
 	}
 
-	uploadURL, err := h.store.PresignUpload(ctx, s3Key, expiresDuration)
+	uploadURL, err := h.store.PresignUpload(ctx, s3Key, expiresDuration, req.Size)
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
