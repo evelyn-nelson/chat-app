@@ -37,6 +37,7 @@ import { DisplayableItem } from "./types";
 import ImageBubble from "./ImageBubble";
 import { v4 } from "uuid";
 import { ImageViewer } from "./ImageViewer";
+import { router } from "expo-router";
 
 const SCROLL_THRESHOLD = 200;
 const HAPTIC_THRESHOLD = -40;
@@ -71,17 +72,9 @@ export default function ChatBox({ group }: { group: Group }) {
   const [isActivelySwipping, setIsActivelySwipping] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const [isViewerVisible, setViewerVisible] = useState(false);
-  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
-
   const handleImagePress = (uri: string) => {
-    setSelectedImageUri(uri);
-    setViewerVisible(true);
-  };
-
-  const handleCloseViewer = () => {
-    setViewerVisible(false);
-    setSelectedImageUri(null);
+    const encoded = encodeURIComponent(uri);
+    router.push(`/groups/images/${encoded}`);
   };
 
   const swipeX = useSharedValue(0);
@@ -504,11 +497,6 @@ export default function ChatBox({ group }: { group: Group }) {
           <MessageEntry group={group} recipientUserIds={recipientUserIds} />
         </View>
       </View>
-      <ImageViewer
-        visible={isViewerVisible}
-        imageUrl={selectedImageUri}
-        onClose={handleCloseViewer}
-      />
     </KeyboardAvoidingView>
   );
 }

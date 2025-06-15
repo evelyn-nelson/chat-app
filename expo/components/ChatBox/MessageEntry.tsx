@@ -87,7 +87,7 @@ const MessageEntry = ({
             <ActivityIndicator size="small" color="#9CA3AF" />
           ) : (
             <Ionicons
-              name="attach"
+              name="add"
               size={24}
               color={isBusy ? "#4B5563" : "#9CA3AF"}
             />
