@@ -122,13 +122,10 @@ export default function ChatBox({ group }: { group: Group }) {
 
   useEffect(() => {
     const decryptAndFormatMessages = async () => {
-      // 1. Early Exit: If we don't have the private key, we can't decrypt anything.
-      // Clear the displayable messages to avoid showing stale/incorrect data.
       if (!devicePrivateKey) {
         if (displayableMessages.length > 0) {
           setDisplayableMessages([]);
         }
-        // If the key was just removed, clear the cache too.
         if (prevDevicePrivateKeyRef.current !== null) {
           setDecryptedContentCache(new Map());
         }
@@ -137,13 +134,12 @@ export default function ChatBox({ group }: { group: Group }) {
       }
 
       // Determine if the private key has changed since the last run.
-      // If it has, we must invalidate the entire cache and re-decrypt everything.
+      // If it has, invalidate the entire cache and re-decrypt everything.
       const keyHasChanged = !compareUint8Arrays(
         prevDevicePrivateKeyRef.current,
         devicePrivateKey
       );
 
-      // 2. Early Exit: If there are no messages, clear the display and exit.
       if (groupMessages.length === 0) {
         if (displayableMessages.length > 0) {
           setDisplayableMessages([]);
@@ -151,44 +147,35 @@ export default function ChatBox({ group }: { group: Group }) {
         return;
       }
 
-      // This will hold the final list of items to be rendered by the FlatList.
       const finalDisplayableItems: DisplayableItem[] = [];
-      // This will hold only the newly decrypted content from this specific run.
       const newCacheEntries = new Map<
         string,
         string | ImageMessageContent | null
       >();
       let needsUIUpdate = false;
 
-      // Sort messages chronologically (oldest first) to make date separator logic easier.
       const sortedMessages = [...groupMessages].sort(
         (a, b) =>
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       );
 
-      // 3. Main Loop: Iterate through each message to decrypt and format it.
       for (let i = 0; i < sortedMessages.length; i++) {
         const currentMsg = sortedMessages[i];
         let decryptedContent: string | ImageMessageContent | null = null;
 
-        // Check if we should use the cache or perform decryption.
-        // We re-decrypt if the key has changed or if the message is not yet in the cache.
         if (!keyHasChanged && decryptedContentCache.has(currentMsg.id)) {
           decryptedContent = decryptedContentCache.get(currentMsg.id)!;
         } else {
-          needsUIUpdate = true; // Mark that we've done new work.
+          needsUIUpdate = true;
           const plaintext = await encryptionService.decryptStoredMessage(
             currentMsg,
             devicePrivateKey
           );
 
           if (plaintext) {
-            // --- THIS IS THE CORE NEW LOGIC ---
-            // Use the message_type to decide how to handle the decrypted plaintext.
             switch (currentMsg.message_type) {
               case "image":
                 try {
-                  // For images, the plaintext is a JSON string. Parse it.
                   decryptedContent = JSON.parse(
                     plaintext
                   ) as ImageMessageContent;
@@ -203,19 +190,16 @@ export default function ChatBox({ group }: { group: Group }) {
 
               case "text":
               default:
-                // For text messages (or any unknown type), the plaintext is the content.
                 decryptedContent = plaintext;
                 break;
             }
           } else {
-            // Handle decryption failure.
             decryptedContent = "[Decryption Failed]";
           }
-          // Store the result of our new work.
           newCacheEntries.set(currentMsg.id, decryptedContent);
         }
 
-        // 4. Date Separator Logic: Add a date separator if the day has changed.
+        // Date Separator
         const prevMsg = i > 0 ? sortedMessages[i - 1] : null;
         const currentDate = new Date(currentMsg.timestamp);
         if (
@@ -251,7 +235,6 @@ export default function ChatBox({ group }: { group: Group }) {
             timestamp: currentMsg.timestamp,
           });
         } else if (decryptedContent) {
-          // It's an image message.
           finalDisplayableItems.push({
             type: "message_image",
             id: currentMsg.id,
@@ -269,10 +252,8 @@ export default function ChatBox({ group }: { group: Group }) {
         needsUIUpdate ||
         displayableMessages.length !== finalDisplayableItems.length
       ) {
-        // The FlatList is inverted, so we reverse the chronological array.
         setDisplayableMessages(finalDisplayableItems.reverse());
 
-        // Update the global cache with any newly decrypted items.
         if (newCacheEntries.size > 0) {
           setDecryptedContentCache(
             (prevCache) => new Map([...prevCache, ...newCacheEntries])
@@ -477,7 +458,6 @@ export default function ChatBox({ group }: { group: Group }) {
                     !hasInitiallyScrolled.current &&
                     displayableMessages.length > 0
                   ) {
-                    // scrollToBottom(false); // Optional: initial scroll without animation
                     hasInitiallyScrolled.current = true;
                   }
                 }}
