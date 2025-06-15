@@ -1,7 +1,5 @@
 import React from "react";
-import { ChatCreateMenu } from "@/components/ChatSelect/ChatCreate/ChatCreateMenu";
 import { router, useLocalSearchParams } from "expo-router";
-import ExpoRouterModal from "@/components/Global/Modal/ExpoRouterModal";
 import { ImageViewer } from "@/components/ChatBox/ImageViewer";
 
 const ImageScreen = () => {
