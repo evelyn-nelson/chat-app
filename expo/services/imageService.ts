@@ -1,6 +1,7 @@
 import { Blurhash } from "react-native-blurhash";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
+import { Platform } from "react-native";
 
 /**
  * Generates a BlurHash string from a local image URI.
@@ -14,15 +15,7 @@ export const generateBlurhash = async (
   let thumbnailUri: string | undefined;
   let sanitizedImageUri: string | undefined;
   try {
-    const sanitizedContext = ImageManipulator.manipulate(imageUri);
-    const sanitizedImage = await sanitizedContext.renderAsync();
-    const sanitizedResult = await sanitizedImage.saveAsync({
-      format: SaveFormat.JPEG,
-      compress: 0.9,
-    });
-    sanitizedImageUri = sanitizedResult.uri;
-
-    const context = ImageManipulator.manipulate(sanitizedImageUri);
+    const context = ImageManipulator.manipulate(imageUri);
     context.resize({ width: 100 });
     const image = await context.renderAsync();
     const result = await image.saveAsync({
@@ -39,11 +32,6 @@ export const generateBlurhash = async (
     return null;
   } finally {
     const cleanupPromises: Promise<void>[] = [];
-    if (sanitizedImageUri) {
-      cleanupPromises.push(
-        FileSystem.deleteAsync(sanitizedImageUri, { idempotent: true })
-      );
-    }
     if (thumbnailUri) {
       cleanupPromises.push(
         FileSystem.deleteAsync(thumbnailUri, { idempotent: true })
