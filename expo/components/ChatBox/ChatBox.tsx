@@ -35,6 +35,7 @@ import * as deviceService from "@/services/deviceService";
 import * as encryptionService from "@/services/encryptionService";
 import { DisplayableItem } from "./types";
 import ImageBubble from "./ImageBubble";
+import { v4 } from "uuid";
 
 const SCROLL_THRESHOLD = 200;
 const HAPTIC_THRESHOLD = -40;

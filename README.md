@@ -59,3 +59,7 @@ To access the db directly, run
 
 to do a dev build for real device
 eas build -p ios --profile development
+
+
+Authenticate AWS: `aws sso login --profile s3-local-637423634719`
+Only get go logs: docker-compose logs -f go-server

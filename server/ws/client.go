@@ -29,7 +29,7 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 1024
+	maxMessageSize = 16 * 1024
 )
 
 func NewClient(conn *websocket.Conn, user *db.GetUserByIdRow) *Client {
@@ -152,11 +152,12 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 		}
 
 		hubMessage := &RawMessageE2EE{
-			GroupID:    clientMsg.GroupID,
-			MsgNonce:   clientMsg.MsgNonce,
-			Ciphertext: clientMsg.Ciphertext,
-			Envelopes:  clientMsg.Envelopes,
-			SenderID:   c.User.ID,
+			GroupID:     clientMsg.GroupID,
+			MessageType: clientMsg.MessageType,
+			MsgNonce:    clientMsg.MsgNonce,
+			Ciphertext:  clientMsg.Ciphertext,
+			Envelopes:   clientMsg.Envelopes,
+			SenderID:    c.User.ID,
 		}
 
 		select {

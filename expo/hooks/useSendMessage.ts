@@ -2,13 +2,7 @@ import { useState, useCallback } from "react";
 import { useWebSocket } from "../components/context/WebSocketContext";
 import { useGlobalStore } from "../components/context/GlobalStoreContext";
 import * as encryptionService from "@/services/encryptionService";
-// import { getGroupMemberIds } from '@/services/groupService'; // Example
-
-interface RecipientDevicePublicKey {
-  deviceId: string;
-  publicKey: Uint8Array;
-}
-
+import { RecipientDevicePublicKey } from "@/types/types";
 interface UseSendMessageReturn {
   sendMessage: (
     plaintext: string,
@@ -68,13 +62,14 @@ export const useSendMessage = (): UseSendMessageReturn => {
           await encryptionService.encryptAndPrepareMessageForSending(
             plaintext,
             group_id,
-            recipientDevicePublicKeys
+            recipientDevicePublicKeys,
+            "text"
           );
 
         if (!rawMessagePayload) {
           throw new Error("Failed to encrypt the message payload.");
         }
-
+        console.log({ rawMessagePayload });
         sendPacketOverSocket(rawMessagePayload);
       } catch (error: any) {
         console.error("Error in sendMessage process:", error);

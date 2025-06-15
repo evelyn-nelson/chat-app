@@ -66,6 +66,7 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 		log.Printf("Failed to upgrade connection: %v", err)
 		return
 	}
+
 	defer func() {
 		log.Printf("Closing WebSocket connection from EstablishConnection for remote addr: %s", conn.RemoteAddr())
 		conn.Close()

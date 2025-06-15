@@ -1,6 +1,7 @@
-import { RawMessage, DbMessage } from "../types/types";
+import { RawMessage, DbMessage, MessageType } from "../types/types";
 import sodium from "react-native-libsodium";
 import { Base64 } from "js-base64";
+import * as FileSystem from "expo-file-system";
 
 export const uint8ArrayToBase64 = (arr: Uint8Array): string => {
   return Base64.fromUint8Array(arr);
@@ -93,7 +94,8 @@ export const processAndDecodeIncomingMessage = (
 export const encryptAndPrepareMessageForSending = async (
   plaintext: string,
   groupId: string,
-  recipientDevicePublicKeys: { deviceId: string; publicKey: Uint8Array }[]
+  recipientDevicePublicKeys: { deviceId: string; publicKey: Uint8Array }[],
+  messageType: MessageType
 ): Promise<RawMessage | null> => {
   try {
     await sodium.ready;
@@ -138,6 +140,7 @@ export const encryptAndPrepareMessageForSending = async (
 
     const messageToSend = {
       group_id: groupId,
+      messageType: messageType,
       msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
       ciphertext: uint8ArrayToBase64(ciphertextUint8Array),
       envelopes: envelopes,
@@ -186,4 +189,58 @@ export const decryptStoredMessage = async (
     console.error("Error during message decryption:", error);
     return null;
   }
+};
+
+// --- Image specific functions
+
+export const readImageAsBytes = async (
+  imageUri: string
+): Promise<Uint8Array> => {
+  const fileBase64 = await FileSystem.readAsStringAsync(imageUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return base64ToUint8Array(fileBase64);
+};
+
+export const encryptImageFile = async (
+  imageBytes: Uint8Array
+): Promise<{
+  encryptedBlob: Uint8Array;
+  imageKey: Uint8Array;
+  imageNonce: Uint8Array;
+} | null> => {
+  try {
+    await sodium.ready;
+    const imageKey = sodium.crypto_secretbox_keygen();
+    const imageNonce = sodium.randombytes_buf(
+      sodium.crypto_secretbox_NONCEBYTES
+    );
+    const encryptedBlob = sodium.crypto_secretbox_easy(
+      imageBytes,
+      imageNonce,
+      imageKey
+    );
+    return { encryptedBlob, imageKey, imageNonce };
+  } catch (error) {
+    console.error("Failed to encrypt image file:", error);
+    return null;
+  }
+};
+
+export const createImageMessagePayload = (
+  objectKey: string,
+  mimeType: string,
+  imageKey: Uint8Array,
+  imageNonce: Uint8Array,
+  dimensions: { width: number; height: number }
+): string => {
+  const imageMessageContent = {
+    objectKey: objectKey,
+    mimeType: mimeType,
+    decryptionKey: uint8ArrayToBase64(imageKey),
+    nonce: uint8ArrayToBase64(imageNonce),
+    width: dimensions.width,
+    height: dimensions.height,
+  };
+  return JSON.stringify(imageMessageContent);
 };
