@@ -9,9 +9,10 @@ import {
   encryptImageFile,
   createImageMessagePayload,
   readImageAsBytes,
+  base64ToUint8Array,
 } from "@/services/encryptionService";
 import { RecipientDevicePublicKey } from "@/types/types";
-import { generateBlurhash } from "@/services/imageService";
+import { processImage } from "@/services/imageService";
 
 interface UseSendImageReturn {
   sendImage: (
@@ -40,6 +41,7 @@ export const useSendImage = (): UseSendImageReturn => {
     ): Promise<void> => {
       setIsSendingImage(true);
       setImageSendError(null);
+      let normalizedImageUri: string | undefined;
 
       if (!currentUser) {
         const errorMsg = "User not authenticated. Cannot send image.";
@@ -49,35 +51,34 @@ export const useSendImage = (): UseSendImageReturn => {
       }
 
       try {
-        const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+        const processedData = await processImage(imageAsset.uri);
+        normalizedImageUri = processedData.normalized.uri;
 
-        if (!imageAsset.fileSize) {
-          throw new Error("Could not determine image size.");
-        }
-        if (imageAsset.fileSize > MAX_FILE_SIZE_BYTES) {
+        const { normalized, blurhash } = processedData;
+        const imageBytes = base64ToUint8Array(normalized.base64);
+
+        const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+        if (imageBytes.length > MAX_FILE_SIZE_BYTES) {
           throw new Error(
-            `Image is too large. Please select a file smaller than 5 MB.`
+            `Image is too large after compression. Max size is 5 MB.`
           );
         }
 
-        const recipientDevicePublicKeys: RecipientDevicePublicKey[] = [];
-        for (const userId of recipientUserIds) {
-          const keys = getDeviceKeysForUser(userId);
-          if (keys && keys.length > 0) {
-            recipientDevicePublicKeys.push(...keys);
-          } else {
-            console.warn(
-              `No device keys found for recipient user ${userId}. They may not receive the message.`
-            );
-          }
-        }
+        const recipientDevicePublicKeys = (
+          await Promise.allSettled(
+            recipientUserIds.map((userId) => getDeviceKeysForUser(userId))
+          )
+        )
+          .map((result) =>
+            result.status === "fulfilled" ? result.value : null
+          )
+          .flat()
+          .filter(Boolean) as RecipientDevicePublicKey[];
+
         if (recipientDevicePublicKeys.length === 0) {
           throw new Error("No valid recipient device keys found.");
         }
 
-        const blurhash = await generateBlurhash(imageAsset.uri);
-
-        const imageBytes = await readImageAsBytes(imageAsset.uri);
         const encryptionResult = await encryptImageFile(imageBytes);
         if (!encryptionResult) {
           throw new Error("Failed to encrypt the image file.");

@@ -1,42 +1,78 @@
 import { Blurhash } from "react-native-blurhash";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import {
+  ImageManipulator,
+  SaveFormat,
+  ImageResult,
+} from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
-import { Platform } from "react-native";
+export interface NormalizedImage extends ImageResult {
+  base64: string;
+}
+export interface ProcessedImage {
+  normalized: NormalizedImage;
+  blurhash: string | null;
+}
 
 /**
- * Generates a BlurHash string from a local image URI.
- * It first creates a small thumbnail to ensure fast processing.
- * @param imageUri The local URI of the original, high-resolution image.
- * @returns A promise that resolves to the BlurHash string, or null if generation fails.
+ * Processes an image from its original URI. It performs two actions in one go:
+ * 1. Creates a normalized, standard JPEG (max 1920px wide) for uploading.
+ * 2. Creates a tiny thumbnail and uses it to generate a Blurhash string.
+ * This ensures the expensive HDR-to-SDR conversion happens only ONCE.
+ *
+ * @param originalUri The local URI of the image to process.
+ * @returns A promise that resolves to a ProcessedImage object.
  */
-export const generateBlurhash = async (
-  imageUri: string
-): Promise<string | null> => {
-  let thumbnailUri: string | undefined;
-  let sanitizedImageUri: string | undefined;
+export const processImage = async (
+  originalUri: string
+): Promise<ProcessedImage> => {
+  let thumbUri: string | undefined;
   try {
-    const context = ImageManipulator.manipulate(imageUri);
-    context.resize({ width: 100 });
-    const image = await context.renderAsync();
-    const result = await image.saveAsync({
-      format: SaveFormat.JPEG,
-      compress: 0.5,
-    });
+    const context = ImageManipulator.manipulate(originalUri);
 
-    thumbnailUri = result.uri;
-
-    const hash = await Blurhash.encode(thumbnailUri, 4, 3);
-    return hash;
-  } catch (e) {
-    console.warn("Failed to generate BlurHash for image:", e);
-    return null;
-  } finally {
-    const cleanupPromises: Promise<void>[] = [];
-    if (thumbnailUri) {
-      cleanupPromises.push(
-        FileSystem.deleteAsync(thumbnailUri, { idempotent: true })
+    const mainImagePromise = context
+      .resize({ width: 1920 })
+      .renderAsync()
+      .then((image) =>
+        image.saveAsync({
+          format: SaveFormat.JPEG,
+          compress: 0.8,
+          base64: true,
+        })
       );
+
+    const thumbImagePromise = context
+      .resize({ width: 100 })
+      .renderAsync()
+      .then((image) =>
+        image.saveAsync({
+          format: SaveFormat.JPEG,
+          compress: 0.5,
+        })
+      );
+
+    const [normalizedResult, thumbResult] = await Promise.all([
+      mainImagePromise,
+      thumbImagePromise,
+    ]);
+
+    thumbUri = thumbResult.uri;
+
+    const hash = await Blurhash.encode(thumbUri, 4, 3);
+
+    if (!normalizedResult.base64) {
+      throw new Error("Failed to get Base64 from manipulated image.");
     }
-    await Promise.all(cleanupPromises);
+
+    return {
+      normalized: normalizedResult as NormalizedImage,
+      blurhash: hash,
+    };
+  } catch (error) {
+    console.error("Failed to process image:", error);
+    throw new Error("Image processing failed.");
+  } finally {
+    if (thumbUri) {
+      await FileSystem.deleteAsync(thumbUri, { idempotent: true });
+    }
   }
 };

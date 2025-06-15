@@ -39,13 +39,26 @@ export const useSendMessage = (): UseSendMessageReturn => {
 
       try {
         const recipientDevicePublicKeys: RecipientDevicePublicKey[] = [];
-        for (const userId of recipientUserIds) {
-          const keys = getDeviceKeysForUser(userId);
-          if (keys && keys.length > 0) {
-            recipientDevicePublicKeys.push(...keys);
+
+        const deviceKeyPromises = recipientUserIds.map((userId) =>
+          getDeviceKeysForUser(userId).then((keys) => ({ userId, keys }))
+        );
+
+        const results = await Promise.allSettled(deviceKeyPromises);
+
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            const { userId, keys } = result.value;
+            if (keys && keys.length > 0) {
+              recipientDevicePublicKeys.push(...keys);
+            } else {
+              console.warn(
+                `No device keys found for recipient user ${userId}. They may not receive the message.`
+              );
+            }
           } else {
-            console.warn(
-              `No device keys found for recipient user ${userId}. They may not receive the message.`
+            console.error(
+              `Failed to retrieve device keys for a user: ${result.reason}`
             );
           }
         }
