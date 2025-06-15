@@ -5,9 +5,55 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type MessageType string
+
+const (
+	MessageTypeText    MessageType = "text"
+	MessageTypeImage   MessageType = "image"
+	MessageTypeControl MessageType = "control"
+)
+
+func (e *MessageType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MessageType(s)
+	case string:
+		*e = MessageType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MessageType: %T", src)
+	}
+	return nil
+}
+
+type NullMessageType struct {
+	MessageType MessageType `json:"message_type"`
+	Valid       bool        `json:"valid"` // Valid is true if MessageType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMessageType) Scan(value interface{}) error {
+	if value == nil {
+		ns.MessageType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MessageType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMessageType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MessageType), nil
+}
 
 type DeviceKey struct {
 	ID     uuid.UUID `json:"id"`
@@ -43,7 +89,8 @@ type Message struct {
 	// Nonce used for symmetric encryption of the ciphertext
 	MsgNonce []byte `json:"msg_nonce"`
 	// JSON array of per-recipient sealed symmetric keys. Each element: {deviceId, ephPubKey, keyNonce, sealedKey}
-	KeyEnvelopes []byte `json:"key_envelopes"`
+	KeyEnvelopes []byte      `json:"key_envelopes"`
+	MessageType  MessageType `json:"message_type"`
 }
 
 type User struct {

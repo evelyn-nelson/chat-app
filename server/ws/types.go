@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"chat-app-server/db"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,19 +15,21 @@ type Envelope struct {
 }
 
 type RawMessageE2EE struct {
-	ID         uuid.UUID  `json:"id"`
-	GroupID    uuid.UUID  `json:"group_id"`
-	MsgNonce   string     `json:"msgNonce"`   // Base64 encoded
-	Ciphertext string     `json:"ciphertext"` // Base64 encoded
-	Timestamp  string     `json:"timestamp"`
-	SenderID   uuid.UUID  `json:"sender_id"`
-	Envelopes  []Envelope `json:"envelopes"`
+	ID          uuid.UUID      `json:"id"`
+	GroupID     uuid.UUID      `json:"group_id"`
+	MsgNonce    string         `json:"msgNonce"`   // Base64 encoded
+	Ciphertext  string         `json:"ciphertext"` // Base64 encoded
+	MessageType db.MessageType `json:"messageType"`
+	Timestamp   string         `json:"timestamp"`
+	SenderID    uuid.UUID      `json:"sender_id"`
+	Envelopes   []Envelope     `json:"envelopes"`
 }
 type ClientSentE2EMessage struct {
-	GroupID    uuid.UUID  `json:"group_id"`
-	MsgNonce   string     `json:"msgNonce"`   // Base64 encoded
-	Ciphertext string     `json:"ciphertext"` // Base64 encoded
-	Envelopes  []Envelope `json:"envelopes"`
+	GroupID     uuid.UUID      `json:"group_id"`
+	MsgNonce    string         `json:"msgNonce"`   // Base64 encoded
+	Ciphertext  string         `json:"ciphertext"` // Base64 encoded
+	MessageType db.MessageType `json:"messageType"`
+	Envelopes   []Envelope     `json:"envelopes"`
 }
 
 type CreateGroupRequest struct {

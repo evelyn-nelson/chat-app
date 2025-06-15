@@ -286,35 +286,15 @@ const GroupDateOptions = ({
           <Text className="text-sm font-medium text-gray-300 mb-2">
             Select Start Date & Time
           </Text>
-          {Platform.OS != "web" ? (
-            <View className="w-full items-center">
-              <DateTimePicker
-                testID="dateTimePicker"
-                value={dateOptions?.startTime ?? new Date()}
-                mode={"datetime"}
-                onChange={onChange}
-                themeVariant="dark"
-              />
-            </View>
-          ) : (
-            <View className="bg-gray-700 rounded-lg p-2 w-full">
-              <input
-                type={"datetime-local"}
-                className="p-2 bg-gray-700 text-white border border-gray-600 rounded-md w-full mb-3"
-                value={convertToDateTimeLocalString(
-                  dateOptions?.startTime ?? new Date()
-                )}
-                onChange={(event) => {
-                  onChange(
-                    {} as DateTimePickerEvent,
-                    new Date(event.target.value)
-                  );
-                }}
-                style={{ colorScheme: "dark" }}
-              />
-            </View>
-          )}
-
+          <View className="w-full items-center">
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={dateOptions?.startTime ?? new Date()}
+              mode={"datetime"}
+              onChange={onChange}
+              themeVariant="dark"
+            />
+          </View>
           <Text className="text-sm font-medium text-gray-300 mb-2 mt-3">
             Set Duration
           </Text>

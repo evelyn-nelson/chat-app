@@ -48,11 +48,9 @@ export const ChatSelect = () => {
 
   return (
     <SafeAreaView
-      className={`${
-        Platform.OS !== "web" ? "w-full" : "w-[280px]"
-      } flex-1 bg-gray-900 border-r border-gray-700`}
+      className={"w-full flex-1 bg-gray-900 border-r border-gray-700"}
       style={{
-        paddingTop: Platform.OS === "web" ? 16 : topPadding,
+        paddingTop: topPadding,
       }}
     >
       <View className="px-3 mb-2">

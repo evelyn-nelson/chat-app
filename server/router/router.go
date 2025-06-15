@@ -2,6 +2,7 @@ package router
 
 import (
 	"chat-app-server/auth"
+	"chat-app-server/images"
 	"chat-app-server/server"
 	"chat-app-server/ws"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 var r *gin.Engine
 
-func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *server.API) {
+func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *server.API, imageHandler *images.ImageHandler) {
 	r = gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -43,17 +44,24 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 	wsRoutes := r.Group("/ws/")
 	wsRoutes.Use(auth.JWTAuthMiddleware())
 
-	wsRoutes.POST("/createGroup", wsHandler.CreateGroup)
-	wsRoutes.PUT("/updateGroup/:groupID", wsHandler.UpdateGroup)
-	wsRoutes.POST("/inviteUsersToGroup", wsHandler.InviteUsersToGroup)
-	wsRoutes.POST("/removeUserFromGroup", wsHandler.RemoveUserFromGroup)
-	wsRoutes.GET("/getGroups", wsHandler.GetGroups)
-	wsRoutes.GET("/getUsersInGroup/:groupID", wsHandler.GetUsersInGroup)
-	wsRoutes.POST("/leaveGroup/:groupID", wsHandler.LeaveGroup)
-	wsRoutes.GET("/relevantUsers", wsHandler.GetRelevantUsers)
-	wsRoutes.GET("/relevantMessages", wsHandler.GetRelevantMessages)
+	wsRoutes.POST("/create-group", wsHandler.CreateGroup)
+	wsRoutes.PUT("/update-group/:groupID", wsHandler.UpdateGroup)
+	wsRoutes.POST("/invite-users-to-group", wsHandler.InviteUsersToGroup)
+	wsRoutes.POST("/remove-user-from-group", wsHandler.RemoveUserFromGroup)
+	wsRoutes.GET("/get-groups", wsHandler.GetGroups)
+	wsRoutes.GET("/get-users-in-group/:groupID", wsHandler.GetUsersInGroup)
+	wsRoutes.POST("/leave-group/:groupID", wsHandler.LeaveGroup)
+	wsRoutes.GET("/relevant-users", wsHandler.GetRelevantUsers)
+	wsRoutes.GET("/relevant-messages", wsHandler.GetRelevantMessages)
 
-	r.GET("/ws/establishConnection", wsHandler.EstablishConnection)
+	// authenticated after upgrade
+	r.GET("/ws/establish-connection", wsHandler.EstablishConnection)
+
+	// Image routes
+	imageRoutes := r.Group("/images")
+	imageRoutes.Use(auth.JWTAuthMiddleware())
+	imageRoutes.POST("/presign-upload", imageHandler.PresignUpload)
+	imageRoutes.POST("/presign-download", imageHandler.PresignDownload)
 }
 
 func Start(addr string) error {

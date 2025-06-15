@@ -3,7 +3,9 @@ package main
 import (
 	"chat-app-server/auth"
 	"chat-app-server/db"
+	"chat-app-server/images"
 	"chat-app-server/router"
+	"chat-app-server/s3store"
 	"chat-app-server/server"
 	"chat-app-server/ws"
 	"context"
@@ -11,6 +13,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -61,9 +64,18 @@ func main() {
 
 	api := server.NewAPI(db, ctx, connPool)
 
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to AWS: %v\n", err)
+		os.Exit(1)
+	}
+	store := s3store.New(cfg, os.Getenv("S3_BUCKET"))
+
+	imageHandler := images.NewImageHandler(store, db, ctx, connPool)
+
 	defer connPool.Close()
 
-	router.InitRouter(authHandler, wsHandler, api)
+	router.InitRouter(authHandler, wsHandler, api, imageHandler)
 	router.Start(":8080")
 
 }

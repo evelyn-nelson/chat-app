@@ -44,7 +44,14 @@
           "backgroundColor": "#111827"
         }
       ],
-      "react-native-libsodium"
+      "react-native-libsodium",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos so you can share them with your friends in chat groups.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take and share photos in your chat groups."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

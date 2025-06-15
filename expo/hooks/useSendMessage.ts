@@ -2,13 +2,7 @@ import { useState, useCallback } from "react";
 import { useWebSocket } from "../components/context/WebSocketContext";
 import { useGlobalStore } from "../components/context/GlobalStoreContext";
 import * as encryptionService from "@/services/encryptionService";
-// import { getGroupMemberIds } from '@/services/groupService'; // Example
-
-interface RecipientDevicePublicKey {
-  deviceId: string;
-  publicKey: Uint8Array;
-}
-
+import { RecipientDevicePublicKey } from "@/types/types";
 interface UseSendMessageReturn {
   sendMessage: (
     plaintext: string,
@@ -45,13 +39,26 @@ export const useSendMessage = (): UseSendMessageReturn => {
 
       try {
         const recipientDevicePublicKeys: RecipientDevicePublicKey[] = [];
-        for (const userId of recipientUserIds) {
-          const keys = getDeviceKeysForUser(userId);
-          if (keys && keys.length > 0) {
-            recipientDevicePublicKeys.push(...keys);
+
+        const deviceKeyPromises = recipientUserIds.map((userId) =>
+          getDeviceKeysForUser(userId).then((keys) => ({ userId, keys }))
+        );
+
+        const results = await Promise.allSettled(deviceKeyPromises);
+
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            const { userId, keys } = result.value;
+            if (keys && keys.length > 0) {
+              recipientDevicePublicKeys.push(...keys);
+            } else {
+              console.warn(
+                `No device keys found for recipient user ${userId}. They may not receive the message.`
+              );
+            }
           } else {
-            console.warn(
-              `No device keys found for recipient user ${userId}. They may not receive the message.`
+            console.error(
+              `Failed to retrieve device keys for a user: ${result.reason}`
             );
           }
         }
@@ -68,13 +75,14 @@ export const useSendMessage = (): UseSendMessageReturn => {
           await encryptionService.encryptAndPrepareMessageForSending(
             plaintext,
             group_id,
-            recipientDevicePublicKeys
+            recipientDevicePublicKeys,
+            "text"
           );
 
         if (!rawMessagePayload) {
           throw new Error("Failed to encrypt the message payload.");
         }
-
+        console.log({ rawMessagePayload });
         sendPacketOverSocket(rawMessagePayload);
       } catch (error: any) {
         console.error("Error in sendMessage process:", error);

@@ -498,6 +498,7 @@ func (h *Hub) Run() {
 				UserID:       &message.SenderID,
 				GroupID:      &message.GroupID,
 				Ciphertext:   cipherBytes,
+				MessageType:  message.MessageType,
 				MsgNonce:     nonceBytes,
 				KeyEnvelopes: keyEnvelopesJSON,
 			}

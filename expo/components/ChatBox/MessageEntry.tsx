@@ -5,12 +5,15 @@ import {
   TextInput,
   ActivityIndicator,
   Text,
+  Alert, // MODIFIED: Import Alert for permissions
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useWebSocket } from "../context/WebSocketContext";
+import * as ImagePicker from "expo-image-picker"; // MODIFIED: Import ImagePicker
+
 import { useGlobalStore } from "../context/GlobalStoreContext";
-import { Group, RawMessage } from "@/types/types";
+import { Group } from "@/types/types";
 import { useSendMessage } from "@/hooks/useSendMessage";
+import { useSendImage } from "@/hooks/useSendImage"; // MODIFIED: Import the new hook
 
 const MessageEntry = ({
   group,
@@ -21,10 +24,11 @@ const MessageEntry = ({
 }) => {
   const { user } = useGlobalStore();
   const { sendMessage, isSending, sendError } = useSendMessage();
+  const { sendImage, isSendingImage, imageSendError } = useSendImage();
 
   const [textContent, setTextContent] = useState<string>("");
 
-  const handleSubmit = async () => {
+  const handleSubmitText = async () => {
     const trimmedContent = textContent.trim();
     if (!trimmedContent || !user) {
       if (!trimmedContent && user) {
@@ -37,13 +41,59 @@ const MessageEntry = ({
       await sendMessage(trimmedContent, group.id, recipientUserIds);
       setTextContent("");
     } catch (error) {
-      console.error("MessageEntry: Error sending message:", error);
+      console.error("MessageEntry: Error sending text message:", error);
     }
   };
+
+  const handleAttachImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "You've refused to allow this app to access your photos."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const imageAsset = result.assets[0];
+      try {
+        await sendImage(imageAsset, group.id, recipientUserIds);
+      } catch (error) {
+        console.error("MessageEntry: Error sending image:", error);
+      }
+    }
+  };
+
+  const isBusy = isSending || isSendingImage;
 
   return (
     <View>
       <View className="flex-row items-center px-3 py-2">
+        <Pressable
+          onPress={handleAttachImage}
+          disabled={isBusy}
+          className="p-2 mr-2"
+        >
+          {isSendingImage ? (
+            <ActivityIndicator size="small" color="#9CA3AF" />
+          ) : (
+            <Ionicons
+              name="attach"
+              size={24}
+              color={isBusy ? "#4B5563" : "#9CA3AF"}
+            />
+          )}
+        </Pressable>
+
         <View className="flex-1 flex-row items-center bg-gray-800 rounded-full border border-gray-700 px-4">
           <TextInput
             autoCorrect
@@ -57,28 +107,27 @@ const MessageEntry = ({
             placeholderTextColor="#9CA3AF"
             blurOnSubmit={false}
             returnKeyType="send"
-            onSubmitEditing={handleSubmit}
+            onSubmitEditing={handleSubmitText}
+            editable={!isBusy}
           />
           <Pressable
-            onPress={handleSubmit}
-            disabled={!textContent.trim() || isSending}
-            className={`ml-2 p-2 rounded-full ${
-              !textContent.trim() || isSending ? "bg-blue-600" : "bg-gray-700"
-            }`}
+            onPress={handleSubmitText}
+            disabled={!textContent.trim() || isBusy}
+            className="ml-2"
           >
             {isSending ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Ionicons
                 name="send"
-                size={18}
-                color={textContent.trim() ? "#FFFFFF" : "#9CA3AF"}
+                size={24}
+                color={!textContent.trim() || isBusy ? "#4B5563" : "#FFFFFF"}
               />
             )}
           </Pressable>
         </View>
       </View>
-      {sendError && (
+      {(sendError || imageSendError) && (
         <Text
           style={{
             color: "red",
@@ -87,7 +136,7 @@ const MessageEntry = ({
             fontSize: 12,
           }}
         >
-          Error: {sendError}
+          Error: {sendError || imageSendError}
         </Text>
       )}
     </View>

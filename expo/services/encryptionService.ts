@@ -1,6 +1,12 @@
-import { RawMessage, DbMessage } from "../types/types";
+import {
+  RawMessage,
+  DbMessage,
+  MessageType,
+  ImageMessageContent,
+} from "../types/types";
 import sodium from "react-native-libsodium";
 import { Base64 } from "js-base64";
+import * as FileSystem from "expo-file-system";
 
 export const uint8ArrayToBase64 = (arr: Uint8Array): string => {
   return Base64.fromUint8Array(arr);
@@ -64,6 +70,7 @@ export const processAndDecodeIncomingMessage = (
       timestamp: timestamp,
 
       ciphertext: base64ToUint8Array(rawMessage.ciphertext),
+      message_type: rawMessage.messageType,
       msg_nonce: base64ToUint8Array(rawMessage.msgNonce),
 
       sender_ephemeral_public_key: base64ToUint8Array(envelope.ephPubKey),
@@ -92,7 +99,8 @@ export const processAndDecodeIncomingMessage = (
 export const encryptAndPrepareMessageForSending = async (
   plaintext: string,
   groupId: string,
-  recipientDevicePublicKeys: { deviceId: string; publicKey: Uint8Array }[]
+  recipientDevicePublicKeys: { deviceId: string; publicKey: Uint8Array }[],
+  messageType: MessageType
 ): Promise<RawMessage | null> => {
   try {
     await sodium.ready;
@@ -137,6 +145,7 @@ export const encryptAndPrepareMessageForSending = async (
 
     const messageToSend = {
       group_id: groupId,
+      messageType: messageType,
       msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
       ciphertext: uint8ArrayToBase64(ciphertextUint8Array),
       envelopes: envelopes,
@@ -185,4 +194,101 @@ export const decryptStoredMessage = async (
     console.error("Error during message decryption:", error);
     return null;
   }
+};
+
+// --- Image specific functions
+
+export const readImageAsBytes = async (
+  imageUri: string
+): Promise<Uint8Array> => {
+  const fileBase64 = await FileSystem.readAsStringAsync(imageUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return base64ToUint8Array(fileBase64);
+};
+
+export const encryptImageFile = async (
+  imageBytes: Uint8Array
+): Promise<{
+  encryptedBlob: Uint8Array;
+  imageKey: Uint8Array;
+  imageNonce: Uint8Array;
+} | null> => {
+  try {
+    await sodium.ready;
+    const imageKey = sodium.crypto_secretbox_keygen();
+    const imageNonce = sodium.randombytes_buf(
+      sodium.crypto_secretbox_NONCEBYTES
+    );
+    const encryptedBlob = sodium.crypto_secretbox_easy(
+      imageBytes,
+      imageNonce,
+      imageKey
+    );
+    return { encryptedBlob, imageKey, imageNonce };
+  } catch (error) {
+    console.error("Failed to encrypt image file:", error);
+    return null;
+  }
+};
+
+export const createImageMessagePayload = (
+  objectKey: string,
+  mimeType: string,
+  imageKey: Uint8Array,
+  imageNonce: Uint8Array,
+  dimensions: { width: number; height: number },
+  blurhash: string | null
+): string => {
+  const imageMessageContent: ImageMessageContent = {
+    objectKey: objectKey,
+    mimeType: mimeType,
+    decryptionKey: uint8ArrayToBase64(imageKey),
+    nonce: uint8ArrayToBase64(imageNonce),
+    width: dimensions.width,
+    height: dimensions.height,
+  };
+  if (blurhash) {
+    imageMessageContent.blurhash = blurhash;
+  }
+
+  return JSON.stringify(imageMessageContent);
+};
+
+export const decryptImageFile = async (
+  encryptedImageBytes: Uint8Array,
+  key: Uint8Array,
+  nonce: Uint8Array
+): Promise<Uint8Array | null> => {
+  try {
+    await sodium.ready;
+    const decryptedBytes = sodium.crypto_secretbox_open_easy(
+      encryptedImageBytes,
+      nonce,
+      key
+    );
+    return decryptedBytes;
+  } catch (error) {
+    console.error("Failed to decrypt image file:", error);
+    return null;
+  }
+};
+
+/**
+ * Saves a Uint8Array as a file to the local filesystem and returns the file URI.
+ * The data is saved in Base64 format, which is required by FileSystem.writeAsStringAsync.
+ * The returned URI can be directly used by React Native's Image component.
+ * @param bytes The raw image data.
+ * @param localUri The destination file path.
+ * @returns The file URI string.
+ */
+export const saveBytesToLocalFile = async (
+  bytes: Uint8Array,
+  localUri: string
+): Promise<string> => {
+  const base64Data = uint8ArrayToBase64(bytes);
+  await FileSystem.writeAsStringAsync(localUri, base64Data, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return localUri;
 };

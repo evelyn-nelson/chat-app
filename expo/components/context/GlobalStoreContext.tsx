@@ -56,7 +56,7 @@ interface GlobalStoreContextType extends State {
   refreshGroups: () => void;
   refreshUsers: () => void;
   loadRelevantDeviceKeys: () => Promise<void>;
-  getDeviceKeysForUser: (userId: string) => DeviceKey[] | undefined;
+  getDeviceKeysForUser: (userId: string) => Promise<DeviceKey[] | undefined>;
 }
 
 const initialState: State = {
@@ -176,7 +176,7 @@ export const GlobalStoreProvider = (props: { children: React.ReactNode }) => {
   }, [state.user]);
 
   const getDeviceKeysForUser = useCallback(
-    (userId: string): DeviceKey[] | undefined => {
+    async (userId: string): Promise<DeviceKey[] | undefined> => {
       return state.relevantDeviceKeys[userId];
     },
     [state.relevantDeviceKeys]

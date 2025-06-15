@@ -42,7 +42,7 @@ const UserList = (props: UserListProps) => {
         contentContainerStyle={{
           width: "100%",
         }}
-        showsVerticalScrollIndicator={Platform.OS !== "web"}
+        showsVerticalScrollIndicator
       >
         {sortedGroupUsers.map((user, index) => (
           <UserListItem
