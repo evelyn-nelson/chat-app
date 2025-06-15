@@ -36,6 +36,7 @@ import * as encryptionService from "@/services/encryptionService";
 import { DisplayableItem } from "./types";
 import ImageBubble from "./ImageBubble";
 import { v4 } from "uuid";
+import { ImageViewer } from "./ImageViewer";
 
 const SCROLL_THRESHOLD = 200;
 const HAPTIC_THRESHOLD = -40;
@@ -69,6 +70,19 @@ export default function ChatBox({ group }: { group: Group }) {
   const [hasNew, setHasNew] = useState(false);
   const [isActivelySwipping, setIsActivelySwipping] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const [isViewerVisible, setViewerVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+
+  const handleImagePress = (uri: string) => {
+    setSelectedImageUri(uri);
+    setViewerVisible(true);
+  };
+
+  const handleCloseViewer = () => {
+    setViewerVisible(false);
+    setSelectedImageUri(null);
+  };
 
   const swipeX = useSharedValue(0);
   const hapticTriggered = useSharedValue(false);
@@ -426,6 +440,7 @@ export default function ChatBox({ group }: { group: Group }) {
               timestamp={item.timestamp}
               swipeX={swipeX}
               showTimestamp={isActivelySwipping}
+              onImagePress={handleImagePress}
             />
           );
 
@@ -489,6 +504,11 @@ export default function ChatBox({ group }: { group: Group }) {
           <MessageEntry group={group} recipientUserIds={recipientUserIds} />
         </View>
       </View>
+      <ImageViewer
+        visible={isViewerVisible}
+        imageUrl={selectedImageUri}
+        onClose={handleCloseViewer}
+      />
     </KeyboardAvoidingView>
   );
 }

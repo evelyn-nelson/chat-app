@@ -1,5 +1,10 @@
 import React from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable, // Import Pressable
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -21,6 +26,7 @@ export interface ImageBubbleProps {
   timestamp: string;
   swipeX?: SharedValue<number>;
   showTimestamp?: boolean;
+  onImagePress?: (uri: string) => void;
 }
 
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
@@ -32,6 +38,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     timestamp,
     swipeX,
     showTimestamp = false,
+    onImagePress,
   }) => {
     const { localUri, isLoading, error } = useCachedImage(content);
 
@@ -72,6 +79,12 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     const timestampAnimatedStyle = useAnimatedStyle(() => ({
       opacity: timestampOpacity.value,
     }));
+
+    const handlePress = () => {
+      if (onImagePress && localUri) {
+        onImagePress(localUri);
+      }
+    };
 
     const renderImageContent = () => {
       if (isLoading) {
@@ -142,7 +155,9 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   {user.username}
                 </Text>
               )}
-              <View
+              <Pressable
+                onPress={handlePress}
+                disabled={!localUri || !!error}
                 className={`
                   rounded-2xl overflow-hidden
                   ${
@@ -158,7 +173,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                 >
                   {renderImageContent()}
                 </View>
-              </View>
+              </Pressable>
             </View>
           </Animated.View>
           {showTimestamp && (
@@ -187,7 +202,8 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
       prevProps.user.id === nextProps.user.id &&
       prevProps.content.objectKey === nextProps.content.objectKey &&
       prevProps.align === nextProps.align &&
-      prevProps.showTimestamp === nextProps.showTimestamp
+      prevProps.showTimestamp === nextProps.showTimestamp &&
+      prevProps.onImagePress === nextProps.onImagePress
     );
   }
 );
