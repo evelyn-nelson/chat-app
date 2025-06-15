@@ -244,3 +244,41 @@ export const createImageMessagePayload = (
   };
   return JSON.stringify(imageMessageContent);
 };
+
+export const decryptImageFile = async (
+  encryptedImageBytes: Uint8Array,
+  key: Uint8Array,
+  nonce: Uint8Array
+): Promise<Uint8Array | null> => {
+  try {
+    await sodium.ready;
+    const decryptedBytes = sodium.crypto_secretbox_open_easy(
+      encryptedImageBytes,
+      nonce,
+      key
+    );
+    return decryptedBytes;
+  } catch (error) {
+    console.error("Failed to decrypt image file:", error);
+    return null;
+  }
+};
+
+/**
+ * Saves a Uint8Array as a file to the local filesystem and returns the file URI.
+ * The data is saved in Base64 format, which is required by FileSystem.writeAsStringAsync.
+ * The returned URI can be directly used by React Native's Image component.
+ * @param bytes The raw image data.
+ * @param localUri The destination file path.
+ * @returns The file URI string.
+ */
+export const saveBytesToLocalFile = async (
+  bytes: Uint8Array,
+  localUri: string
+): Promise<string> => {
+  const base64Data = uint8ArrayToBase64(bytes);
+  await FileSystem.writeAsStringAsync(localUri, base64Data, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return localUri;
+};

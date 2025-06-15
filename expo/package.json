@@ -55,7 +55,8 @@
     "react-native-screens": "~4.10.0",
     "react-native-web": "^0.20.0",
     "uuid": "^10.0.0",
-    "websocket": "^1.0.35"
+    "websocket": "^1.0.35",
+    "expo-image": "~2.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

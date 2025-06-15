@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -7,8 +7,10 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
+import { Image } from "expo-image";
 import type { MessageUser, ImageMessageContent } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
+import { useCachedImage } from "../../hooks/useCachedImage";
 
 export interface ImageBubbleProps {
   prevUserId: string;
@@ -30,6 +32,8 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     swipeX,
     showTimestamp = false,
   }) => {
+    const { localUri, isLoading, error } = useCachedImage(content);
+
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);
@@ -39,6 +43,9 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
         hour12: true,
       });
     }, [timestamp]);
+
+    const aspectRatio =
+      content.width && content.height ? content.width / content.height : 16 / 9;
 
     const timestampOpacity = useDerivedValue(() => {
       if (!showTimestamp || !swipeX) return 0;
@@ -64,6 +71,33 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     const timestampAnimatedStyle = useAnimatedStyle(() => ({
       opacity: timestampOpacity.value,
     }));
+
+    const renderImageContent = () => {
+      if (isLoading) {
+        return <ActivityIndicator size="large" color="gray" />;
+      }
+      if (error) {
+        return (
+          <View className="items-center justify-center p-2">
+            <Ionicons name="alert-circle-outline" size={40} color="#f87171" />
+            <Text className="text-red-400 mt-2 text-center text-xs">
+              Could not load image
+            </Text>
+          </View>
+        );
+      }
+      if (localUri) {
+        return (
+          <Image
+            source={{ uri: localUri }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={200}
+          />
+        );
+      }
+      return <Ionicons name="image-outline" size={48} color="gray" />;
+    };
 
     return (
       <View className="mb-2 relative">
@@ -92,7 +126,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
               )}
               <View
                 className={`
-                  w-64 rounded-2xl overflow-hidden
+                  rounded-2xl overflow-hidden
                   ${
                     isOwn
                       ? "bg-blue-900/50 rounded-tr-none"
@@ -100,8 +134,11 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   }
                 `}
               >
-                <View className="bg-black/20 aspect-video items-center justify-center">
-                  <Ionicons name="image-outline" size={48} color="gray" />
+                <View
+                  className="bg-black/20 items-center justify-center"
+                  style={{ aspectRatio }}
+                >
+                  {renderImageContent()}
                 </View>
                 <View className="p-2 border-t border-black/20">
                   <Text
