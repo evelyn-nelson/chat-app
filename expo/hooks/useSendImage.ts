@@ -11,6 +11,7 @@ import {
   readImageAsBytes,
 } from "@/services/encryptionService";
 import { RecipientDevicePublicKey } from "@/types/types";
+import { generateBlurhash } from "@/services/imageService";
 
 interface UseSendImageReturn {
   sendImage: (
@@ -74,6 +75,8 @@ export const useSendImage = (): UseSendImageReturn => {
           throw new Error("No valid recipient device keys found.");
         }
 
+        const blurhash = await generateBlurhash(imageAsset.uri);
+
         const imageBytes = await readImageAsBytes(imageAsset.uri);
         const encryptionResult = await encryptImageFile(imageBytes);
         if (!encryptionResult) {
@@ -108,7 +111,8 @@ export const useSendImage = (): UseSendImageReturn => {
           imageAsset.mimeType ?? "image/jpeg",
           imageKey,
           imageNonce,
-          { width: imageAsset.width, height: imageAsset.height }
+          { width: imageAsset.width, height: imageAsset.height },
+          blurhash
         );
 
         const rawMessagePayload = await encryptAndPrepareMessageForSending(

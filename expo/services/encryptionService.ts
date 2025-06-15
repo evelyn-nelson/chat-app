@@ -1,4 +1,9 @@
-import { RawMessage, DbMessage, MessageType } from "../types/types";
+import {
+  RawMessage,
+  DbMessage,
+  MessageType,
+  ImageMessageContent,
+} from "../types/types";
 import sodium from "react-native-libsodium";
 import { Base64 } from "js-base64";
 import * as FileSystem from "expo-file-system";
@@ -232,9 +237,10 @@ export const createImageMessagePayload = (
   mimeType: string,
   imageKey: Uint8Array,
   imageNonce: Uint8Array,
-  dimensions: { width: number; height: number }
+  dimensions: { width: number; height: number },
+  blurhash: string | null
 ): string => {
-  const imageMessageContent = {
+  const imageMessageContent: ImageMessageContent = {
     objectKey: objectKey,
     mimeType: mimeType,
     decryptionKey: uint8ArrayToBase64(imageKey),
@@ -242,6 +248,10 @@ export const createImageMessagePayload = (
     width: dimensions.width,
     height: dimensions.height,
   };
+  if (blurhash) {
+    imageMessageContent.blurhash = blurhash;
+  }
+
   return JSON.stringify(imageMessageContent);
 };
 

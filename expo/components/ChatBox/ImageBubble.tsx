@@ -11,6 +11,7 @@ import { Image } from "expo-image";
 import type { MessageUser, ImageMessageContent } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useCachedImage } from "../../hooks/useCachedImage";
+import { Blurhash } from "react-native-blurhash";
 
 export interface ImageBubbleProps {
   prevUserId: string;
@@ -88,11 +89,28 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
       }
       if (localUri) {
         return (
-          <Image
-            source={{ uri: localUri }}
+          <>
+            {content.blurhash && (
+              <Blurhash
+                blurhash={content.blurhash}
+                style={{ position: "absolute", width: "100%", height: "100%" }}
+              />
+            )}
+            <Image
+              source={{ uri: localUri }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={300}
+            />
+          </>
+        );
+      }
+
+      if (isLoading && content.blurhash) {
+        return (
+          <Blurhash
+            blurhash={content.blurhash}
             style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-            transition={200}
           />
         );
       }
@@ -135,19 +153,10 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                 `}
               >
                 <View
-                  className="bg-black/20 items-center justify-center"
+                  className="w-full bg-black/20 items-center justify-center"
                   style={{ aspectRatio }}
                 >
                   {renderImageContent()}
-                </View>
-                <View className="p-2 border-t border-black/20">
-                  <Text
-                    className="text-white text-xs italic"
-                    numberOfLines={1}
-                    ellipsizeMode="middle"
-                  >
-                    {content.objectKey}
-                  </Text>
                 </View>
               </View>
             </View>

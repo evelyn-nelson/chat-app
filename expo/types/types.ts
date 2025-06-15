@@ -112,6 +112,7 @@ export type ImageMessageContent = {
   width?: number;
   height?: number;
   size?: number;
+  blurhash?: string;
 };
 
 interface BaseUiMessage {
