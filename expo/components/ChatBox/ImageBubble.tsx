@@ -1,9 +1,14 @@
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import {
   View,
   Text,
   ActivityIndicator,
-  Pressable, // Import Pressable
+  GestureResponderEvent,
+  Platform,
+  Alert,
+  TouchableWithoutFeedback,
+  StyleProp,
+  ViewStyle,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -17,6 +22,11 @@ import type { MessageUser, ImageMessageContent } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useCachedImage } from "../../hooks/useCachedImage";
 import { Blurhash } from "react-native-blurhash";
+import * as MediaLibrary from "expo-media-library";
+import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system";
+import * as Haptics from "expo-haptics";
+import { MenuComponentRef, MenuView } from "@react-native-menu/menu";
 
 export interface ImageBubbleProps {
   prevUserId: string;
@@ -27,6 +37,7 @@ export interface ImageBubbleProps {
   swipeX?: SharedValue<number>;
   showTimestamp?: boolean;
   onImagePress?: (uri: string) => void;
+  onLongPress?: (event: GestureResponderEvent) => void;
 }
 
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
@@ -41,6 +52,8 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     onImagePress,
   }) => {
     const { localUri, isLoading, error } = useCachedImage(content);
+
+    const menuRef = useRef<MenuComponentRef>(null); // Create a ref for the menu
 
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
@@ -84,6 +97,75 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
       if (onImagePress && localUri) {
         onImagePress(localUri);
       }
+    };
+
+    const menuActions = useMemo(() => {
+      const actions = [];
+
+      if (localUri) {
+        actions.push({
+          id: "copy",
+          title: "Copy Image",
+          image: Platform.select({
+            ios: "doc.on.doc",
+            android: "ic_menu_content_copy",
+          }),
+        });
+        actions.push({
+          id: "save",
+          title: "Save Image",
+          image: Platform.select({
+            ios: "arrow.down.circle",
+            android: "ic_menu_save",
+          }),
+        });
+      }
+
+      return actions;
+    }, [localUri]);
+
+    const handleMenuAction = async ({
+      nativeEvent,
+    }: {
+      nativeEvent: { event: string };
+    }) => {
+      if (!localUri) return;
+      switch (nativeEvent.event) {
+        case "copy":
+          try {
+            const base64 = await FileSystem.readAsStringAsync(localUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            await Clipboard.setImageAsync(base64);
+          } catch (e) {
+            Alert.alert("Error", "Could not copy image.");
+            console.error("Failed to copy image:", e);
+          }
+          break;
+
+        case "save":
+          try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== "granted") {
+              Alert.alert(
+                "Permission Required",
+                "We need permission to save photos."
+              );
+              return;
+            }
+            await MediaLibrary.saveToLibraryAsync(localUri);
+            Alert.alert("Saved", "Image saved to your photo library.");
+          } catch (e) {
+            Alert.alert("Error", "Could not save image.");
+            console.error("Failed to save image:", e);
+          }
+          break;
+      }
+    };
+    const bubbleStyle: StyleProp<ViewStyle> = {
+      overflow: "hidden",
+      borderRadius: 16,
+      ...(isOwn ? { borderTopRightRadius: 0 } : { borderTopLeftRadius: 0 }),
     };
 
     const renderImageContent = () => {
@@ -155,25 +237,24 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   {user.username}
                 </Text>
               )}
-              <Pressable
+              <TouchableWithoutFeedback
                 onPress={handlePress}
                 disabled={!localUri || !!error}
-                className={`
-                  rounded-2xl overflow-hidden
-                  ${
-                    isOwn
-                      ? "bg-blue-900/50 rounded-tr-none"
-                      : "bg-gray-800/50 rounded-tl-none"
-                  }
-                `}
               >
-                <View
-                  className="w-full bg-black/20 items-center justify-center"
-                  style={{ aspectRatio }}
+                <MenuView
+                  onPressAction={handleMenuAction}
+                  actions={menuActions}
+                  shouldOpenOnLongPress={true}
+                  style={bubbleStyle}
                 >
-                  {renderImageContent()}
-                </View>
-              </Pressable>
+                  <View
+                    className="w-full bg-black/20 items-center justify-center"
+                    style={{ aspectRatio }}
+                  >
+                    {renderImageContent()}
+                  </View>
+                </MenuView>
+              </TouchableWithoutFeedback>
             </View>
           </Animated.View>
           {showTimestamp && (

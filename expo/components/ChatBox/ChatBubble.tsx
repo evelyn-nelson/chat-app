@@ -1,5 +1,13 @@
 import React from "react";
-import { View, Text } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  GestureResponderEvent,
+  Alert,
+  Platform,
+} from "react-native";
+import { MenuView } from "@react-native-menu/menu";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -8,6 +16,7 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import type { MessageUser } from "@/types/types";
+import * as Clipboard from "expo-clipboard";
 
 export interface ChatBubbleProps {
   prevUserId: string;
@@ -83,25 +92,43 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
     return (
       <View className="mb-2 relative">
         <View className="flex-row items-end relative">
-          <Animated.View
-            style={[messageAnimatedStyle, { width: "100%" }]}
-            className={`
+          <MenuView
+            onPressAction={async ({ nativeEvent }) => {
+              if (nativeEvent.event === "copy") {
+                await Clipboard.setStringAsync(message);
+              }
+            }}
+            actions={[
+              {
+                id: "copy",
+                title: "Copy Message",
+                image: Platform.select({
+                  ios: "doc.on.doc",
+                  android: "ic_menu_copy",
+                }),
+              },
+            ]}
+            shouldOpenOnLongPress
+          >
+            <Animated.View
+              style={[messageAnimatedStyle, { width: "100%" }]}
+              className={`
               flex-row
               ${isOwn ? "justify-end pr-4" : "justify-start pl-4"}
             `}
-          >
-            <View
-              className={`
+            >
+              <View
+                className={`
                 flex-col
                 ${isOwn ? "items-end" : "items-start"}
                 max-w-[80%]
                 web:max-w-[60vw]
                 md:web:max-w-[50vw]
               `}
-            >
-              {prevUserId !== user.id && (
-                <Text
-                  className={`
+              >
+                {prevUserId !== user.id && (
+                  <Text
+                    className={`
                     text-xs
                     mb-1
                     ${
@@ -110,13 +137,13 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                         : "text-gray-400 text-left"
                     }
                   `}
-                >
-                  {user.username}
-                </Text>
-              )}
+                  >
+                    {user.username}
+                  </Text>
+                )}
 
-              <View
-                className={`
+                <View
+                  className={`
                   px-4
                   py-2
                   rounded-2xl
@@ -126,19 +153,19 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                       : "bg-gray-700 rounded-tl-none"
                   }
                 `}
-              >
-                <Text
-                  selectable
-                  className={`text-base ${
-                    isOwn ? "text-white" : "text-gray-200"
-                  }`}
                 >
-                  {message}
-                </Text>
+                  <Text
+                    selectable
+                    className={`text-base ${
+                      isOwn ? "text-white" : "text-gray-200"
+                    }`}
+                  >
+                    {message}
+                  </Text>
+                </View>
               </View>
-            </View>
-          </Animated.View>
-
+            </Animated.View>
+          </MenuView>
           {showTimestamp && (
             <Animated.View
               style={[
