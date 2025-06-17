@@ -3,12 +3,11 @@ import {
   View,
   Text,
   ActivityIndicator,
-  Platform,
-  Alert,
+  Pressable,
+  GestureResponderEvent,
   StyleProp,
   ViewStyle,
-  TouchableWithoutFeedback,
-  Pressable,
+  Alert,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -27,7 +26,16 @@ import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system";
 import ContextMenu from "react-native-context-menu-view";
 
+// --- TIMING & MOVEMENT CONSTANTS ---
+// You can tweak these values to fit your app's feel.
+
+// Max duration in milliseconds for a press to be considered a "tap".
+const MAX_TAP_DURATION = 250;
+// Max distance in pixels a finger can move for a press to be a "tap".
+const MAX_TAP_DISTANCE = 10;
+
 export interface ImageBubbleProps {
+  // ... props are unchanged
   prevUserId: string;
   user: MessageUser;
   content: ImageMessageContent;
@@ -38,10 +46,9 @@ export interface ImageBubbleProps {
   onImagePress?: (uri: string) => void;
 }
 
-const MAX_TAP_DURATION = 250;
-
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
   ({
+    // ... props
     prevUserId,
     user,
     content,
@@ -52,8 +59,14 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     onImagePress,
   }) => {
     const { localUri, isLoading, error } = useCachedImage(content);
-    const pressInTime = useRef<number>(0);
 
+    // Refs to store the state of the gesture
+    const gestureState = useRef({
+      pressInTime: 0,
+      pressInPosition: { x: 0, y: 0 },
+    });
+
+    // ... other logic and animated styles are unchanged ...
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);
@@ -66,18 +79,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
 
     const aspectRatio =
       content.width && content.height ? content.width / content.height : 16 / 9;
-
-    const handlePressIn = () => {
-      pressInTime.current = Date.now();
-    };
-    const handlePressOut = () => {
-      const pressDuration = Date.now() - pressInTime.current;
-      if (pressDuration < MAX_TAP_DURATION) {
-        if (onImagePress && localUri && !error) {
-          onImagePress(localUri);
-        }
-      }
-    };
 
     const timestampOpacity = useDerivedValue(() => {
       if (!showTimestamp || !swipeX) return 0;
@@ -103,12 +104,40 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     const timestampAnimatedStyle = useAnimatedStyle(() => ({
       opacity: timestampOpacity.value,
     }));
-    // --- END of animated styles ---
 
-    // Handler for the SHORT TAP action
-    const handleShortTap = () => {
-      if (onImagePress && localUri && !error) {
-        onImagePress(localUri);
+    const handlePressIn = (event: GestureResponderEvent) => {
+      gestureState.current.pressInTime = Date.now();
+      gestureState.current.pressInPosition = {
+        x: event.nativeEvent.pageX,
+        y: event.nativeEvent.pageY,
+      };
+    };
+
+    const handlePressOut = (event: GestureResponderEvent) => {
+      const pressDuration = Date.now() - gestureState.current.pressInTime;
+
+      const pressOutPosition = {
+        x: event.nativeEvent.pageX,
+        y: event.nativeEvent.pageY,
+      };
+
+      const distanceMoved = Math.sqrt(
+        Math.pow(
+          pressOutPosition.x - gestureState.current.pressInPosition.x,
+          2
+        ) +
+          Math.pow(
+            pressOutPosition.y - gestureState.current.pressInPosition.y,
+            2
+          )
+      );
+      if (
+        pressDuration < MAX_TAP_DURATION &&
+        distanceMoved < MAX_TAP_DISTANCE
+      ) {
+        if (onImagePress && localUri && !error) {
+          onImagePress(localUri);
+        }
       }
     };
 
@@ -121,7 +150,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
       return actions;
     }, [localUri]);
 
-    // Handler for selecting an item from the LONG PRESS menu
     const handleContextMenuAction = async (e: {
       nativeEvent: { index: number };
     }) => {
@@ -165,7 +193,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     };
 
     const renderImageContent = () => {
-      // This function remains unchanged
       if (isLoading) {
         return <ActivityIndicator size="large" color="gray" />;
       }
@@ -273,16 +300,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
           )}
         </View>
       </View>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.prevUserId === nextProps.prevUserId &&
-      prevProps.user.id === nextProps.user.id &&
-      prevProps.content.objectKey === nextProps.content.objectKey &&
-      prevProps.align === nextProps.align &&
-      prevProps.showTimestamp === nextProps.showTimestamp &&
-      prevProps.onImagePress === nextProps.onImagePress
     );
   }
 );
