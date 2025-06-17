@@ -266,6 +266,11 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                 style={bubbleStyle}
                 previewBackgroundColor="transparent"
                 disabled={!localUri || !!error}
+                borderRadius={16}
+                borderTopRightRadius={isOwn ? 0 : 16}
+                borderTopLeftRadius={isOwn ? 16 : 0}
+                borderBottomLeftRadius={16}
+                borderBottomRightRadius={16}
               >
                 <Pressable
                   onPressIn={handlePressIn}
@@ -274,7 +279,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                 >
                   <View
                     className="w-full bg-black/20 items-center justify-center"
-                    style={{ aspectRatio }}
+                    style={[bubbleStyle, { aspectRatio }]}
                   >
                     {renderImageContent()}
                   </View>
