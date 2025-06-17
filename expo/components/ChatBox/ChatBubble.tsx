@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text } from "react-native";
+import React, { useState } from "react";
+import { View, Text, Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -8,9 +8,9 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import type { MessageUser } from "@/types/types";
-// --- Add these imports ---
 import ContextMenu from "react-native-context-menu-view";
 import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 
 export interface ChatBubbleProps {
   prevUserId: string;
@@ -33,6 +33,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
     showTimestamp = false,
   }) => {
     const isOwn = align === "right";
+    const [isPressed, setIsPressed] = useState(false);
 
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);
@@ -115,38 +116,57 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                   {user.username}
                 </Text>
               )}
+
               <ContextMenu
                 onPress={(e) => {
                   if (e.nativeEvent.index === 0) {
                     Clipboard.setStringAsync(message);
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Success
+                    );
                   }
                 }}
                 actions={[{ title: "Copy Message", systemIcon: "doc.on.doc" }]}
-                disabled={true}
-                previewBackgroundColor={"transparent"}
+                previewBackgroundColor="transparent"
+                preview={null}
               >
-                <View
-                  className={`
-                    px-4
-                    py-2
-                    rounded-2xl
-                    ${
-                      isOwn
-                        ? "bg-blue-600 rounded-tr-none"
-                        : "bg-gray-700 rounded-tl-none"
-                    }
-                  `}
+                <Pressable
+                  onPressIn={() => setIsPressed(true)}
+                  onPressOut={() => setIsPressed(false)}
+                  onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={400}
                 >
-                  <Text
-                    selectable
-                    className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
+                  <View
+                    className={`
+                      px-4
+                      py-2
+                      rounded-2xl
+                      ${
+                        isOwn
+                          ? "bg-blue-600 rounded-tr-none"
+                          : "bg-gray-700 rounded-tl-none"
+                      }
+                    `}
+                    style={{
+                      opacity: isPressed ? 0.7 : 1,
+                    }}
                   >
-                    {message}
-                  </Text>
-                </View>
+                    <Text
+                      selectable
+                      className={`text-base ${
+                        isOwn ? "text-white" : "text-gray-200"
+                      }`}
+                    >
+                      {message}
+                    </Text>
+                  </View>
+                </Pressable>
               </ContextMenu>
             </View>
           </Animated.View>
+
           {showTimestamp && (
             <Animated.View
               style={[
