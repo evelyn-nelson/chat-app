@@ -81,28 +81,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
       };
     });
 
-    const bubbleComponent = (
-      <View
-        className={`
-          px-4
-          py-2
-          rounded-2xl
-          ${
-            isOwn
-              ? "bg-blue-600 rounded-tr-none"
-              : "bg-gray-700 rounded-tl-none"
-          }
-        `}
-      >
-        <Text
-          selectable
-          className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
-        >
-          {message}
-        </Text>
-      </View>
-    );
-
     return (
       <View className="mb-2 relative">
         <View className="flex-row items-end relative">
@@ -143,11 +121,29 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                     Clipboard.setStringAsync(message);
                   }
                 }}
-                actions={[{ title: "Copy", systemIcon: "doc.on.doc" }]}
-                preview={bubbleComponent}
-                previewBackgroundColor="transparent"
+                actions={[{ title: "Copy Message", systemIcon: "doc.on.doc" }]}
+                disabled={true}
+                previewBackgroundColor={"transparent"}
               >
-                {bubbleComponent}
+                <View
+                  className={`
+                    px-4
+                    py-2
+                    rounded-2xl
+                    ${
+                      isOwn
+                        ? "bg-blue-600 rounded-tr-none"
+                        : "bg-gray-700 rounded-tl-none"
+                    }
+                  `}
+                >
+                  <Text
+                    selectable
+                    className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
+                  >
+                    {message}
+                  </Text>
+                </View>
               </ContextMenu>
             </View>
           </Animated.View>
