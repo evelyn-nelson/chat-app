@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   Alert,
   StyleProp,
   ViewStyle,
-  TouchableWithoutFeedback, // Re-import TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  Pressable,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -37,6 +38,8 @@ export interface ImageBubbleProps {
   onImagePress?: (uri: string) => void;
 }
 
+const MAX_TAP_DURATION = 250;
+
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
   ({
     prevUserId,
@@ -49,6 +52,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     onImagePress,
   }) => {
     const { localUri, isLoading, error } = useCachedImage(content);
+    const pressInTime = useRef<number>(0);
 
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
@@ -62,6 +66,18 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
 
     const aspectRatio =
       content.width && content.height ? content.width / content.height : 16 / 9;
+
+    const handlePressIn = () => {
+      pressInTime.current = Date.now();
+    };
+    const handlePressOut = () => {
+      const pressDuration = Date.now() - pressInTime.current;
+      if (pressDuration < MAX_TAP_DURATION) {
+        if (onImagePress && localUri && !error) {
+          onImagePress(localUri);
+        }
+      }
+    };
 
     const timestampOpacity = useDerivedValue(() => {
       if (!showTimestamp || !swipeX) return 0;
@@ -87,9 +103,11 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     const timestampAnimatedStyle = useAnimatedStyle(() => ({
       opacity: timestampOpacity.value,
     }));
+    // --- END of animated styles ---
 
-    const handlePress = () => {
-      if (onImagePress && localUri) {
+    // Handler for the SHORT TAP action
+    const handleShortTap = () => {
+      if (onImagePress && localUri && !error) {
         onImagePress(localUri);
       }
     };
@@ -103,7 +121,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
       return actions;
     }, [localUri]);
 
-    // --- The correct prop is `onPress` ---
+    // Handler for selecting an item from the LONG PRESS menu
     const handleContextMenuAction = async (e: {
       nativeEvent: { index: number };
     }) => {
@@ -215,15 +233,17 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   {user.username}
                 </Text>
               )}
-              <TouchableWithoutFeedback
-                onPress={handlePress}
+              <ContextMenu
+                onPress={handleContextMenuAction}
+                actions={menuActions}
+                style={bubbleStyle}
+                previewBackgroundColor="transparent"
                 disabled={!localUri || !!error}
               >
-                <ContextMenu
-                  onPress={handleContextMenuAction}
-                  actions={menuActions}
-                  style={bubbleStyle}
-                  previewBackgroundColor="transparent"
+                <Pressable
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  disabled={!localUri || !!error}
                 >
                   <View
                     className="w-full bg-black/20 items-center justify-center"
@@ -231,8 +251,8 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   >
                     {renderImageContent()}
                   </View>
-                </ContextMenu>
-              </TouchableWithoutFeedback>
+                </Pressable>
+              </ContextMenu>
             </View>
           </Animated.View>
           {showTimestamp && (
