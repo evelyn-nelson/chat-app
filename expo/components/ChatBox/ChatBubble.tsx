@@ -33,7 +33,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
     showTimestamp = false,
   }) => {
     const isOwn = align === "right";
-    const [isPressed, setIsPressed] = useState(false);
 
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);
@@ -131,8 +130,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                 preview={null}
               >
                 <Pressable
-                  onPressIn={() => setIsPressed(true)}
-                  onPressOut={() => setIsPressed(false)}
                   onLongPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }}
@@ -149,9 +146,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                           : "bg-gray-700 rounded-tl-none"
                       }
                     `}
-                    style={{
-                      opacity: isPressed ? 0.7 : 1,
-                    }}
                   >
                     <Text
                       selectable
