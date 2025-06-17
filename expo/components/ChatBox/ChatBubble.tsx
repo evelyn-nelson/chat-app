@@ -1,13 +1,6 @@
 import React from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  GestureResponderEvent,
-  Alert,
-  Platform,
-} from "react-native";
-import { MenuView } from "@react-native-menu/menu";
+import { View, Text, Platform } from "react-native";
+import ContextMenu from "react-native-context-menu-view";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -65,94 +58,82 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
       if (!swipeX) return {};
 
       if (isOwn) {
-        // Own messages move with the full swipe distance
-        return {
-          transform: [{ translateX: swipeX.value }],
-        };
+        return { transform: [{ translateX: swipeX.value }] };
       } else {
-        // Other users' messages move left slightly (about 25% of the swipe)
         const otherUserOffset = interpolate(
           swipeX.value,
           [-80, 0],
           [-20, 0],
           Extrapolation.CLAMP
         );
-        return {
-          transform: [{ translateX: otherUserOffset }],
-        };
+        return { transform: [{ translateX: otherUserOffset }] };
       }
     });
 
     const timestampAnimatedStyle = useAnimatedStyle(() => {
-      return {
-        opacity: timestampOpacity.value,
-      };
+      return { opacity: timestampOpacity.value };
     });
 
     return (
       <View className="mb-2 relative">
         <View className="flex-row items-end relative">
-          <MenuView
-            onPressAction={async ({ nativeEvent }) => {
-              if (nativeEvent.event === "copy") {
-                await Clipboard.setStringAsync(message);
-              }
-            }}
-            actions={[
-              {
-                id: "copy",
-                title: "Copy Message",
-                image: Platform.select({
-                  ios: "doc.on.doc",
-                  android: "ic_menu_copy",
-                }),
-              },
-            ]}
-            shouldOpenOnLongPress
-          >
-            <Animated.View
-              style={[messageAnimatedStyle, { width: "100%" }]}
-              className={`
+          <Animated.View
+            style={[messageAnimatedStyle, { width: "100%" }]}
+            className={`
               flex-row
               ${isOwn ? "justify-end pr-4" : "justify-start pl-4"}
             `}
+          >
+            <ContextMenu
+              onPress={(e) => {
+                if (e.nativeEvent.index === 0) {
+                  // First action is "Copy"
+                  Clipboard.setStringAsync(message);
+                }
+              }}
+              actions={[
+                {
+                  title: "Copy Message",
+                  systemIcon: "doc.on.doc",
+                },
+              ]}
+              previewBackgroundColor="transparent"
             >
               <View
                 className={`
-                flex-col
-                ${isOwn ? "items-end" : "items-start"}
-                max-w-[80%]
-                web:max-w-[60vw]
-                md:web:max-w-[50vw]
-              `}
+                  flex-col
+                  ${isOwn ? "items-end" : "items-start"}
+                  max-w-[80%]
+                  web:max-w-[60vw]
+                  md:web:max-w-[50vw]
+                `}
               >
                 {prevUserId !== user.id && (
                   <Text
                     className={`
-                    text-xs
-                    mb-1
-                    ${
-                      isOwn
-                        ? "text-blue-200 text-right"
-                        : "text-gray-400 text-left"
-                    }
-                  `}
+                      text-xs
+                      mb-1
+                      ${
+                        isOwn
+                          ? "text-blue-200 text-right"
+                          : "text-gray-400 text-left"
+                      }
+                    `}
                   >
                     {user.username}
                   </Text>
                 )}
-
                 <View
                   className={`
-                  px-4
-                  py-2
-                  rounded-2xl
-                  ${
-                    isOwn
-                      ? "bg-blue-600 rounded-tr-none"
-                      : "bg-gray-700 rounded-tl-none"
-                  }
-                `}
+                    px-4
+                    py-2
+                    rounded-2xl
+                    ${
+                      isOwn
+                        ? "bg-blue-600 rounded-tr-none"
+                        : "bg-gray-700 rounded-tl-none"
+                    }
+                  `}
                 >
                   <Text
                     selectable
@@ -164,8 +145,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                   </Text>
                 </View>
               </View>
-            </Animated.View>
-          </MenuView>
+            </ContextMenu>
+          </Animated.View>
           {showTimestamp && (
             <Animated.View
               style={[

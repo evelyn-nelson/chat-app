@@ -1,14 +1,13 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
   ActivityIndicator,
-  GestureResponderEvent,
   Platform,
   Alert,
-  TouchableWithoutFeedback,
   StyleProp,
   ViewStyle,
+  TouchableWithoutFeedback, // Re-import TouchableWithoutFeedback
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -25,8 +24,7 @@ import { Blurhash } from "react-native-blurhash";
 import * as MediaLibrary from "expo-media-library";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system";
-import * as Haptics from "expo-haptics";
-import { MenuComponentRef, MenuView } from "@react-native-menu/menu";
+import ContextMenu from "react-native-context-menu-view";
 
 export interface ImageBubbleProps {
   prevUserId: string;
@@ -37,7 +35,6 @@ export interface ImageBubbleProps {
   swipeX?: SharedValue<number>;
   showTimestamp?: boolean;
   onImagePress?: (uri: string) => void;
-  onLongPress?: (event: GestureResponderEvent) => void;
 }
 
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
@@ -52,8 +49,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     onImagePress,
   }) => {
     const { localUri, isLoading, error } = useCachedImage(content);
-
-    const menuRef = useRef<MenuComponentRef>(null); // Create a ref for the menu
 
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
@@ -101,49 +96,31 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
 
     const menuActions = useMemo(() => {
       const actions = [];
-
       if (localUri) {
-        actions.push({
-          id: "copy",
-          title: "Copy Image",
-          image: Platform.select({
-            ios: "doc.on.doc",
-            android: "ic_menu_content_copy",
-          }),
-        });
-        actions.push({
-          id: "save",
-          title: "Save Image",
-          image: Platform.select({
-            ios: "arrow.down.circle",
-            android: "ic_menu_save",
-          }),
-        });
+        actions.push({ title: "Copy Image", systemIcon: "doc.on.doc" });
+        actions.push({ title: "Save Image", systemIcon: "arrow.down.circle" });
       }
-
       return actions;
     }, [localUri]);
 
-    const handleMenuAction = async ({
-      nativeEvent,
-    }: {
-      nativeEvent: { event: string };
+    // --- The correct prop is `onPress` ---
+    const handleContextMenuAction = async (e: {
+      nativeEvent: { index: number };
     }) => {
       if (!localUri) return;
-      switch (nativeEvent.event) {
-        case "copy":
+      switch (e.nativeEvent.index) {
+        case 0: // "Copy Image"
           try {
             const base64 = await FileSystem.readAsStringAsync(localUri, {
               encoding: FileSystem.EncodingType.Base64,
             });
             await Clipboard.setImageAsync(base64);
-          } catch (e) {
+          } catch (err) {
             Alert.alert("Error", "Could not copy image.");
-            console.error("Failed to copy image:", e);
+            console.error("Failed to copy image:", err);
           }
           break;
-
-        case "save":
+        case 1: // "Save Image"
           try {
             const { status } = await MediaLibrary.requestPermissionsAsync();
             if (status !== "granted") {
@@ -155,13 +132,14 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
             }
             await MediaLibrary.saveToLibraryAsync(localUri);
             Alert.alert("Saved", "Image saved to your photo library.");
-          } catch (e) {
+          } catch (err) {
             Alert.alert("Error", "Could not save image.");
-            console.error("Failed to save image:", e);
+            console.error("Failed to save image:", err);
           }
           break;
       }
     };
+
     const bubbleStyle: StyleProp<ViewStyle> = {
       overflow: "hidden",
       borderRadius: 16,
@@ -169,6 +147,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     };
 
     const renderImageContent = () => {
+      // This function remains unchanged
       if (isLoading) {
         return <ActivityIndicator size="large" color="gray" />;
       }
@@ -200,7 +179,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
           </>
         );
       }
-
       if (isLoading && content.blurhash) {
         return (
           <Blurhash
@@ -241,11 +219,11 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                 onPress={handlePress}
                 disabled={!localUri || !!error}
               >
-                <MenuView
-                  onPressAction={handleMenuAction}
+                <ContextMenu
+                  onPress={handleContextMenuAction}
                   actions={menuActions}
-                  shouldOpenOnLongPress={true}
                   style={bubbleStyle}
+                  previewBackgroundColor="transparent"
                 >
                   <View
                     className="w-full bg-black/20 items-center justify-center"
@@ -253,7 +231,7 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   >
                     {renderImageContent()}
                   </View>
-                </MenuView>
+                </ContextMenu>
               </TouchableWithoutFeedback>
             </View>
           </Animated.View>
