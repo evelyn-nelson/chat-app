@@ -1,6 +1,5 @@
 import React from "react";
-import { View, Text, Platform } from "react-native";
-import ContextMenu from "react-native-context-menu-view";
+import { View, Text } from "react-native";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -9,6 +8,8 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import type { MessageUser } from "@/types/types";
+// --- Add these imports ---
+import ContextMenu from "react-native-context-menu-view";
 import * as Clipboard from "expo-clipboard";
 
 export interface ChatBubbleProps {
@@ -58,7 +59,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
       if (!swipeX) return {};
 
       if (isOwn) {
-        return { transform: [{ translateX: swipeX.value }] };
+        return {
+          transform: [{ translateX: swipeX.value }],
+        };
       } else {
         const otherUserOffset = interpolate(
           swipeX.value,
@@ -66,13 +69,39 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
           [-20, 0],
           Extrapolation.CLAMP
         );
-        return { transform: [{ translateX: otherUserOffset }] };
+        return {
+          transform: [{ translateX: otherUserOffset }],
+        };
       }
     });
 
     const timestampAnimatedStyle = useAnimatedStyle(() => {
-      return { opacity: timestampOpacity.value };
+      return {
+        opacity: timestampOpacity.value,
+      };
     });
+
+    const bubbleComponent = (
+      <View
+        className={`
+          px-4
+          py-2
+          rounded-2xl
+          ${
+            isOwn
+              ? "bg-blue-600 rounded-tr-none"
+              : "bg-gray-700 rounded-tl-none"
+          }
+        `}
+      >
+        <Text
+          selectable
+          className={`text-base ${isOwn ? "text-white" : "text-gray-200"}`}
+        >
+          {message}
+        </Text>
+      </View>
+    );
 
     return (
       <View className="mb-2 relative">
@@ -84,68 +113,43 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
               ${isOwn ? "justify-end pr-4" : "justify-start pl-4"}
             `}
           >
-            <ContextMenu
-              onPress={(e) => {
-                if (e.nativeEvent.index === 0) {
-                  // First action is "Copy"
-                  Clipboard.setStringAsync(message);
-                }
-              }}
-              actions={[
-                {
-                  title: "Copy Message",
-                  systemIcon: "doc.on.doc",
-                },
-              ]}
-              previewBackgroundColor="transparent"
+            <View
+              className={`
+                flex-col
+                ${isOwn ? "items-end" : "items-start"}
+                max-w-[80%]
+                web:max-w-[60vw]
+                md:web:max-w-[50vw]
+              `}
             >
-              <View
-                className={`
-                  flex-col
-                  ${isOwn ? "items-end" : "items-start"}
-                  max-w-[80%]
-                  web:max-w-[60vw]
-                  md:web:max-w-[50vw]
-                `}
-              >
-                {prevUserId !== user.id && (
-                  <Text
-                    className={`
-                      text-xs
-                      mb-1
-                      ${
-                        isOwn
-                          ? "text-blue-200 text-right"
-                          : "text-gray-400 text-left"
-                      }
-                    `}
-                  >
-                    {user.username}
-                  </Text>
-                )}
-                <View
+              {prevUserId !== user.id && (
+                <Text
                   className={`
-                    px-4
-                    py-2
-                    rounded-2xl
+                    text-xs
+                    mb-1
                     ${
                       isOwn
-                        ? "bg-blue-600 rounded-tr-none"
-                        : "bg-gray-700 rounded-tl-none"
+                        ? "text-blue-200 text-right"
+                        : "text-gray-400 text-left"
                     }
                   `}
                 >
-                  <Text
-                    selectable
-                    className={`text-base ${
-                      isOwn ? "text-white" : "text-gray-200"
-                    }`}
-                  >
-                    {message}
-                  </Text>
-                </View>
-              </View>
-            </ContextMenu>
+                  {user.username}
+                </Text>
+              )}
+              <ContextMenu
+                onPress={(e) => {
+                  if (e.nativeEvent.index === 0) {
+                    Clipboard.setStringAsync(message);
+                  }
+                }}
+                actions={[{ title: "Copy", systemIcon: "doc.on.doc" }]}
+                preview={bubbleComponent}
+                previewBackgroundColor="transparent"
+              >
+                {bubbleComponent}
+              </ContextMenu>
+            </View>
           </Animated.View>
           {showTimestamp && (
             <Animated.View
