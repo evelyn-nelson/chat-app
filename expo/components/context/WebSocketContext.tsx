@@ -73,7 +73,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       endTime: Date,
       description?: string | null,
       location?: string | null,
-      imageUrl?: string | null
+      imageUrl?: string | null,
+      blurhash?: string | null
     ): Promise<Group | undefined> => {
       const httpURL = `${httpBaseURL}/create-group`;
       const payload: CreateGroupParams = {
@@ -83,6 +84,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         ...(description !== undefined && { description }),
         ...(location !== undefined && { location }),
         ...(imageUrl !== undefined && { image_url: imageUrl }),
+        ...(blurhash !== undefined && { blurhash }),
       };
       return http
         .post(httpURL, payload)
@@ -366,9 +368,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [setConnected]);
 
   const leaveGroup = useCallback(async (group_id: string) => {
-    return http.post(`${httpBaseURL}/leave-group/${group_id}`).catch((error) => {
-      console.error("Error leaving group:", error);
-    });
+    return http
+      .post(`${httpBaseURL}/leave-group/${group_id}`)
+      .catch((error) => {
+        console.error("Error leaving group:", error);
+      });
   }, []);
 
   const disconnect = useCallback(() => {

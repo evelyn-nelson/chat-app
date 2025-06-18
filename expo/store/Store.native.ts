@@ -19,7 +19,7 @@ export class Store implements IStore {
       throw new Error("Database not available for initialization.");
     }
 
-    const TARGET_DATABASE_VERSION = 6;
+    const TARGET_DATABASE_VERSION = 7;
 
     let { user_version: currentDbVersion } = (await this.db.getFirstAsync<{
       user_version: number;
@@ -196,6 +196,23 @@ export class Store implements IStore {
       }
     }
 
+    if (currentDbVersion === 6) {
+      console.log("Migrating to version 7 (Group avatar blurhash)...");
+      await this.db.execAsync("BEGIN TRANSACTION;");
+      try {
+        await this.db.execAsync(`
+          ALTER TABLE groups ADD COLUMN blurhash TEXT;
+        `);
+        await this.db.execAsync("COMMIT;");
+        await this.db.execAsync(`PRAGMA user_version = 7`);
+        currentDbVersion = 7;
+        console.log("Successfully migrated to version 7.");
+      } catch (error) {
+        await this.db.execAsync("ROLLBACK;");
+        console.error("Error migrating database to version 7:", error);
+      }
+    }
+
     if (currentDbVersion === TARGET_DATABASE_VERSION) {
       console.log("Database is up to date.");
     } else if (currentDbVersion < TARGET_DATABASE_VERSION) {
@@ -342,13 +359,14 @@ export class Store implements IStore {
 
       for (const group of groupsToSave) {
         await db.runAsync(
-          `INSERT INTO groups (id, name, admin, group_users, created_at, updated_at, start_time, end_time, description, location, image_url)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO groups (id, name, admin, group_users, created_at, updated_at, start_time, end_time, description, location, image_url, blurhash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, admin = excluded.admin, group_users = excluded.group_users,
              created_at = excluded.created_at, updated_at = excluded.updated_at,
              start_time = excluded.start_time, end_time = excluded.end_time,
-             description = excluded.description, location = excluded.location, image_url = excluded.image_url
+             description = excluded.description, location = excluded.location, image_url = excluded.image_url,
+             blurhash = excluded.blurhash
              ;
              
              `,
@@ -364,6 +382,7 @@ export class Store implements IStore {
             group.description ?? null,
             group.location ?? null,
             group.image_url ?? null,
+            group.blurhash ?? null,
           ]
         );
       }
@@ -465,6 +484,7 @@ export class Store implements IStore {
           description: row.description,
           location: row.location,
           image_url: row.image_url,
+          blurhash: row.blurhash,
         };
       }) ?? []
     );

@@ -76,6 +76,7 @@ type Group struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 }
 
 type Message struct {

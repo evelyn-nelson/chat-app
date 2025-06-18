@@ -63,6 +63,7 @@ export interface GroupRow {
   description: string | null;
   location: string | null;
   image_url: string | null;
+  blurhash: string | null;
 }
 
 export interface UserRow {

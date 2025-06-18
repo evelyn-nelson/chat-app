@@ -39,6 +39,7 @@ type CreateGroupRequest struct {
 	Description *string   `json:"description,omitempty"`
 	Location    *string   `json:"location,omitempty"`
 	ImageUrl    *string   `json:"image_url,omitempty"`
+	Blurhash    *string   `json:"blurhash,omitempty"`
 }
 
 type UpdateGroupRequest struct {
@@ -48,6 +49,7 @@ type UpdateGroupRequest struct {
 	Description *string    `json:"description,omitempty"`
 	Location    *string    `json:"location,omitempty"`
 	ImageUrl    *string    `json:"image_url,omitempty"`
+	Blurhash    *string    `json:"blurhash,omitempty"`
 }
 
 type ClientGroup struct {
@@ -56,6 +58,7 @@ type ClientGroup struct {
 	Description *string           `json:"description,omitempty"`
 	Location    *string           `json:"location,omitempty"`
 	ImageUrl    *string           `json:"image_url,omitempty"`
+	Blurhash    *string           `json:"blurhash,omitempty"`
 	StartTime   *time.Time        `json:"start_time,omitempty"`
 	EndTime     *time.Time        `json:"end_time,omitempty"`
 	CreatedAt   time.Time         `json:"created_at"`

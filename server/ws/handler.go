@@ -383,6 +383,7 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		Description: util.NullablePgText(req.Description),
 		Location:    util.NullablePgText(req.Location),
 		ImageUrl:    util.NullablePgText(req.ImageUrl),
+		Blurhash:    util.NullablePgText(req.Blurhash),
 	}
 	group, err := qtx.InsertGroup(ctx, groupParams)
 	if err != nil {
@@ -493,6 +494,7 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	updateParams.Description = util.NullablePgText(req.Description)
 	updateParams.Location = util.NullablePgText(req.Location)
 	updateParams.ImageUrl = util.NullablePgText(req.ImageUrl)
+	updateParams.Blurhash = util.NullablePgText(req.Blurhash)
 
 	_, err = h.db.UpdateGroup(ctx, updateParams)
 	if err != nil {
@@ -584,6 +586,9 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	}
 	if fullGroupData.ImageUrl.Valid {
 		responseClientGroup.ImageUrl = &fullGroupData.ImageUrl.String
+	}
+	if fullGroupData.Blurhash.Valid {
+		responseClientGroup.Blurhash = &fullGroupData.Blurhash.String
 	}
 
 	if fullGroupData.Admin {

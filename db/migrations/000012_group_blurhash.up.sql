@@ -1,0 +1,2 @@
+ALTER TABLE groups
+ADD COLUMN blurhash TEXT;

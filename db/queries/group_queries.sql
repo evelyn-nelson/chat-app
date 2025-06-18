@@ -1,11 +1,11 @@
 -- name: GetAllGroups :many
-SELECT "id", "name", "description", "location", "image_url", "start_time", "end_time", "created_at", "updated_at" FROM groups;
+SELECT "id", "name", "description", "location", "image_url", "blurhash", "start_time", "end_time", "created_at", "updated_at" FROM groups;
 
 -- name: GetGroupById :one
-SELECT "id", "name", "description", "location", "image_url", "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1;
+SELECT "id", "name", "description", "location", "image_url", "blurhash", "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1;
 
 -- name: GetGroupsForUser :many
-SELECT groups.id, groups.name, groups."description", groups."location", groups."image_url", groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
+SELECT groups.id, groups.name, groups."description", groups."location", groups."image_url", groups."blurhash", groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
 json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin, 'invited_at', ug2.created_at))::text AS group_users 
 FROM groups
 JOIN user_groups ug ON ug.group_id = groups.id
@@ -22,6 +22,7 @@ SELECT
     g."description",
     g.location,
     g.image_url,
+    g.blurhash,
     g.start_time,
     g.end_time,
     g.created_at,
@@ -40,7 +41,7 @@ WHERE
     g.id = sqlc.arg('group_id');
 
 -- name: InsertGroup :one
-INSERT INTO groups ("name", "start_time", "end_time", "description", "location", "image_url") VALUES ($1, $2, $3, $4, $5, $6) RETURNING *; 
+INSERT INTO groups ("name", "start_time", "end_time", "description", "location", "image_url", "blurhash") VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *; 
 
 -- name: UpdateGroup :one
 UPDATE groups
@@ -50,9 +51,10 @@ SET
     "end_time" = coalesce(sqlc.narg('end_time'), "end_time"),
     "description" = coalesce(sqlc.narg('description'), "description"),
     "location" = coalesce(sqlc.narg('location'), "location"),
-    "image_url" = coalesce(sqlc.narg('image_url'), "image_url")
+    "image_url" = coalesce(sqlc.narg('image_url'), "image_url"),
+    "blurhash" = coalesce(sqlc.narg('blurhash'), "blurhash")
 WHERE id = $1
-RETURNING "id", "name", "start_time", "end_time", "description", "location", "image_url", "created_at", "updated_at";
+RETURNING "id", "name", "start_time", "end_time", "description", "location", "image_url", "blurhash", "created_at", "updated_at";
 
 -- name: DeleteGroup :one
 DELETE FROM groups
