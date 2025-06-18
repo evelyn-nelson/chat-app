@@ -36,6 +36,8 @@ import * as encryptionService from "@/services/encryptionService";
 import { DisplayableItem } from "./types";
 import ImageBubble from "./ImageBubble";
 import { v4 } from "uuid";
+import { ImageViewer } from "./ImageViewer";
+import { router } from "expo-router";
 
 const SCROLL_THRESHOLD = 200;
 const HAPTIC_THRESHOLD = -40;
@@ -69,6 +71,11 @@ export default function ChatBox({ group }: { group: Group }) {
   const [hasNew, setHasNew] = useState(false);
   const [isActivelySwipping, setIsActivelySwipping] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const handleImagePress = (uri: string) => {
+    const encoded = encodeURIComponent(uri);
+    router.push(`/groups/images/${encoded}`);
+  };
 
   const swipeX = useSharedValue(0);
   const hapticTriggered = useSharedValue(false);
@@ -426,6 +433,7 @@ export default function ChatBox({ group }: { group: Group }) {
               timestamp={item.timestamp}
               swipeX={swipeX}
               showTimestamp={isActivelySwipping}
+              onImagePress={handleImagePress}
             />
           );
 

@@ -1,5 +1,14 @@
-import React from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import React, { useMemo, useRef } from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable,
+  GestureResponderEvent,
+  StyleProp,
+  ViewStyle,
+  Alert,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -12,8 +21,21 @@ import type { MessageUser, ImageMessageContent } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useCachedImage } from "../../hooks/useCachedImage";
 import { Blurhash } from "react-native-blurhash";
+import * as MediaLibrary from "expo-media-library";
+import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system";
+import ContextMenu from "react-native-context-menu-view";
+
+// --- TIMING & MOVEMENT CONSTANTS ---
+// You can tweak these values to fit your app's feel.
+
+// Max duration in milliseconds for a press to be considered a "tap".
+const MAX_TAP_DURATION = 250;
+// Max distance in pixels a finger can move for a press to be a "tap".
+const MAX_TAP_DISTANCE = 10;
 
 export interface ImageBubbleProps {
+  // ... props are unchanged
   prevUserId: string;
   user: MessageUser;
   content: ImageMessageContent;
@@ -21,10 +43,12 @@ export interface ImageBubbleProps {
   timestamp: string;
   swipeX?: SharedValue<number>;
   showTimestamp?: boolean;
+  onImagePress?: (uri: string) => void;
 }
 
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
   ({
+    // ... props
     prevUserId,
     user,
     content,
@@ -32,9 +56,17 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     timestamp,
     swipeX,
     showTimestamp = false,
+    onImagePress,
   }) => {
     const { localUri, isLoading, error } = useCachedImage(content);
 
+    // Refs to store the state of the gesture
+    const gestureState = useRef({
+      pressInTime: 0,
+      pressInPosition: { x: 0, y: 0 },
+    });
+
+    // ... other logic and animated styles are unchanged ...
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);
@@ -73,6 +105,93 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
       opacity: timestampOpacity.value,
     }));
 
+    const handlePressIn = (event: GestureResponderEvent) => {
+      gestureState.current.pressInTime = Date.now();
+      gestureState.current.pressInPosition = {
+        x: event.nativeEvent.pageX,
+        y: event.nativeEvent.pageY,
+      };
+    };
+
+    const handlePressOut = (event: GestureResponderEvent) => {
+      const pressDuration = Date.now() - gestureState.current.pressInTime;
+
+      const pressOutPosition = {
+        x: event.nativeEvent.pageX,
+        y: event.nativeEvent.pageY,
+      };
+
+      const distanceMoved = Math.sqrt(
+        Math.pow(
+          pressOutPosition.x - gestureState.current.pressInPosition.x,
+          2
+        ) +
+          Math.pow(
+            pressOutPosition.y - gestureState.current.pressInPosition.y,
+            2
+          )
+      );
+      if (
+        pressDuration < MAX_TAP_DURATION &&
+        distanceMoved < MAX_TAP_DISTANCE
+      ) {
+        if (onImagePress && localUri && !error) {
+          onImagePress(localUri);
+        }
+      }
+    };
+
+    const menuActions = useMemo(() => {
+      const actions = [];
+      if (localUri) {
+        actions.push({ title: "Copy Image", systemIcon: "doc.on.doc" });
+        actions.push({ title: "Save Image", systemIcon: "arrow.down.circle" });
+      }
+      return actions;
+    }, [localUri]);
+
+    const handleContextMenuAction = async (e: {
+      nativeEvent: { index: number };
+    }) => {
+      if (!localUri) return;
+      switch (e.nativeEvent.index) {
+        case 0: // "Copy Image"
+          try {
+            const base64 = await FileSystem.readAsStringAsync(localUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            await Clipboard.setImageAsync(base64);
+          } catch (err) {
+            Alert.alert("Error", "Could not copy image.");
+            console.error("Failed to copy image:", err);
+          }
+          break;
+        case 1: // "Save Image"
+          try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== "granted") {
+              Alert.alert(
+                "Permission Required",
+                "We need permission to save photos."
+              );
+              return;
+            }
+            await MediaLibrary.saveToLibraryAsync(localUri);
+            Alert.alert("Saved", "Image saved to your photo library.");
+          } catch (err) {
+            Alert.alert("Error", "Could not save image.");
+            console.error("Failed to save image:", err);
+          }
+          break;
+      }
+    };
+
+    const bubbleStyle: StyleProp<ViewStyle> = {
+      overflow: "hidden",
+      borderRadius: 16,
+      ...(isOwn ? { borderTopRightRadius: 0 } : { borderTopLeftRadius: 0 }),
+    };
+
     const renderImageContent = () => {
       if (isLoading) {
         return <ActivityIndicator size="large" color="gray" />;
@@ -105,7 +224,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
           </>
         );
       }
-
       if (isLoading && content.blurhash) {
         return (
           <Blurhash
@@ -142,23 +260,31 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
                   {user.username}
                 </Text>
               )}
-              <View
-                className={`
-                  rounded-2xl overflow-hidden
-                  ${
-                    isOwn
-                      ? "bg-blue-900/50 rounded-tr-none"
-                      : "bg-gray-800/50 rounded-tl-none"
-                  }
-                `}
+              <ContextMenu
+                onPress={handleContextMenuAction}
+                actions={menuActions}
+                style={bubbleStyle}
+                previewBackgroundColor="transparent"
+                disabled={!localUri || !!error}
+                borderRadius={16}
+                borderTopRightRadius={isOwn ? 0 : 16}
+                borderTopLeftRadius={isOwn ? 16 : 0}
+                borderBottomLeftRadius={16}
+                borderBottomRightRadius={16}
               >
-                <View
-                  className="w-full bg-black/20 items-center justify-center"
-                  style={{ aspectRatio }}
+                <Pressable
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  disabled={!localUri || !!error}
                 >
-                  {renderImageContent()}
-                </View>
-              </View>
+                  <View
+                    className="w-full bg-black/20 items-center justify-center"
+                    style={[bubbleStyle, { aspectRatio }]}
+                  >
+                    {renderImageContent()}
+                  </View>
+                </Pressable>
+              </ContextMenu>
             </View>
           </Animated.View>
           {showTimestamp && (
@@ -179,15 +305,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
           )}
         </View>
       </View>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.prevUserId === nextProps.prevUserId &&
-      prevProps.user.id === nextProps.user.id &&
-      prevProps.content.objectKey === nextProps.content.objectKey &&
-      prevProps.align === nextProps.align &&
-      prevProps.showTimestamp === nextProps.showTimestamp
     );
   }
 );

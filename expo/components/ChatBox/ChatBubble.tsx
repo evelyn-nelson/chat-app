@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text } from "react-native";
+import React, { useState } from "react";
+import { View, Text, Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
   SharedValue,
@@ -8,6 +8,9 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import type { MessageUser } from "@/types/types";
+import ContextMenu from "react-native-context-menu-view";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 
 export interface ChatBubbleProps {
   prevUserId: string;
@@ -56,12 +59,10 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
       if (!swipeX) return {};
 
       if (isOwn) {
-        // Own messages move with the full swipe distance
         return {
           transform: [{ translateX: swipeX.value }],
         };
       } else {
-        // Other users' messages move left slightly (about 25% of the swipe)
         const otherUserOffset = interpolate(
           swipeX.value,
           [-80, 0],
@@ -115,27 +116,48 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
                 </Text>
               )}
 
-              <View
-                className={`
-                  px-4
-                  py-2
-                  rounded-2xl
-                  ${
-                    isOwn
-                      ? "bg-blue-600 rounded-tr-none"
-                      : "bg-gray-700 rounded-tl-none"
+              <ContextMenu
+                onPress={(e) => {
+                  if (e.nativeEvent.index === 0) {
+                    Clipboard.setStringAsync(message);
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Success
+                    );
                   }
-                `}
+                }}
+                actions={[{ title: "Copy Message", systemIcon: "doc.on.doc" }]}
+                previewBackgroundColor="transparent"
+                preview={null}
               >
-                <Text
-                  selectable
-                  className={`text-base ${
-                    isOwn ? "text-white" : "text-gray-200"
-                  }`}
+                <Pressable
+                  onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                  delayLongPress={400}
                 >
-                  {message}
-                </Text>
-              </View>
+                  <View
+                    className={`
+                      px-4
+                      py-2
+                      rounded-2xl
+                      ${
+                        isOwn
+                          ? "bg-blue-600 rounded-tr-none"
+                          : "bg-gray-700 rounded-tl-none"
+                      }
+                    `}
+                  >
+                    <Text
+                      selectable
+                      className={`text-base ${
+                        isOwn ? "text-white" : "text-gray-200"
+                      }`}
+                    >
+                      {message}
+                    </Text>
+                  </View>
+                </Pressable>
+              </ContextMenu>
             </View>
           </Animated.View>
 
