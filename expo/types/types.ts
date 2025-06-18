@@ -67,7 +67,7 @@ export type UserGroup = {
 
 export type ClearImage = {
   imageURL: string;
-  blurhash: string;
+  blurhash: string | null;
 };
 
 // --- Message Related Types ---
