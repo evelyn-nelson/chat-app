@@ -66,7 +66,7 @@ export type UserGroup = {
 };
 
 export type ClearImage = {
-  imageURL: string;
+  imageURL: string | null;
   blurhash: string | null;
 };
 

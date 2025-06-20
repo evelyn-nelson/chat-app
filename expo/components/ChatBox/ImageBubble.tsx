@@ -26,16 +26,10 @@ import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system";
 import ContextMenu from "react-native-context-menu-view";
 
-// --- TIMING & MOVEMENT CONSTANTS ---
-// You can tweak these values to fit your app's feel.
-
-// Max duration in milliseconds for a press to be considered a "tap".
 const MAX_TAP_DURATION = 250;
-// Max distance in pixels a finger can move for a press to be a "tap".
 const MAX_TAP_DISTANCE = 10;
 
 export interface ImageBubbleProps {
-  // ... props are unchanged
   prevUserId: string;
   user: MessageUser;
   content: ImageMessageContent;

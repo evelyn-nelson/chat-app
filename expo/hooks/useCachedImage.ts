@@ -7,7 +7,6 @@ import {
   decryptImageFile,
   saveBytesToLocalFile,
 } from "@/services/encryptionService";
-import { Image } from "expo-image";
 
 const CACHE_DIR = FileSystem.cacheDirectory + "image_cache/";
 
