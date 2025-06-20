@@ -317,28 +317,14 @@ const ChatSettingsMenu = (props: {
   return (
     <View className={"w-full pb-4"}>
       <View className="items-center my-4">
-        <View style={{ position: "relative", width: 112, height: 112 }}>
-          <GroupAvatar
-            imageURL={currentImageUrlForPreview}
-            blurhash={currentBlurhash}
-            isEditing={isEditing}
-            isAdmin={currentUserIsAdmin}
-            onPick={handlePickImage}
-            onRemove={handleRemoveImage}
-          />
-        </View>
-        {isEditing &&
-          currentUserIsAdmin &&
-          currentImageUrlForPreview && ( // Show remove button if there's an image to remove
-            <Button
-              size="xs"
-              text="Remove Image"
-              onPress={handleRemoveImage}
-              variant="secondary"
-              className="mt-2 bg-red-700/30"
-              textClassName="text-red-400"
-            />
-          )}
+        <GroupAvatar
+          imageURL={currentImageUrlForPreview}
+          blurhash={currentBlurhash}
+          isEditing={isEditing}
+          isAdmin={currentUserIsAdmin}
+          onPick={handlePickImage}
+          onRemove={handleRemoveImage}
+        />
       </View>
 
       {/* Admin Edit Controls */}

@@ -1,11 +1,5 @@
 import React, { memo, useMemo } from "react";
-import {
-  View,
-  Pressable,
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-} from "react-native";
+import { View, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Blurhash } from "react-native-blurhash";
 import { Image } from "expo-image";
@@ -29,15 +23,20 @@ const GroupAvatar = memo(function GroupAvatar({
   onRemove,
 }: Props) {
   const params = useMemo(() => ({ imageURL, blurhash }), [imageURL, blurhash]);
-
   const { localUri, isLoading, error } = useCachedImageClear(params);
 
-  let content;
+  let content: React.ReactNode;
   if (isLoading) {
-    content = <ActivityIndicator size="large" color="gray" />;
+    content = (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#60A5FA" />
+      </View>
+    );
   } else if (error) {
     content = (
-      <Ionicons name="alert-circle-outline" size={40} color="#f87171" />
+      <View style={styles.iconContainer}>
+        <Ionicons name="alert-circle-outline" size={44} color="#EF4444" />
+      </View>
     );
   } else if (localUri) {
     content = (
@@ -51,29 +50,54 @@ const GroupAvatar = memo(function GroupAvatar({
       </>
     );
   } else {
-    content = <Ionicons name="image-outline" size={48} color="gray" />;
+    content = (
+      <View style={styles.iconContainer}>
+        <Ionicons name="image-outline" size={52} color="#9CA3AF" />
+      </View>
+    );
   }
-  console.log({ isEditing, isAdmin, imageURL });
+
   return (
     <View style={styles.container}>
       <View style={styles.avatarWrapper}>
         <Pressable
           onPress={isEditing && isAdmin ? onPick : undefined}
           disabled={!isEditing || !isAdmin}
-          style={styles.avatarInner}
+          style={[
+            styles.avatarInner,
+            isEditing && isAdmin && styles.editableAvatar,
+          ]}
         >
           {content}
+
+          {isEditing && isAdmin && (
+            <View style={styles.editOverlay}>
+              <Ionicons name="camera" size={24} color="white" />
+            </View>
+          )}
         </Pressable>
 
         {isEditing && isAdmin && (
-          <Pressable onPress={onPick} style={styles.pencilButton}>
-            <Ionicons name="pencil" size={16} color="white" />
+          <Pressable
+            onPress={onPick}
+            style={styles.editButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <View style={styles.editButtonInner}>
+              <Ionicons name="pencil" size={18} color="white" />
+            </View>
           </Pressable>
         )}
 
         {isEditing && isAdmin && imageURL && (
-          <Pressable onPress={onRemove} style={styles.removeBtn}>
-            <Ionicons name="trash-outline" size={16} color="red" />
+          <Pressable
+            onPress={onRemove}
+            style={styles.removeButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <View style={styles.removeButtonInner}>
+              <Ionicons name="close" size={16} color="white" />
+            </View>
           </Pressable>
         )}
       </View>
@@ -88,15 +112,49 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     position: "relative",
-    width: 112,
-    height: 112,
+    width: 120,
+    height: 120,
+    overflow: "visible",
   },
   avatarInner: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: "#374151",
+    borderWidth: 3,
+    borderColor: "#4B5563",
     overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  editableAvatar: {
+    borderColor: "#3B82F6",
+    borderWidth: 2,
+  },
+  editOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 60,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconContainer: {
     alignItems: "center",
     justifyContent: "center",
   },
@@ -104,35 +162,60 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: "100%",
-    borderRadius: 56,
+    borderRadius: 60,
   },
   image: {
     width: "100%",
     height: "100%",
+    borderRadius: 60,
   },
-  pencilButton: {
+  editButton: {
     position: "absolute",
-    bottom: -6,
-    right: -6,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: 4,
+    right: 4,
+    zIndex: 10,
+  },
+  editButtonInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#3B82F6",
+    borderWidth: 3,
+    borderColor: "#1F2937",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  removeButton: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    zIndex: 10,
+  },
+  removeButtonInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#EF4444",
     borderWidth: 2,
     borderColor: "#1F2937",
     alignItems: "center",
     justifyContent: "center",
-  },
-  removeBtn: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#b91c1c",
-    alignItems: "center",
-    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
 });
 
