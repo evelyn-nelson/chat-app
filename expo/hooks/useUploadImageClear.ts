@@ -1,17 +1,12 @@
 import { useState, useCallback } from "react";
 import * as ImagePicker from "expo-image-picker";
 
-import { useWebSocket } from "@/components/context/WebSocketContext";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import http from "@/util/custom-axios";
-import {
-  encryptImageFile,
-  createImageMessagePayload,
-  readImageAsBytes,
-  base64ToUint8Array,
-} from "@/services/encryptionService";
+import { base64ToUint8Array } from "@/services/encryptionService";
 import { ClearImage, RecipientDevicePublicKey } from "@/types/types";
 import { processImage } from "@/services/imageService";
+import { useWebSocket } from "@/components/context/WebSocketContext";
 
 interface UseUploadImageReturn {
   uploadImage: (
@@ -28,7 +23,9 @@ export const useUploadImageClear = (): UseUploadImageReturn => {
   const [isUploading, setIsUploading] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
-  const { user: currentUser, getDeviceKeysForUser } = useGlobalStore();
+  const { user: currentUser } = useGlobalStore();
+
+  const { updateGroup } = useWebSocket();
 
   const uploadImage = useCallback(
     async (
@@ -74,7 +71,7 @@ export const useUploadImageClear = (): UseUploadImageReturn => {
         if (!uploadResponse.ok) {
           throw new Error(`S3 Upload Failed: ${await uploadResponse.text()}`);
         }
-        
+
         return { imageURL, blurhash };
       } catch (error: any) {
         console.error("Error in sendImage process:", error);
