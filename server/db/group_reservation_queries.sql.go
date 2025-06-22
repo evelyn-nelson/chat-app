@@ -23,16 +23,11 @@ func (q *Queries) DeleteAllGroupReservationsForUser(ctx context.Context, userID 
 
 const deleteGroupReservation = `-- name: DeleteGroupReservation :exec
 DELETE FROM group_reservations
-WHERE group_id = $1 AND user_id = $2
+WHERE group_id = $1
 `
 
-type DeleteGroupReservationParams struct {
-	GroupID uuid.UUID `json:"group_id"`
-	UserID  uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) DeleteGroupReservation(ctx context.Context, arg DeleteGroupReservationParams) error {
-	_, err := q.db.Exec(ctx, deleteGroupReservation, arg.GroupID, arg.UserID)
+func (q *Queries) DeleteGroupReservation(ctx context.Context, groupID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteGroupReservation, groupID)
 	return err
 }
 

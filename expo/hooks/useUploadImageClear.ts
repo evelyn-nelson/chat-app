@@ -6,12 +6,12 @@ import http from "@/util/custom-axios";
 import { base64ToUint8Array } from "@/services/encryptionService";
 import { ClearImage, RecipientDevicePublicKey } from "@/types/types";
 import { processImage } from "@/services/imageService";
-import { useWebSocket } from "@/components/context/WebSocketContext";
 
 interface UseUploadImageReturn {
   uploadImage: (
     imageAsset: ImagePicker.ImagePickerAsset,
-    groupId: string
+    groupId: string,
+    forCreate?: boolean
   ) => Promise<ClearImage | undefined>;
   isUploading: boolean;
   imageUploadError: string | null;
@@ -28,7 +28,8 @@ export const useUploadImageClear = (): UseUploadImageReturn => {
   const uploadImage = useCallback(
     async (
       imageAsset: ImagePicker.ImagePickerAsset,
-      groupId: string
+      groupId: string,
+      forCreate = false
     ): Promise<ClearImage | undefined> => {
       setIsUploading(true);
       setImageUploadError(null);
@@ -54,10 +55,21 @@ export const useUploadImageClear = (): UseUploadImageReturn => {
           );
         }
 
+        if (forCreate) {
+          const reservation = await http.post(
+            `${process.env.EXPO_PUBLIC_HOST}/api/groups/reserve/${groupId}`
+          );
+
+          if (reservation.status > 299) {
+            throw new Error("Failed to reserve group");
+          }
+        }
+
         const presignResponse = await http.post(`${baseURL}/presign-upload`, {
           filename: imageAsset.uri.split("/").pop() || "upload.jpg",
           groupId: groupId,
           size: imageBytes.length,
+          forCreate: forCreate,
         });
         const { uploadUrl, objectKey: imageURL } = presignResponse.data;
 

@@ -34,6 +34,8 @@ func InitRouter(authHandler *auth.AuthHandler, wsHandler *ws.Handler, api *serve
 
 	apiRoutes.GET("/users/whoami", api.WhoAmI)
 	apiRoutes.GET("/users/device-keys", api.GetRelevantDeviceKeys)
+	
+	apiRoutes.POST("/groups/reserve/:groupID", api.ReserveGroup)
 
 	// auth routes group
 	authRoutes := r.Group("/auth/")

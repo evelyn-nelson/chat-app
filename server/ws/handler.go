@@ -367,6 +367,24 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		return
 	}
 
+	resv, err := h.db.GetGroupReservation(ctx, req.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusForbidden,
+				gin.H{"error": "Group ID not reserved or already claimed"})
+		} else {
+			log.Printf("error fetching reservation %s: %v", req.ID, err)
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": "Internal error checking reservation"})
+		}
+		return
+	}
+	if resv.UserID != user.ID {
+		c.JSON(http.StatusForbidden,
+			gin.H{"error": "You are not the reserver of this GroupID"})
+		return
+	}
+
 	tx, err := h.conn.Begin(ctx)
 	if err != nil {
 		log.Printf("Failed to begin transaction for group creation: %v", err)
@@ -401,6 +419,13 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 	if err != nil {
 		log.Printf("Error inserting user_group for admin: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set group admin"})
+		return
+	}
+
+	if err := qtx.DeleteGroupReservation(ctx, req.ID); err != nil {
+		log.Printf("Error deleting reservation %s: %v", req.ID, err)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "Failed to finalize group creation"})
 		return
 	}
 

@@ -146,7 +146,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const imageAsset = result.assets[0];
       try {
-        const uploadResult = await uploadImage(imageAsset, tempGroupId);
+        const uploadResult = await uploadImage(imageAsset, tempGroupId, true);
         if (!uploadResult) {
           throw new Error("Error uploading image");
         }

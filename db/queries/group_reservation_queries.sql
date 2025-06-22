@@ -19,7 +19,7 @@ ORDER BY created_at DESC;
 
 -- name: DeleteGroupReservation :exec
 DELETE FROM group_reservations
-WHERE group_id = $1 AND user_id = $2;
+WHERE group_id = $1;
 
 -- name: DeleteAllGroupReservationsForUser :exec
 DELETE FROM group_reservations
