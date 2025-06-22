@@ -2,6 +2,7 @@ import { Group } from "@/types/types";
 import { Pressable, View, Text } from "react-native";
 import { router, usePathname } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import GroupAvatarSmall from "../GroupAvatarSmall";
 
 export const ChatSelectBox = (props: {
   group: Group;
@@ -23,10 +24,12 @@ export const ChatSelectBox = (props: {
       }}
     >
       <View className="flex-row items-center py-3 px-4">
-        <View className="w-8 h-8 rounded-full bg-blue-900 items-center justify-center mr-3">
-          <Text className="text-blue-300 font-medium">
-            {group.name.charAt(0).toUpperCase()}
-          </Text>
+        <View className="w-8 h-8 rounded-full bg-blue-600 mr-2 overflow-hidden">
+          <GroupAvatarSmall
+            imageURL={group.image_url ?? null}
+            blurhash={group.blurhash ?? null}
+            name={group.name}
+          />
         </View>
 
         <View className="flex-1">

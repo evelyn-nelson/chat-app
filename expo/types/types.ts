@@ -26,22 +26,25 @@ export type Group = {
   name: string;
   created_at: string;
   updated_at: string;
-  admin: boolean; // Is the current user an admin of this group?
+  admin: boolean;
   start_time: string | null;
   end_time: string | null;
   group_users: GroupUser[];
   description?: string | null;
   location?: string | null;
   image_url?: string | null;
+  blurhash?: string | null;
 };
 
 export interface CreateGroupParams {
+  id: string;
   name: string;
   start_time: string;
   end_time: string;
   description?: string | null;
   location?: string | null;
   image_url?: string | null;
+  blurhash?: string | null;
 }
 
 export type UpdateGroupParams = {
@@ -51,6 +54,7 @@ export type UpdateGroupParams = {
   description?: string | null;
   location?: string | null;
   image_url?: string | null;
+  blurhash?: string | null;
 };
 
 export type UserGroup = {
@@ -60,6 +64,11 @@ export type UserGroup = {
   admin: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type ClearImage = {
+  imageURL: string | null;
+  blurhash: string | null;
 };
 
 // --- Message Related Types ---

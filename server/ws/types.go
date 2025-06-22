@@ -25,6 +25,7 @@ type RawMessageE2EE struct {
 	Envelopes   []Envelope     `json:"envelopes"`
 }
 type ClientSentE2EMessage struct {
+	ID          uuid.UUID      `json:"id" binding:"required"`
 	GroupID     uuid.UUID      `json:"group_id"`
 	MsgNonce    string         `json:"msgNonce"`   // Base64 encoded
 	Ciphertext  string         `json:"ciphertext"` // Base64 encoded
@@ -33,12 +34,14 @@ type ClientSentE2EMessage struct {
 }
 
 type CreateGroupRequest struct {
+	ID          uuid.UUID `json:"id" binding:"required"`
 	Name        string    `json:"name" binding:"required"`
 	StartTime   time.Time `json:"start_time" binding:"required" `
 	EndTime     time.Time `json:"end_time" binding:"required" `
 	Description *string   `json:"description,omitempty"`
 	Location    *string   `json:"location,omitempty"`
 	ImageUrl    *string   `json:"image_url,omitempty"`
+	Blurhash    *string   `json:"blurhash,omitempty"`
 }
 
 type UpdateGroupRequest struct {
@@ -48,6 +51,7 @@ type UpdateGroupRequest struct {
 	Description *string    `json:"description,omitempty"`
 	Location    *string    `json:"location,omitempty"`
 	ImageUrl    *string    `json:"image_url,omitempty"`
+	Blurhash    *string    `json:"blurhash,omitempty"`
 }
 
 type ClientGroup struct {
@@ -56,6 +60,7 @@ type ClientGroup struct {
 	Description *string           `json:"description,omitempty"`
 	Location    *string           `json:"location,omitempty"`
 	ImageUrl    *string           `json:"image_url,omitempty"`
+	Blurhash    *string           `json:"blurhash,omitempty"`
 	StartTime   *time.Time        `json:"start_time,omitempty"`
 	EndTime     *time.Time        `json:"end_time,omitempty"`
 	CreatedAt   time.Time         `json:"created_at"`

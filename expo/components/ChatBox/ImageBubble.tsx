@@ -19,23 +19,17 @@ import Animated, {
 import { Image } from "expo-image";
 import type { MessageUser, ImageMessageContent } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useCachedImage } from "../../hooks/useCachedImage";
+import { useCachedImageEncrypted } from "../../hooks/useCachedImage";
 import { Blurhash } from "react-native-blurhash";
 import * as MediaLibrary from "expo-media-library";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system";
 import ContextMenu from "react-native-context-menu-view";
 
-// --- TIMING & MOVEMENT CONSTANTS ---
-// You can tweak these values to fit your app's feel.
-
-// Max duration in milliseconds for a press to be considered a "tap".
 const MAX_TAP_DURATION = 250;
-// Max distance in pixels a finger can move for a press to be a "tap".
 const MAX_TAP_DISTANCE = 10;
 
 export interface ImageBubbleProps {
-  // ... props are unchanged
   prevUserId: string;
   user: MessageUser;
   content: ImageMessageContent;
@@ -48,7 +42,6 @@ export interface ImageBubbleProps {
 
 const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
   ({
-    // ... props
     prevUserId,
     user,
     content,
@@ -58,15 +51,13 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
     showTimestamp = false,
     onImagePress,
   }) => {
-    const { localUri, isLoading, error } = useCachedImage(content);
+    const { localUri, isLoading, error } = useCachedImageEncrypted(content);
 
-    // Refs to store the state of the gesture
     const gestureState = useRef({
       pressInTime: 0,
       pressInPosition: { x: 0, y: 0 },
     });
 
-    // ... other logic and animated styles are unchanged ...
     const isOwn = align === "right";
     const formattedTime = React.useMemo(() => {
       const messageDate = new Date(timestamp);

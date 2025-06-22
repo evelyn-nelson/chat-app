@@ -37,7 +37,7 @@ func (q *Queries) DeleteGroup(ctx context.Context, id uuid.UUID) (DeleteGroupRow
 }
 
 const getAllGroups = `-- name: GetAllGroups :many
-SELECT "id", "name", "description", "location", "image_url", "start_time", "end_time", "created_at", "updated_at" FROM groups
+SELECT "id", "name", "description", "location", "image_url", "blurhash", "start_time", "end_time", "created_at", "updated_at" FROM groups
 `
 
 type GetAllGroupsRow struct {
@@ -46,6 +46,7 @@ type GetAllGroupsRow struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -67,6 +68,7 @@ func (q *Queries) GetAllGroups(ctx context.Context) ([]GetAllGroupsRow, error) {
 			&i.Description,
 			&i.Location,
 			&i.ImageUrl,
+			&i.Blurhash,
 			&i.StartTime,
 			&i.EndTime,
 			&i.CreatedAt,
@@ -83,7 +85,7 @@ func (q *Queries) GetAllGroups(ctx context.Context) ([]GetAllGroupsRow, error) {
 }
 
 const getGroupById = `-- name: GetGroupById :one
-SELECT "id", "name", "description", "location", "image_url", "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1
+SELECT "id", "name", "description", "location", "image_url", "blurhash", "start_time", "end_time", "created_at", "updated_at" FROM groups WHERE id = $1
 `
 
 type GetGroupByIdRow struct {
@@ -92,6 +94,7 @@ type GetGroupByIdRow struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -107,6 +110,7 @@ func (q *Queries) GetGroupById(ctx context.Context, id uuid.UUID) (GetGroupByIdR
 		&i.Description,
 		&i.Location,
 		&i.ImageUrl,
+		&i.Blurhash,
 		&i.StartTime,
 		&i.EndTime,
 		&i.CreatedAt,
@@ -122,6 +126,7 @@ SELECT
     g."description",
     g.location,
     g.image_url,
+    g.blurhash,
     g.start_time,
     g.end_time,
     g.created_at,
@@ -151,6 +156,7 @@ type GetGroupWithUsersByIDRow struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -168,6 +174,7 @@ func (q *Queries) GetGroupWithUsersByID(ctx context.Context, arg GetGroupWithUse
 		&i.Description,
 		&i.Location,
 		&i.ImageUrl,
+		&i.Blurhash,
 		&i.StartTime,
 		&i.EndTime,
 		&i.CreatedAt,
@@ -179,7 +186,7 @@ func (q *Queries) GetGroupWithUsersByID(ctx context.Context, arg GetGroupWithUse
 }
 
 const getGroupsForUser = `-- name: GetGroupsForUser :many
-SELECT groups.id, groups.name, groups."description", groups."location", groups."image_url", groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
+SELECT groups.id, groups.name, groups."description", groups."location", groups."image_url", groups."blurhash", groups.start_time, groups.end_time, groups.created_at, ug.admin, groups.updated_at,
 json_agg(jsonb_build_object('id', u2.id, 'username', u2.username, 'email', u2.email, 'admin', ug2.admin, 'invited_at', ug2.created_at))::text AS group_users 
 FROM groups
 JOIN user_groups ug ON ug.group_id = groups.id
@@ -196,6 +203,7 @@ type GetGroupsForUserRow struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -219,6 +227,7 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id uuid.UUID) ([]GetGrou
 			&i.Description,
 			&i.Location,
 			&i.ImageUrl,
+			&i.Blurhash,
 			&i.StartTime,
 			&i.EndTime,
 			&i.CreatedAt,
@@ -237,26 +246,30 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id uuid.UUID) ([]GetGrou
 }
 
 const insertGroup = `-- name: InsertGroup :one
-INSERT INTO groups ("name", "start_time", "end_time", "description", "location", "image_url") VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, created_at, updated_at, start_time, end_time, description, location, image_url
+INSERT INTO groups ("id", "name", "start_time", "end_time", "description", "location", "image_url", "blurhash") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, created_at, updated_at, start_time, end_time, description, location, image_url, blurhash
 `
 
 type InsertGroupParams struct {
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 }
 
 func (q *Queries) InsertGroup(ctx context.Context, arg InsertGroupParams) (Group, error) {
 	row := q.db.QueryRow(ctx, insertGroup,
+		arg.ID,
 		arg.Name,
 		arg.StartTime,
 		arg.EndTime,
 		arg.Description,
 		arg.Location,
 		arg.ImageUrl,
+		arg.Blurhash,
 	)
 	var i Group
 	err := row.Scan(
@@ -269,6 +282,7 @@ func (q *Queries) InsertGroup(ctx context.Context, arg InsertGroupParams) (Group
 		&i.Description,
 		&i.Location,
 		&i.ImageUrl,
+		&i.Blurhash,
 	)
 	return i, err
 }
@@ -281,9 +295,10 @@ SET
     "end_time" = coalesce($4, "end_time"),
     "description" = coalesce($5, "description"),
     "location" = coalesce($6, "location"),
-    "image_url" = coalesce($7, "image_url")
+    "image_url" = coalesce($7, "image_url"),
+    "blurhash" = coalesce($8, "blurhash")
 WHERE id = $1
-RETURNING "id", "name", "start_time", "end_time", "description", "location", "image_url", "created_at", "updated_at"
+RETURNING "id", "name", "start_time", "end_time", "description", "location", "image_url", "blurhash", "created_at", "updated_at"
 `
 
 type UpdateGroupParams struct {
@@ -294,6 +309,7 @@ type UpdateGroupParams struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 }
 
 type UpdateGroupRow struct {
@@ -304,6 +320,7 @@ type UpdateGroupRow struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
@@ -317,6 +334,7 @@ func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Updat
 		arg.Description,
 		arg.Location,
 		arg.ImageUrl,
+		arg.Blurhash,
 	)
 	var i UpdateGroupRow
 	err := row.Scan(
@@ -327,6 +345,7 @@ func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Updat
 		&i.Description,
 		&i.Location,
 		&i.ImageUrl,
+		&i.Blurhash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

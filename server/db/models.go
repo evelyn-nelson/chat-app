@@ -76,6 +76,13 @@ type Group struct {
 	Description pgtype.Text      `json:"description"`
 	Location    pgtype.Text      `json:"location"`
 	ImageUrl    pgtype.Text      `json:"image_url"`
+	Blurhash    pgtype.Text      `json:"blurhash"`
+}
+
+type GroupReservation struct {
+	GroupID   uuid.UUID        `json:"group_id"`
+	UserID    uuid.UUID        `json:"user_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 type Message struct {

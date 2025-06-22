@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Group, GroupUser } from "@/types/types";
-import { Platform, ScrollView, View } from "react-native"; // Removed Text
+import { Platform, ScrollView, View } from "react-native";
 import UserListItem from "./UserListItem";
 
 type UserListProps = {

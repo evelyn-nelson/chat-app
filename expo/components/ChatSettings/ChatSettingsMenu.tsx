@@ -2,16 +2,14 @@ import {
   Platform,
   Text,
   View,
-  Image,
   Pressable,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
-// ... other imports
 import {
   Group,
-  GroupUser,
   UpdateGroupParams,
   PickerImageResult,
   DateOptions,
@@ -24,6 +22,15 @@ import { useWebSocket } from "../context/WebSocketContext";
 import { router } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import GroupDateOptions from "../Global/GroupDateOptions/GroupDateOptions";
+import {
+  launchImageLibraryAsync,
+  requestMediaLibraryPermissionsAsync,
+} from "expo-image-picker";
+import { useUploadImageClear } from "@/hooks/useUploadImageClear";
+import { useCachedImageClear } from "@/hooks/useCachedImage";
+import { Blurhash } from "react-native-blurhash";
+import { Image } from "expo-image";
+import GroupAvatarEditable from "../GroupAvatarEditable";
 
 const ChatSettingsMenu = (props: {
   group: Group;
@@ -47,11 +54,12 @@ const ChatSettingsMenu = (props: {
   );
   const [currentImageUrlForPreview, setCurrentImageUrlForPreview] = useState<
     string | null
-  >(initialGroup.image_url || null);
-  const [newImageFileToUpload, setNewImageFileToUpload] =
-    useState<PickerImageResult | null>(null);
-  const [imageMarkedForRemoval, setImageMarkedForRemoval] =
-    useState<boolean>(false);
+  >(initialGroup.image_url ?? null);
+  const [currentBlurhash, setCurrentBlurhash] = useState<string | null>(
+    initialGroup.blurhash ?? null
+  );
+
+  const { uploadImage, isUploading } = useUploadImageClear();
 
   const parseDate = useCallback(
     (dateString: string | null | undefined): Date | null => {
@@ -79,8 +87,7 @@ const ChatSettingsMenu = (props: {
       setEditableDescription(initialGroup.description || "");
       setEditableLocation(initialGroup.location || "");
       setCurrentImageUrlForPreview(initialGroup.image_url || null);
-      setNewImageFileToUpload(null);
-      setImageMarkedForRemoval(false);
+      setCurrentBlurhash(initialGroup.blurhash || null);
       setDateOptions({
         startTime: parseDate(initialGroup.start_time),
         endTime: parseDate(initialGroup.end_time),
@@ -93,9 +100,7 @@ const ChatSettingsMenu = (props: {
       setEditableName(currentGroup.name);
       setEditableDescription(currentGroup.description || "");
       setEditableLocation(currentGroup.location || "");
-      setCurrentImageUrlForPreview(currentGroup.image_url || null);
-      setNewImageFileToUpload(null);
-      setImageMarkedForRemoval(false);
+      setCurrentImageUrlForPreview(currentGroup.image_url ?? null);
       setDateOptions({
         startTime: parseDate(currentGroup.start_time),
         endTime: parseDate(currentGroup.end_time),
@@ -132,51 +137,17 @@ const ChatSettingsMenu = (props: {
     await syncWithServerAndGlobalStore();
   };
 
-  // --- Re-use or import your image upload function ---
-  // async function uploadImageAsync(
-  //   url: string,
-  //   base64?: string
-  // ): Promise<string | null> {
-  //   console.log("Attempting to upload image from URL:", url);
-  //   // (Same implementation as in ChatCreateMenu or a shared utility)
-  //   // For testing, simulate an upload:
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => {
-  //       const mockUrl = `https://picsum.photos/seed/${Date.now()}/200/200`;
-  //       console.log("Simulated upload, returning URL:", mockUrl);
-  //       resolve(mockUrl);
-  //       // resolve(null); // Simulate upload failure
-  //     }, 1500);
-  //   });
-  // }
-  // --- End of uploadImageAsync ---
-
   const handleSaveChanges = async () => {
     setIsLoadingUpdate(true);
     const payload: UpdateGroupParams = {};
     let hasChanges = false;
-    // let finalImageUrlForPayload: string | null | undefined =
-    //   currentGroup.image_url;
 
-    // if (imageMarkedForRemoval) {
-    //   finalImageUrlForPayload = null;
-    // } else if (newImageFileToUpload?.url) {
-    //   const uploadedUrl = await uploadImageAsync(
-    //     newImageFileToUpload.url,
-    //     newImageFileToUpload.base64
-    //   );
-    //   if (!uploadedUrl) {
-    //     setIsLoadingUpdate(false);
-    //     return;
-    //   }
-    //   finalImageUrlForPayload = uploadedUrl;
-    // }
+    if (initialGroup.image_url !== currentImageUrlForPreview) {
+      payload.image_url = currentImageUrlForPreview;
+      payload.blurhash = currentBlurhash;
+      hasChanges = true;
+    }
 
-    // if (finalImageUrlForPayload !== currentGroup.image_url) {
-    //   payload.image_url = finalImageUrlForPayload;
-    //   hasChanges = true;
-    // }
-    // ... compare editableName with currentGroup.name, etc. ...
     if (
       editableName.trim() !== currentGroup.name &&
       editableName.trim() !== ""
@@ -208,7 +179,6 @@ const ChatSettingsMenu = (props: {
       payload.end_time = dateOptions.endTime.toISOString();
       hasChanges = true;
     }
-
     if (hasChanges) {
       try {
         const updatedGroupData = await updateGroup(currentGroup.id, payload);
@@ -216,10 +186,6 @@ const ChatSettingsMenu = (props: {
           const optimisticallyUpdatedGroup = {
             ...currentGroup,
             ...payload,
-            // image_url:
-            //   payload.image_url === undefined
-            //     ? currentGroup.image_url
-            //     : payload.image_url,
             start_time: payload.start_time || currentGroup.start_time,
             end_time: payload.end_time || currentGroup.end_time,
           };
@@ -252,46 +218,54 @@ const ChatSettingsMenu = (props: {
     }
   };
 
-  const handlePickImage = async () => {
-    // const permissionResult =
-    //   // await ImagePicker.requestMediaLibraryPermissionsAsync();
-    // if (permissionResult.granted === false) {
-    //   Alert.alert(
-    //     "Permission Required",
-    //     "Permission to access camera roll is required."
-    //   );
-    //   return;
-    // }
-    // try {
-    //   const pickerResult = await ImagePicker.launchImageLibraryAsync({
-    //     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    //     allowsEditing: true,
-    //     aspect: [1, 1],
-    //     quality: 0.6,
-    //     // base64: true, // If your uploadImageAsync needs it
-    //   });
-    //   if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
-    //     const newImg: PickerImageResult = {
-    //       url: pickerResult.assets[0].url,
-    //       // base64: pickerResult.assets[0].base64,
-    //     };
-    //     setCurrentImageUrlForPreview(newImg.url); // Update preview
-    //     setNewImageFileToUpload(newImg); // Mark new file for upload
-    //     setImageMarkedForRemoval(false); // Unmark removal if user picks new image
-    //   }
-    // } catch (e) {
-    //   console.error("Image picker error:", e);
-    //   Alert.alert("Image Error", "Could not select image.");
-    // }
-  };
+  const handlePickImage = useCallback(async () => {
+    if (isUploading) {
+      console.log("Upload already in progress, ignoring additional requests");
+      return;
+    }
 
-  const handleRemoveImage = () => {
-    setCurrentImageUrlForPreview(null); // Clear preview
-    setNewImageFileToUpload(null); // No new file to upload
-    setImageMarkedForRemoval(true); // Flag for removal on save
-  };
+    const permissionResult = await requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "You've refused to allow this app to access your photos."
+      );
+      return;
+    }
+
+    const result = await launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const imageAsset = result.assets[0];
+      try {
+        const uploadResult = await uploadImage(imageAsset, currentGroup.id);
+        if (!uploadResult) {
+          throw new Error("Error uploading image");
+        }
+
+        const { imageURL, blurhash } = uploadResult;
+        setCurrentBlurhash(blurhash);
+        setCurrentImageUrlForPreview(imageURL);
+      } catch (error) {
+        console.error("ChatSettingsMenu:", error);
+        Alert.alert(
+          "Upload Failed",
+          "Could not upload image. Please try again."
+        );
+      }
+    }
+  }, [uploadImage, currentGroup.id, isUploading]);
+
+  const handleRemoveImage = useCallback(() => {
+    setCurrentImageUrlForPreview("");
+    setCurrentBlurhash("");
+  }, []);
   const formatDate = (date: Date | null) => {
-    // ... (same as before)
     if (!date) return "Not set";
     return date.toLocaleDateString(undefined, {
       weekday: "short",
@@ -343,43 +317,15 @@ const ChatSettingsMenu = (props: {
 
   return (
     <View className={"w-full pb-4"}>
-      {/* Group Image Display/Edit */}
       <View className="items-center my-4">
-        <Pressable
-          onPress={
-            isEditing && currentUserIsAdmin ? handlePickImage : undefined
-          }
-          className="relative"
-          disabled={!isEditing || !currentUserIsAdmin}
-        >
-          {currentImageUrlForPreview ? (
-            <Image
-              source={{ uri: currentImageUrlForPreview }}
-              className="w-28 h-28 rounded-full bg-gray-700 border-2 border-gray-600"
-            />
-          ) : (
-            <View className="w-28 h-28 rounded-full bg-gray-700 items-center justify-center border-2 border-gray-600">
-              <Ionicons name="image-outline" size={48} color="#9CA3AF" />
-            </View>
-          )}
-          {isEditing && currentUserIsAdmin && (
-            <View className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full border-2 border-gray-800">
-              <Ionicons name="pencil" size={16} color="white" />
-            </View>
-          )}
-        </Pressable>
-        {isEditing &&
-          currentUserIsAdmin &&
-          currentImageUrlForPreview && ( // Show remove button if there's an image to remove
-            <Button
-              size="xs"
-              text="Remove Image"
-              onPress={handleRemoveImage}
-              variant="secondary"
-              className="mt-2 bg-red-700/30"
-              textClassName="text-red-400"
-            />
-          )}
+        <GroupAvatarEditable
+          imageURL={currentImageUrlForPreview}
+          blurhash={currentBlurhash}
+          isEditing={isEditing}
+          isAdmin={currentUserIsAdmin}
+          onPick={handlePickImage}
+          onRemove={handleRemoveImage}
+        />
       </View>
 
       {/* Admin Edit Controls */}
@@ -389,7 +335,7 @@ const ChatSettingsMenu = (props: {
             <>
               <Button
                 text="Cancel"
-                onPress={() => setIsEditing(false)} // useEffect handles reset
+                onPress={() => setIsEditing(false)}
                 size="sm"
                 variant="secondary"
                 className="mr-2"

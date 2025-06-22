@@ -8,8 +8,8 @@ import React, {
   useMemo,
   useReducer,
 } from "react";
-import http from "@/util/custom-axios"; // Your custom axios instance
-import * as encryptionService from "@/services/encryptionService"; // For base64ToUint8Array
+import http from "@/util/custom-axios";
+import * as encryptionService from "@/services/encryptionService";
 import { CanceledError } from "axios";
 interface DeviceKey {
   deviceId: string;

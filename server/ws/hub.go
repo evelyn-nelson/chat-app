@@ -495,6 +495,7 @@ func (h *Hub) Run() {
 			}
 
 			insertParams := db.InsertMessageParams{
+				ID:           message.ID,
 				UserID:       &message.SenderID,
 				GroupID:      &message.GroupID,
 				Ciphertext:   cipherBytes,

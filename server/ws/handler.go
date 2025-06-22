@@ -156,7 +156,7 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 		return
 	}
 
-	client := NewClient(conn, user) // NewClient creates its own context for the client's goroutines
+	client := NewClient(conn, user)
 	log.Printf("Client %d (%s) connected. Remote: %s", client.User.ID, client.User.Username, conn.RemoteAddr())
 
 	h.hub.Register <- client
@@ -170,7 +170,6 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 	go client.WriteMessage()
 	client.ReadMessage(h.hub, h.db)
 
-	// When ReadMessage returns, the defer above will execute.
 	log.Printf("EstablishConnection goroutine for client %d (%s) exiting.", client.User.ID, client.User.Username)
 }
 
@@ -367,6 +366,24 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 		return
 	}
 
+	resv, err := h.db.GetGroupReservation(ctx, req.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusForbidden,
+				gin.H{"error": "Group ID not reserved or already claimed"})
+		} else {
+			log.Printf("error fetching reservation %s: %v", req.ID, err)
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": "Internal error checking reservation"})
+		}
+		return
+	}
+	if resv.UserID != user.ID {
+		c.JSON(http.StatusForbidden,
+			gin.H{"error": "You are not the reserver of this GroupID"})
+		return
+	}
+
 	tx, err := h.conn.Begin(ctx)
 	if err != nil {
 		log.Printf("Failed to begin transaction for group creation: %v", err)
@@ -377,12 +394,14 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 
 	qtx := h.db.WithTx(tx)
 	groupParams := db.InsertGroupParams{
+		ID:          req.ID,
 		Name:        req.Name,
 		StartTime:   pgtype.Timestamp{Time: req.StartTime, Valid: true},
 		EndTime:     pgtype.Timestamp{Time: req.EndTime, Valid: true},
 		Description: util.NullablePgText(req.Description),
 		Location:    util.NullablePgText(req.Location),
 		ImageUrl:    util.NullablePgText(req.ImageUrl),
+		Blurhash:    util.NullablePgText(req.Blurhash),
 	}
 	group, err := qtx.InsertGroup(ctx, groupParams)
 	if err != nil {
@@ -399,6 +418,13 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 	if err != nil {
 		log.Printf("Error inserting user_group for admin: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set group admin"})
+		return
+	}
+
+	if err := qtx.DeleteGroupReservation(ctx, req.ID); err != nil {
+		log.Printf("Error deleting reservation %s: %v", req.ID, err)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "Failed to finalize group creation"})
 		return
 	}
 
@@ -493,6 +519,7 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	updateParams.Description = util.NullablePgText(req.Description)
 	updateParams.Location = util.NullablePgText(req.Location)
 	updateParams.ImageUrl = util.NullablePgText(req.ImageUrl)
+	updateParams.Blurhash = util.NullablePgText(req.Blurhash)
 
 	_, err = h.db.UpdateGroup(ctx, updateParams)
 	if err != nil {
@@ -510,7 +537,6 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// Should be rare if update succeeded, implies group vanished immediately.
 			c.JSON(
 				http.StatusNotFound,
 				gin.H{"error": "Group not found after update"},
@@ -584,6 +610,9 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	}
 	if fullGroupData.ImageUrl.Valid {
 		responseClientGroup.ImageUrl = &fullGroupData.ImageUrl.String
+	}
+	if fullGroupData.Blurhash.Valid {
+		responseClientGroup.Blurhash = &fullGroupData.Blurhash.String
 	}
 
 	if fullGroupData.Admin {
@@ -747,7 +776,6 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 		}
 		log.Printf("Group %d deleted as it became empty after user %d left.", groupID, user.ID)
 	} else {
-		// If the leaving user was an admin, promote another user if no admins are left.
 		if deletedUserGroup.Admin {
 			anyAdminLeft := false
 			for _, ug := range remainingUserGroups {

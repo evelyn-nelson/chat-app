@@ -5,15 +5,15 @@ import {
   TextInput,
   ActivityIndicator,
   Text,
-  Alert, // MODIFIED: Import Alert for permissions
+  Alert,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as ImagePicker from "expo-image-picker"; // MODIFIED: Import ImagePicker
+import * as ImagePicker from "expo-image-picker";
 
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { Group } from "@/types/types";
 import { useSendMessage } from "@/hooks/useSendMessage";
-import { useSendImage } from "@/hooks/useSendImage"; // MODIFIED: Import the new hook
+import { useSendImage } from "@/hooks/useSendImage";
 
 const MessageEntry = ({
   group,

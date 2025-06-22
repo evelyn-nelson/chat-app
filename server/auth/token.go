@@ -52,7 +52,6 @@ func ValidateToken(tokenString string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("invalid token claims format")
 	}
 
-	// Extract the userID claim, assuming it's stored as a string UUID
 	userIDClaim, exists := claims["userID"]
 	if !exists {
 		return uuid.Nil, fmt.Errorf("userID claim missing in token")
@@ -63,7 +62,6 @@ func ValidateToken(tokenString string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("userID claim is not a string")
 	}
 
-	// Parse the string as a UUID
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to parse userID as UUID: %w", err)
