@@ -38,17 +38,12 @@ func (q *Queries) DeleteGroupReservation(ctx context.Context, arg DeleteGroupRes
 
 const getGroupReservation = `-- name: GetGroupReservation :one
 SELECT group_id, user_id, created_at FROM group_reservations
-WHERE group_id = $1 AND user_id = $2
+WHERE group_id = $1
 LIMIT 1
 `
 
-type GetGroupReservationParams struct {
-	GroupID uuid.UUID `json:"group_id"`
-	UserID  uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) GetGroupReservation(ctx context.Context, arg GetGroupReservationParams) (GroupReservation, error) {
-	row := q.db.QueryRow(ctx, getGroupReservation, arg.GroupID, arg.UserID)
+func (q *Queries) GetGroupReservation(ctx context.Context, groupID uuid.UUID) (GroupReservation, error) {
+	row := q.db.QueryRow(ctx, getGroupReservation, groupID)
 	var i GroupReservation
 	err := row.Scan(&i.GroupID, &i.UserID, &i.CreatedAt)
 	return i, err

@@ -9,7 +9,7 @@ RETURNING *;
 
 -- name: GetGroupReservation :one
 SELECT * FROM group_reservations
-WHERE group_id = $1 AND user_id = $2
+WHERE group_id = $1
 LIMIT 1;
 
 -- name: GetGroupReservationsForUser :many
