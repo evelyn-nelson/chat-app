@@ -1,10 +1,11 @@
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { router, Stack } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, View, Text, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Group } from "@/types/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import GroupAvatarSmall from "@/components/GroupAvatarSmall";
 
 type GroupParams = {
   id: string;
@@ -31,7 +32,6 @@ export default function GroupLayout() {
     return null;
   };
 
-  // Calculate header height based on platform
   const headerHeight = Platform.OS === "ios" ? 44 + insets.top : 56;
 
   return (
@@ -109,10 +109,12 @@ export default function GroupLayout() {
               <View className="flex-row items-center max-w-[220px]">
                 {group && (
                   <>
-                    <View className="w-7 h-7 rounded-full bg-blue-600 items-center justify-center mr-2">
-                      <Text className="text-gray-100 text-sm font-bold">
-                        {group.name.charAt(0).toUpperCase()}
-                      </Text>
+                    <View className="w-8 h-8 rounded-full bg-blue-600 mr-2 overflow-hidden">
+                      <GroupAvatarSmall
+                        imageURL={group.image_url ?? null}
+                        blurhash={group.blurhash ?? null}
+                        name={group.name}
+                      />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text

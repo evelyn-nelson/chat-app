@@ -30,7 +30,7 @@ import { useUploadImageClear } from "@/hooks/useUploadImageClear";
 import { useCachedImageClear } from "@/hooks/useCachedImage";
 import { Blurhash } from "react-native-blurhash";
 import { Image } from "expo-image";
-import GroupAvatar from "../GroupAvatar";
+import GroupAvatarEditable from "../GroupAvatarEditable";
 
 const ChatSettingsMenu = (props: {
   group: Group;
@@ -54,9 +54,9 @@ const ChatSettingsMenu = (props: {
   );
   const [currentImageUrlForPreview, setCurrentImageUrlForPreview] = useState<
     string | null
-  >(initialGroup.image_url || null);
+  >(initialGroup.image_url ?? null);
   const [currentBlurhash, setCurrentBlurhash] = useState<string | null>(
-    initialGroup.blurhash || null
+    initialGroup.blurhash ?? null
   );
 
   const { localUri, isLoading, error } = useCachedImageClear({
@@ -105,7 +105,7 @@ const ChatSettingsMenu = (props: {
       setEditableName(currentGroup.name);
       setEditableDescription(currentGroup.description || "");
       setEditableLocation(currentGroup.location || "");
-      setCurrentImageUrlForPreview(currentGroup.image_url || null);
+      setCurrentImageUrlForPreview(currentGroup.image_url ?? null);
       setDateOptions({
         startTime: parseDate(currentGroup.start_time),
         endTime: parseDate(currentGroup.end_time),
@@ -143,7 +143,6 @@ const ChatSettingsMenu = (props: {
   };
 
   const handleSaveChanges = async () => {
-    console.log({ currentGroup });
     setIsLoadingUpdate(true);
     const payload: UpdateGroupParams = {};
     let hasChanges = false;
@@ -185,10 +184,8 @@ const ChatSettingsMenu = (props: {
       payload.end_time = dateOptions.endTime.toISOString();
       hasChanges = true;
     }
-    console.log({ payload });
     if (hasChanges) {
       try {
-        console.log("payload", payload);
         const updatedGroupData = await updateGroup(currentGroup.id, payload);
         if (updatedGroupData) {
           const optimisticallyUpdatedGroup = {
@@ -227,6 +224,11 @@ const ChatSettingsMenu = (props: {
   };
 
   const handlePickImage = useCallback(async () => {
+    if (isUploading) {
+      console.log("Upload already in progress, ignoring additional requests");
+      return;
+    }
+
     const permissionResult = await requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
       Alert.alert(
@@ -239,26 +241,30 @@ const ChatSettingsMenu = (props: {
     const result = await launchImageLibraryAsync({
       mediaTypes: "images",
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [1, 1],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const imageAsset = result.assets[0];
       try {
-        const result = await uploadImage(imageAsset, currentGroup.id);
-        if (!result) {
+        const uploadResult = await uploadImage(imageAsset, currentGroup.id);
+        if (!uploadResult) {
           throw new Error("Error uploading image");
         }
 
-        const { imageURL, blurhash } = result;
+        const { imageURL, blurhash } = uploadResult;
         setCurrentBlurhash(blurhash);
         setCurrentImageUrlForPreview(imageURL);
       } catch (error) {
         console.error("ChatSettingsMenu:", error);
+        Alert.alert(
+          "Upload Failed",
+          "Could not upload image. Please try again."
+        );
       }
     }
-  }, [uploadImage, currentGroup.id]);
+  }, [uploadImage, currentGroup.id, isUploading]); // Add isUploading to dependencies
 
   const handleRemoveImage = useCallback(() => {
     setCurrentImageUrlForPreview("");
@@ -317,7 +323,7 @@ const ChatSettingsMenu = (props: {
   return (
     <View className={"w-full pb-4"}>
       <View className="items-center my-4">
-        <GroupAvatar
+        <GroupAvatarEditable
           imageURL={currentImageUrlForPreview}
           blurhash={currentBlurhash}
           isEditing={isEditing}

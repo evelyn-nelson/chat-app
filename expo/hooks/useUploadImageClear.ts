@@ -25,8 +25,6 @@ export const useUploadImageClear = (): UseUploadImageReturn => {
 
   const { user: currentUser } = useGlobalStore();
 
-  const { updateGroup } = useWebSocket();
-
   const uploadImage = useCallback(
     async (
       imageAsset: ImagePicker.ImagePickerAsset,
