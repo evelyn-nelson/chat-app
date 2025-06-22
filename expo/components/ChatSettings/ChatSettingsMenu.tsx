@@ -59,12 +59,7 @@ const ChatSettingsMenu = (props: {
     initialGroup.blurhash ?? null
   );
 
-  const { localUri, isLoading, error } = useCachedImageClear({
-    imageURL: currentImageUrlForPreview,
-    blurhash: currentBlurhash,
-  });
-
-  const { uploadImage, isUploading, imageUploadError } = useUploadImageClear();
+  const { uploadImage, isUploading } = useUploadImageClear();
 
   const parseDate = useCallback(
     (dateString: string | null | undefined): Date | null => {
@@ -264,7 +259,7 @@ const ChatSettingsMenu = (props: {
         );
       }
     }
-  }, [uploadImage, currentGroup.id, isUploading]); // Add isUploading to dependencies
+  }, [uploadImage, currentGroup.id, isUploading]);
 
   const handleRemoveImage = useCallback(() => {
     setCurrentImageUrlForPreview("");

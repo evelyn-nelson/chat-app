@@ -25,12 +25,14 @@ interface WebSocketContextType {
   establishConnection: () => Promise<void>;
   disconnect: () => void;
   createGroup: (
+    id: string,
     name: string,
     startTime: Date,
     endTime: Date,
     description?: string | null,
     location?: string | null,
-    imageUrl?: string | null
+    imageUrl?: string | null,
+    blurhash?: string | null
   ) => Promise<Group | undefined>;
   updateGroup: (
     id: string,
@@ -68,6 +70,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const createGroup = useCallback(
     async (
+      id: string,
       name: string,
       startTime: Date,
       endTime: Date,
@@ -78,6 +81,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     ): Promise<Group | undefined> => {
       const httpURL = `${httpBaseURL}/create-group`;
       const payload: CreateGroupParams = {
+        id,
         name,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),

@@ -246,10 +246,11 @@ func (q *Queries) GetGroupsForUser(ctx context.Context, id uuid.UUID) ([]GetGrou
 }
 
 const insertGroup = `-- name: InsertGroup :one
-INSERT INTO groups ("name", "start_time", "end_time", "description", "location", "image_url", "blurhash") VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, created_at, updated_at, start_time, end_time, description, location, image_url, blurhash
+INSERT INTO groups ("id", "name", "start_time", "end_time", "description", "location", "image_url", "blurhash") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, created_at, updated_at, start_time, end_time, description, location, image_url, blurhash
 `
 
 type InsertGroupParams struct {
+	ID          uuid.UUID        `json:"id"`
 	Name        string           `json:"name"`
 	StartTime   pgtype.Timestamp `json:"start_time"`
 	EndTime     pgtype.Timestamp `json:"end_time"`
@@ -261,6 +262,7 @@ type InsertGroupParams struct {
 
 func (q *Queries) InsertGroup(ctx context.Context, arg InsertGroupParams) (Group, error) {
 	row := q.db.QueryRow(ctx, insertGroup,
+		arg.ID,
 		arg.Name,
 		arg.StartTime,
 		arg.EndTime,

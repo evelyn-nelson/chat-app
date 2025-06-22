@@ -79,6 +79,12 @@ type Group struct {
 	Blurhash    pgtype.Text      `json:"blurhash"`
 }
 
+type GroupReservation struct {
+	GroupID   uuid.UUID        `json:"group_id"`
+	UserID    uuid.UUID        `json:"user_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
 type Message struct {
 	ID        uuid.UUID        `json:"id"`
 	UserID    *uuid.UUID       `json:"user_id"`

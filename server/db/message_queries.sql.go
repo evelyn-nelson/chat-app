@@ -264,6 +264,7 @@ func (q *Queries) GetRelevantMessages(ctx context.Context, id uuid.UUID) ([]GetR
 
 const insertMessage = `-- name: InsertMessage :one
 INSERT INTO messages (
+    id,
     user_id,
     group_id,
     ciphertext,
@@ -271,11 +272,12 @@ INSERT INTO messages (
     msg_nonce,
     key_envelopes
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 ) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, message_type, msg_nonce, key_envelopes
 `
 
 type InsertMessageParams struct {
+	ID           uuid.UUID   `json:"id"`
 	UserID       *uuid.UUID  `json:"user_id"`
 	GroupID      *uuid.UUID  `json:"group_id"`
 	Ciphertext   []byte      `json:"ciphertext"`
@@ -298,6 +300,7 @@ type InsertMessageRow struct {
 
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (InsertMessageRow, error) {
 	row := q.db.QueryRow(ctx, insertMessage,
+		arg.ID,
 		arg.UserID,
 		arg.GroupID,
 		arg.Ciphertext,

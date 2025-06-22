@@ -377,6 +377,7 @@ func (h *Handler) CreateGroup(c *gin.Context) {
 
 	qtx := h.db.WithTx(tx)
 	groupParams := db.InsertGroupParams{
+		ID:          req.ID,
 		Name:        req.Name,
 		StartTime:   pgtype.Timestamp{Time: req.StartTime, Valid: true},
 		EndTime:     pgtype.Timestamp{Time: req.EndTime, Valid: true},

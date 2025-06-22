@@ -7,6 +7,7 @@ import {
 import sodium from "react-native-libsodium";
 import { Base64 } from "js-base64";
 import * as FileSystem from "expo-file-system";
+import { v4 as uuidv4 } from "uuid";
 
 export const uint8ArrayToBase64 = (arr: Uint8Array): string => {
   return Base64.fromUint8Array(arr);
@@ -144,6 +145,7 @@ export const encryptAndPrepareMessageForSending = async (
     }
 
     const messageToSend = {
+      id: uuidv4(),
       group_id: groupId,
       messageType: messageType,
       msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
