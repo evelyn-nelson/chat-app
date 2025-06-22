@@ -36,7 +36,6 @@ export class Store implements IStore {
       `Current DB version: ${currentDbVersion}, Target DB version: ${TARGET_DATABASE_VERSION}. Starting migration...`
     );
 
-    // Migration to version 1
     if (currentDbVersion < 1) {
       console.log("Migrating to version 1...");
       await this.db.execAsync(`
@@ -73,7 +72,6 @@ export class Store implements IStore {
       console.log("Successfully migrated to version 1.");
     }
 
-    // Migration to version 2
     if (currentDbVersion === 1) {
       console.log("Migrating to version 2...");
       await this.db.execAsync(`
@@ -216,7 +214,6 @@ export class Store implements IStore {
     if (currentDbVersion === TARGET_DATABASE_VERSION) {
       console.log("Database is up to date.");
     } else if (currentDbVersion < TARGET_DATABASE_VERSION) {
-      // This state should ideally not be reached if all migrations run sequentially and update currentDbVersion.
       console.warn(
         `Database migration appears incomplete. Current version: ${currentDbVersion}, Target version: ${TARGET_DATABASE_VERSION}. Review migration logic.`
       );
@@ -395,7 +392,7 @@ export class Store implements IStore {
             incomingGroupIds
           );
         } else {
-          await db.runAsync("DELETE FROM groups;"); // No incoming groups, delete all
+          await db.runAsync("DELETE FROM groups;");
         }
       }
     });

@@ -1,7 +1,7 @@
 import ChatSettingsMenu from "@/components/ChatSettings/ChatSettingsMenu";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import ExpoRouterModal from "@/components/Global/Modal/ExpoRouterModal";
-import { Group } from "@/types/types"; // Ensure this path is correct
+import { Group } from "@/types/types";
 import { useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import { ActivityIndicator, View, Text } from "react-native";

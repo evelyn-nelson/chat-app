@@ -156,7 +156,7 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 		return
 	}
 
-	client := NewClient(conn, user) // NewClient creates its own context for the client's goroutines
+	client := NewClient(conn, user)
 	log.Printf("Client %d (%s) connected. Remote: %s", client.User.ID, client.User.Username, conn.RemoteAddr())
 
 	h.hub.Register <- client
@@ -170,7 +170,6 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 	go client.WriteMessage()
 	client.ReadMessage(h.hub, h.db)
 
-	// When ReadMessage returns, the defer above will execute.
 	log.Printf("EstablishConnection goroutine for client %d (%s) exiting.", client.User.ID, client.User.Username)
 }
 
@@ -538,7 +537,6 @@ func (h *Handler) UpdateGroup(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// Should be rare if update succeeded, implies group vanished immediately.
 			c.JSON(
 				http.StatusNotFound,
 				gin.H{"error": "Group not found after update"},
@@ -778,7 +776,6 @@ func (h *Handler) LeaveGroup(c *gin.Context) {
 		}
 		log.Printf("Group %d deleted as it became empty after user %d left.", groupID, user.ID)
 	} else {
-		// If the leaving user was an admin, promote another user if no admins are left.
 		if deletedUserGroup.Admin {
 			anyAdminLeft := false
 			for _, ug := range remainingUserGroups {

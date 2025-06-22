@@ -91,10 +91,9 @@ const AppLayout = () => {
     }
   };
 
-  // Ref and function for fetching device keys
   const isFetchingDeviceKeys = useRef(false);
   const fetchDeviceKeys = async () => {
-    if (isFetchingDeviceKeys.current || !user) return; // Don't fetch if no user
+    if (isFetchingDeviceKeys.current || !user) return;
     isFetchingDeviceKeys.current = true;
     try {
       await loadRelevantDeviceKeys();

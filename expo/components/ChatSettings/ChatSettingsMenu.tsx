@@ -335,7 +335,7 @@ const ChatSettingsMenu = (props: {
             <>
               <Button
                 text="Cancel"
-                onPress={() => setIsEditing(false)} // useEffect handles reset
+                onPress={() => setIsEditing(false)}
                 size="sm"
                 variant="secondary"
                 className="mr-2"

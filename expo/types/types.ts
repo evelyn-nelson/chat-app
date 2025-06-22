@@ -26,7 +26,7 @@ export type Group = {
   name: string;
   created_at: string;
   updated_at: string;
-  admin: boolean; // Is the current user an admin of this group?
+  admin: boolean;
   start_time: string | null;
   end_time: string | null;
   group_users: GroupUser[];

@@ -191,7 +191,7 @@ export default function ChatBox({ group }: { group: Group }) {
                     `Failed to parse image JSON for message ${currentMsg.id}:`,
                     e
                   );
-                  decryptedContent = "[Invalid Image Data]"; // Fallback content
+                  decryptedContent = "[Invalid Image Data]";
                 }
                 break;
 
