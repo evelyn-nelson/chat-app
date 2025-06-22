@@ -41,7 +41,7 @@ WHERE
     g.id = sqlc.arg('group_id');
 
 -- name: InsertGroup :one
-INSERT INTO groups ("name", "start_time", "end_time", "description", "location", "image_url", "blurhash") VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *; 
+INSERT INTO groups ("id", "name", "start_time", "end_time", "description", "location", "image_url", "blurhash") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *; 
 
 -- name: UpdateGroup :one
 UPDATE groups

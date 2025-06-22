@@ -1,5 +1,6 @@
 -- name: InsertMessage :one
 INSERT INTO messages (
+    id,
     user_id,
     group_id,
     ciphertext,
@@ -7,7 +8,7 @@ INSERT INTO messages (
     msg_nonce,
     key_envelopes
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 ) RETURNING id, user_id, group_id, created_at, updated_at, ciphertext, message_type, msg_nonce, key_envelopes;
 
 -- name: GetMessageById :one
