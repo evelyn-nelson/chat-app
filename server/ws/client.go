@@ -5,7 +5,6 @@ import (
 	"chat-app-server/util"
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -122,7 +121,6 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 
 		var clientMsg ClientSentE2EMessage
 		err := c.conn.ReadJSON(&clientMsg)
-		fmt.Println(clientMsg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
 				log.Printf("Client %d (%s): Unexpected WebSocket close error: %v", c.User.ID, c.User.Username, err)
@@ -152,6 +150,7 @@ func (c *Client) ReadMessage(hub *Hub, queries *db.Queries) {
 		}
 
 		hubMessage := &RawMessageE2EE{
+			ID:          clientMsg.ID,
 			GroupID:     clientMsg.GroupID,
 			MessageType: clientMsg.MessageType,
 			MsgNonce:    clientMsg.MsgNonce,

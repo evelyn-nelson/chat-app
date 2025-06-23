@@ -34,6 +34,13 @@ export const useCachedImageEncrypted = (content: ImageMessageContent) => {
         return;
       }
 
+      if (content.localUri) {
+        setLocalUri(content.localUri);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+
       const filename = content.objectKey.replace(/\//g, "_");
       const cacheUri = `${CACHE_DIR}${filename}`;
 

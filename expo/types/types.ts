@@ -122,6 +122,7 @@ export type ImageMessageContent = {
   height?: number;
   size?: number;
   blurhash?: string;
+  localUri?: string;
 };
 
 interface BaseUiMessage {

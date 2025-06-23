@@ -7,12 +7,14 @@ import React, {
   useMemo,
   useEffect,
   useRef,
+  useState,
 } from "react";
 import { useWebSocket } from "./WebSocketContext";
 import http from "@/util/custom-axios";
 import { useGlobalStore } from "./GlobalStoreContext";
 import { CanceledError } from "axios";
 import * as encryptionService from "@/services/encryptionService";
+import { DisplayableItem } from "../ChatBox/types";
 
 type MessageAction =
   | { type: "ADD_MESSAGE"; payload: DbMessage }
@@ -31,6 +33,9 @@ interface MessageStoreContextType {
   loading: boolean;
   error: string | null;
   loadHistoricalMessages: (deviceId?: string) => Promise<void>;
+  optimistic: Record<string, DisplayableItem[]>;
+  addOptimisticDisplayable: (item: DisplayableItem) => void;
+  removeOptimisticDisplayable: (groupId: string, id: string) => void;
 }
 
 const initialState: MessageState = {
@@ -101,6 +106,27 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const { onMessage, removeMessageHandler } = useWebSocket();
   const { store, deviceId: globalDeviceId } = useGlobalStore();
 
+  const [optimistic, setOptimistic] = useState<
+    Record<string, DisplayableItem[]>
+  >({});
+
+  const addOptimisticDisplayable = useCallback((item: DisplayableItem) => {
+    setOptimistic((o) => {
+      const list = o[item.groupId] || [];
+      return { ...o, [item.groupId]: [...list, item] };
+    });
+  }, []);
+
+  const removeOptimisticDisplayable = useCallback(
+    (groupId: string, id: string) => {
+      setOptimistic((o) => ({
+        ...o,
+        [groupId]: (o[groupId] || []).filter((x) => x.id !== id),
+      }));
+    },
+    []
+  );
+
   const isSyncingHistoricalMessagesRef = useRef(false);
 
   const loadHistoricalMessages = useCallback(
@@ -140,6 +166,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
           );
           if (processed) {
             processedMessages.push(processed);
+            removeOptimisticDisplayable(rawMsg.group_id, rawMsg.id);
           } else {
             console.warn(
               `Failed to process historical raw message with ID: ${rawMsg.id}`
@@ -204,6 +231,10 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (processedMessage) {
         dispatch({ type: "ADD_MESSAGE", payload: processedMessage });
+        removeOptimisticDisplayable(
+          processedMessage.group_id,
+          processedMessage.id
+        );
         await store.saveMessages([processedMessage]);
       } else {
         console.warn(
@@ -229,8 +260,19 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
       loading: state.loading,
       error: state.error,
       loadHistoricalMessages,
+      optimistic,
+      addOptimisticDisplayable,
+      removeOptimisticDisplayable,
     }),
-    [getMessagesForGroup, state.loading, state.error, loadHistoricalMessages]
+    [
+      getMessagesForGroup,
+      state.loading,
+      state.error,
+      loadHistoricalMessages,
+      optimistic,
+      addOptimisticDisplayable,
+      removeOptimisticDisplayable,
+    ]
   );
 
   return (

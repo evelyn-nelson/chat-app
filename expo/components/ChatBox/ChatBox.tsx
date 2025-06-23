@@ -57,10 +57,14 @@ const compareUint8Arrays = (
 
 export default function ChatBox({ group }: { group: Group }) {
   const { user } = useGlobalStore();
-  const { getMessagesForGroup } = useMessageStore();
+  const { getMessagesForGroup, optimistic } = useMessageStore();
   const groupMessages = useMemo(() => {
     return getMessagesForGroup(group.id);
   }, [getMessagesForGroup, group.id]);
+
+  const optimisticMessages = useMemo(() => {
+    return optimistic[group.id] || [];
+  }, [optimistic, group.id]);
 
   const flatListRef = useRef<FlatList<DisplayableItem> | null>(null);
   const lastCountRef = useRef(groupMessages.length);
@@ -223,7 +227,9 @@ export default function ChatBox({ group }: { group: Group }) {
           finalDisplayableItems.push({
             type: "date_separator",
             id: currentDate.toDateString(),
+            groupId: group.id,
             dateString: dateString,
+            timestamp: dateString,
           });
         }
 
@@ -236,6 +242,7 @@ export default function ChatBox({ group }: { group: Group }) {
           finalDisplayableItems.push({
             type: "message_text",
             id: currentMsg.id,
+            groupId: group.id,
             user: senderInfo,
             content: decryptedContent,
             align: currentMsg.sender_id === user?.id ? "right" : "left",
@@ -245,6 +252,7 @@ export default function ChatBox({ group }: { group: Group }) {
           finalDisplayableItems.push({
             type: "message_image",
             id: currentMsg.id,
+            groupId: group.id,
             user: senderInfo,
             content: decryptedContent as ImageMessageContent,
             align: currentMsg.sender_id === user?.id ? "right" : "left",
@@ -255,11 +263,24 @@ export default function ChatBox({ group }: { group: Group }) {
 
       // 6. Update State: Only update React state if something has actually changed.
       // This prevents unnecessary re-renders.
+
+      const filteredOptimistic = optimisticMessages.filter(
+        (o) => !groupMessages.find((m) => m.id === o.id)
+      );
+
+      const allDisplayableItems = [
+        ...filteredOptimistic,
+        ...finalDisplayableItems,
+      ].sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
       if (
         needsUIUpdate ||
         displayableMessages.length !== finalDisplayableItems.length
       ) {
-        setDisplayableMessages(finalDisplayableItems.reverse());
+        setDisplayableMessages(allDisplayableItems.reverse());
 
         if (newCacheEntries.size > 0) {
           setDecryptedContentCache(
@@ -274,7 +295,7 @@ export default function ChatBox({ group }: { group: Group }) {
     };
 
     decryptAndFormatMessages();
-  }, [groupMessages, devicePrivateKey, user?.id]);
+  }, [groupMessages, devicePrivateKey, user?.id, optimisticMessages]);
 
   const flatListProps = useMemo(
     () => ({
