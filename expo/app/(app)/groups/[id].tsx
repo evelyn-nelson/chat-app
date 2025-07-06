@@ -9,7 +9,7 @@ import { validate } from "uuid";
 
 const GroupPage = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, store, groupsRefreshKey } = useGlobalStore();
+  const { user, store, groupsRefreshKey, refreshGroups } = useGlobalStore();
 
   const [allGroups, setAllGroups] = useState<Group[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +55,20 @@ const GroupPage = () => {
     if (!id || !allGroups) return undefined;
     return allGroups.find((g) => g.id.toString() === id) || null;
   }, [id, allGroups]);
+
+  // Mark group as read when it's successfully loaded
+  useEffect(() => {
+    if (currentGroup && id && store) {
+      store
+        .markGroupRead(id)
+        .then(() => {
+          refreshGroups();
+        })
+        .catch((error) => {
+          console.error("Error marking group as read:", error);
+        });
+    }
+  }, [currentGroup, id, store, refreshGroups]);
 
   useEffect(() => {
     if (!isLoading && currentGroup === null) {

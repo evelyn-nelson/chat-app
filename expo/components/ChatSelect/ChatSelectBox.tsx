@@ -13,6 +13,17 @@ export const ChatSelectBox = (props: {
   const pathname = usePathname();
   const isActive = pathname === `/groups/${group.id}`;
 
+  // Check if there are unread messages
+  const hasUnreadMessages = (() => {
+    if (!group.last_message_timestamp) return false;
+    if (!group.last_read_timestamp) return true;
+
+    const lastMessageTime = new Date(group.last_message_timestamp);
+    const lastReadTime = new Date(group.last_read_timestamp);
+
+    return lastMessageTime > lastReadTime;
+  })();
+
   return (
     <Pressable
       className={`
@@ -24,7 +35,13 @@ export const ChatSelectBox = (props: {
       }}
     >
       <View className="flex-row items-center py-3 px-4">
-        <View className="w-8 h-8 rounded-full bg-blue-600 mr-2 overflow-hidden">
+        <View className="w-1 mr-3">
+          {hasUnreadMessages && (
+            <View className="w-1 h-8 bg-blue-500 rounded-full" />
+          )}
+        </View>
+
+        <View className="w-8 h-8 rounded-full bg-blue-600 mr-3 overflow-hidden">
           <GroupAvatarSmall
             imageURL={group.image_url ?? null}
             blurhash={group.blurhash ?? null}
@@ -35,7 +52,11 @@ export const ChatSelectBox = (props: {
         <View className="flex-1">
           <Text
             numberOfLines={1}
-            className="text-base font-medium text-gray-200"
+            className={`text-base font-medium ${
+              hasUnreadMessages
+                ? "text-gray-100 font-semibold"
+                : "text-gray-200"
+            }`}
           >
             {group.name}
           </Text>

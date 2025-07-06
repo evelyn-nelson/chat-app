@@ -10,7 +10,7 @@ import {
 import { ChatSelectBox } from "./ChatSelectBox";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { Group } from "@/types/types";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWebSocket } from "../context/WebSocketContext";
 import { Link, router } from "expo-router";
 import Button from "../Global/Button/Button";
@@ -42,6 +42,18 @@ export const ChatSelect = () => {
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error(error));
   }, [groupsRefreshKey]);
+
+  const sortedGroups = useMemo(() => {
+    return [...groups].sort((a, b) => {
+      const timeA = a.last_message_timestamp || a.created_at || "";
+      const timeB = b.last_message_timestamp || b.created_at || "";
+
+      const dateA = new Date(timeA);
+      const dateB = new Date(timeB);
+
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [groups]);
 
   const statusBarHeight = StatusBar.currentHeight || 0;
   const topPadding = Platform.OS === "ios" ? 50 : statusBarHeight + 16;
@@ -87,13 +99,13 @@ export const ChatSelect = () => {
         }
       >
         <View className="bg-gray-800 mx-3 rounded-lg overflow-hidden">
-          {groups.length > 0 ? (
-            groups.map((group, index) => (
+          {sortedGroups.length > 0 ? (
+            sortedGroups.map((group, index) => (
               <ChatSelectBox
                 key={group.id || index}
                 group={group}
                 isFirst={index === 0}
-                isLast={index === groups.length - 1}
+                isLast={index === sortedGroups.length - 1}
               />
             ))
           ) : (
