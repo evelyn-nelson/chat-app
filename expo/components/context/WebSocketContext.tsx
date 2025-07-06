@@ -451,9 +451,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           console.error("Error sending message:", error);
         }
       } else {
-        console.error(
-          "WebSocket is not connected or not authenticated. Message not sent."
-        );
+        console.error("WebSocket is not connected or not authenticated. Message not sent.");
       }
     },
     [connected]

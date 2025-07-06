@@ -11,8 +11,11 @@ import {
   readImageAsBytes,
   base64ToUint8Array,
 } from "@/services/encryptionService";
-import { RecipientDevicePublicKey } from "@/types/types";
+import { ImageMessageContent, RecipientDevicePublicKey } from "@/types/types";
 import { processImage } from "@/services/imageService";
+import { useMessageStore } from "@/components/context/MessageStoreContext";
+import { DisplayableItem } from "@/components/ChatBox/types";
+import { v4 } from "uuid";
 
 interface UseSendImageReturn {
   sendImage: (
@@ -29,6 +32,7 @@ const baseURL = `${process.env.EXPO_PUBLIC_HOST}/images`;
 export const useSendImage = (): UseSendImageReturn => {
   const [isSendingImage, setIsSendingImage] = useState(false);
   const [imageSendError, setImageSendError] = useState<string | null>(null);
+  const { addOptimisticDisplayable } = useMessageStore();
 
   const { sendMessage: sendPacketOverSocket } = useWebSocket();
   const { user: currentUser, getDeviceKeysForUser } = useGlobalStore();
@@ -55,6 +59,33 @@ export const useSendImage = (): UseSendImageReturn => {
         normalizedImageUri = processedData.normalized.uri;
 
         const { normalized, blurhash } = processedData;
+
+        const id = v4();
+        const timestamp = new Date().toISOString();
+
+        const localUri = normalized.uri;
+        const placeholderContent: ImageMessageContent = {
+          objectKey: localUri,
+          mimeType: imageAsset.mimeType ?? "image/jpeg",
+          decryptionKey: "",
+          nonce: "",
+          width: imageAsset.width!,
+          height: imageAsset.height!,
+          blurhash: blurhash ?? undefined,
+          localUri: localUri,
+        };
+
+        const optimisticItem: DisplayableItem = {
+          type: "message_image",
+          id,
+          groupId: groupId,
+          user: { id: currentUser.id, username: currentUser.username },
+          content: placeholderContent,
+          align: "right",
+          timestamp,
+        };
+        addOptimisticDisplayable(optimisticItem);
+
         const imageBytes = base64ToUint8Array(normalized.base64);
 
         const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -117,6 +148,7 @@ export const useSendImage = (): UseSendImageReturn => {
         );
 
         const rawMessagePayload = await encryptAndPrepareMessageForSending(
+          id,
           plaintextPayload,
           groupId,
           recipientDevicePublicKeys,
@@ -136,7 +168,12 @@ export const useSendImage = (): UseSendImageReturn => {
         setIsSendingImage(false);
       }
     },
-    [currentUser, getDeviceKeysForUser, sendPacketOverSocket]
+    [
+      currentUser,
+      getDeviceKeysForUser,
+      sendPacketOverSocket,
+      addOptimisticDisplayable,
+    ]
   );
 
   return {

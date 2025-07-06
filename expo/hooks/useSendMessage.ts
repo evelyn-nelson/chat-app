@@ -3,6 +3,9 @@ import { useWebSocket } from "../components/context/WebSocketContext";
 import { useGlobalStore } from "../components/context/GlobalStoreContext";
 import * as encryptionService from "@/services/encryptionService";
 import { RecipientDevicePublicKey } from "@/types/types";
+import { v4 } from "uuid";
+import { useMessageStore } from "@/components/context/MessageStoreContext";
+import { DisplayableItem } from "@/components/ChatBox/types";
 interface UseSendMessageReturn {
   sendMessage: (
     plaintext: string,
@@ -19,6 +22,7 @@ export const useSendMessage = (): UseSendMessageReturn => {
 
   const { sendMessage: sendPacketOverSocket } = useWebSocket();
   const { user: currentUser, getDeviceKeysForUser } = useGlobalStore();
+  const { addOptimisticDisplayable } = useMessageStore();
 
   const sendMessage = useCallback(
     async (
@@ -36,6 +40,20 @@ export const useSendMessage = (): UseSendMessageReturn => {
         setIsSending(false);
         return;
       }
+
+      const id = v4();
+      const timestamp = new Date().toISOString();
+
+      const optimisticItem: DisplayableItem = {
+        type: "message_text",
+        id,
+        groupId: group_id,
+        user: { id: currentUser.id, username: currentUser.username },
+        content: plaintext,
+        align: "right",
+        timestamp,
+      };
+      addOptimisticDisplayable(optimisticItem);
 
       try {
         const recipientDevicePublicKeys: RecipientDevicePublicKey[] = [];
@@ -73,6 +91,7 @@ export const useSendMessage = (): UseSendMessageReturn => {
 
         const rawMessagePayload =
           await encryptionService.encryptAndPrepareMessageForSending(
+            id,
             plaintext,
             group_id,
             recipientDevicePublicKeys,
@@ -93,7 +112,12 @@ export const useSendMessage = (): UseSendMessageReturn => {
         setIsSending(false);
       }
     },
-    [currentUser, getDeviceKeysForUser, sendPacketOverSocket]
+    [
+      currentUser,
+      getDeviceKeysForUser,
+      sendPacketOverSocket,
+      addOptimisticDisplayable,
+    ]
   );
 
   return {

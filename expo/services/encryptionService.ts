@@ -98,6 +98,7 @@ export const processAndDecodeIncomingMessage = (
  * @returns A promise that resolves to the RawMessage object (with Base64 strings).
  */
 export const encryptAndPrepareMessageForSending = async (
+  messageId: string,
   plaintext: string,
   groupId: string,
   recipientDevicePublicKeys: { deviceId: string; publicKey: Uint8Array }[],
@@ -145,7 +146,7 @@ export const encryptAndPrepareMessageForSending = async (
     }
 
     const messageToSend = {
-      id: uuidv4(),
+      id: messageId,
       group_id: groupId,
       messageType: messageType,
       msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
