@@ -79,6 +79,7 @@ const ChatSettingsMenu = (props: {
 
   const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
   const [isLoadingInvite, setIsLoadingInvite] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     setCurrentGroup(initialGroup);
@@ -95,32 +96,24 @@ const ChatSettingsMenu = (props: {
     }
   }, [initialGroup, isEditing, parseDate]);
 
-  useEffect(() => {
-    if (!isEditing) {
-      setEditableName(currentGroup.name);
-      setEditableDescription(currentGroup.description || "");
-      setEditableLocation(currentGroup.location || "");
-      setCurrentImageUrlForPreview(currentGroup.image_url ?? null);
-      setDateOptions({
-        startTime: parseDate(currentGroup.start_time),
-        endTime: parseDate(currentGroup.end_time),
-      });
-    }
-  }, [isEditing, currentGroup, parseDate]);
-
   const syncWithServerAndGlobalStore = async () => {
+    if (isSyncing) {
+      console.log("Sync already in progress, skipping");
+      return;
+    }
+
+    setIsSyncing(true);
     try {
       const allGroups = await getGroups();
       await store.saveGroups(allGroups);
-      refreshGroups();
 
-      const newGroups = await store.loadGroups();
-
-      const latestVersionOfCurrentGroup = newGroups.find(
+      const latestVersionOfCurrentGroup = allGroups.find(
         (g) => g.id === currentGroup.id
       );
+
       if (latestVersionOfCurrentGroup) {
         setCurrentGroup(latestVersionOfCurrentGroup);
+        refreshGroups();
       } else {
         console.warn(
           "Current group not found after sync, it might have been deleted."
@@ -129,6 +122,8 @@ const ChatSettingsMenu = (props: {
       }
     } catch (error) {
       console.error("Failed to sync with server and global store:", error);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
