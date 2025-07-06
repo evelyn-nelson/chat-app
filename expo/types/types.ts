@@ -34,6 +34,8 @@ export type Group = {
   location?: string | null;
   image_url?: string | null;
   blurhash?: string | null;
+  last_read_timestamp?: string | null;
+  last_message_timestamp?: string | null;
 };
 
 export interface CreateGroupParams {
