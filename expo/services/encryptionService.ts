@@ -9,6 +9,60 @@ import { Base64 } from "js-base64";
 import * as FileSystem from "expo-file-system";
 import { v4 as uuidv4 } from "uuid";
 
+// --- Concurrency Control ---
+class ConcurrencyLimiter {
+  private activeOperations = 0;
+  private maxConcurrent: number;
+  private queue: Array<() => void> = [];
+  private sodiumReadyPromise: Promise<void>;
+
+  constructor(maxConcurrent: number = 3) {
+    this.maxConcurrent = maxConcurrent;
+    this.sodiumReadyPromise = (async () => {
+      await sodium.ready;
+    })();
+  }
+
+  async execute<T>(operation: () => Promise<T>): Promise<T> {
+    await this.sodiumReadyPromise;
+
+    return new Promise((resolve, reject) => {
+      const executeOperation = async () => {
+        this.activeOperations++;
+        try {
+          const result = await operation();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.activeOperations--;
+          this.processQueue();
+        }
+      };
+
+      if (this.activeOperations < this.maxConcurrent) {
+        executeOperation();
+      } else {
+        this.queue.push(executeOperation);
+      }
+    });
+  }
+
+  private processQueue() {
+    if (this.queue.length > 0 && this.activeOperations < this.maxConcurrent) {
+      const nextOperation = this.queue.shift();
+      if (nextOperation) {
+        nextOperation();
+      }
+    }
+  }
+}
+
+// Global concurrency limiters for different operation types
+const textDecryptionLimiter = new ConcurrencyLimiter(5); // Text is fast, allow more
+const imageDecryptionLimiter = new ConcurrencyLimiter(2); // Images are slow, allow fewer
+const encryptionLimiter = new ConcurrencyLimiter(3); // For key generation and encryption
+
 export const uint8ArrayToBase64 = (arr: Uint8Array): string => {
   return Base64.fromUint8Array(arr);
 };
@@ -27,9 +81,10 @@ export const generateLongTermKeyPair = async (): Promise<{
   publicKey: Uint8Array;
   privateKey: Uint8Array;
 }> => {
-  await sodium.ready;
-  const { publicKey, privateKey } = sodium.crypto_box_keypair();
-  return { publicKey, privateKey };
+  return encryptionLimiter.execute(async () => {
+    const { publicKey, privateKey } = sodium.crypto_box_keypair();
+    return { publicKey, privateKey };
+  });
 };
 
 // --- Message Processing (Incoming Messages) ---
@@ -104,61 +159,61 @@ export const encryptAndPrepareMessageForSending = async (
   recipientDevicePublicKeys: { deviceId: string; publicKey: Uint8Array }[],
   messageType: MessageType
 ): Promise<RawMessage | null> => {
-  try {
-    await sodium.ready;
-
-    const symKey = sodium.crypto_secretbox_keygen();
-    const msgNonceUint8Array = sodium.randombytes_buf(
-      sodium.crypto_secretbox_NONCEBYTES
-    );
-
-    const plaintextUint8Array = new TextEncoder().encode(plaintext);
-
-    const ciphertextUint8Array = sodium.crypto_secretbox_easy(
-      plaintextUint8Array,
-      msgNonceUint8Array,
-      symKey
-    );
-
-    const senderEphemeralKeyPair = sodium.crypto_box_keypair();
-
-    const envelopes = [];
-    for (const recipient of recipientDevicePublicKeys) {
-      const keyNonceUint8Array = sodium.randombytes_buf(
-        sodium.crypto_box_NONCEBYTES
+  return encryptionLimiter.execute(async () => {
+    try {
+      const symKey = sodium.crypto_secretbox_keygen();
+      const msgNonceUint8Array = sodium.randombytes_buf(
+        sodium.crypto_secretbox_NONCEBYTES
       );
 
-      // Encrypt (box) the symmetric key for this recipient
-      // Uses: symKey (message), keyNonce, recipient_pk, sender_ephemeral_sk
-      const sealedSymmetricKeyForRecipient = sodium.crypto_box_easy(
-        symKey,
-        keyNonceUint8Array,
-        recipient.publicKey,
-        senderEphemeralKeyPair.privateKey // Sender's EPHEMERAL private key
+      const plaintextUint8Array = new TextEncoder().encode(plaintext);
+
+      const ciphertextUint8Array = sodium.crypto_secretbox_easy(
+        plaintextUint8Array,
+        msgNonceUint8Array,
+        symKey
       );
 
-      envelopes.push({
-        deviceId: recipient.deviceId,
-        ephPubKey: uint8ArrayToBase64(senderEphemeralKeyPair.publicKey),
-        keyNonce: uint8ArrayToBase64(keyNonceUint8Array),
-        sealedKey: uint8ArrayToBase64(sealedSymmetricKeyForRecipient),
-      });
+      const senderEphemeralKeyPair = sodium.crypto_box_keypair();
+
+      const envelopes = [];
+      for (const recipient of recipientDevicePublicKeys) {
+        const keyNonceUint8Array = sodium.randombytes_buf(
+          sodium.crypto_box_NONCEBYTES
+        );
+
+        // Encrypt (box) the symmetric key for this recipient
+        // Uses: symKey (message), keyNonce, recipient_pk, sender_ephemeral_sk
+        const sealedSymmetricKeyForRecipient = sodium.crypto_box_easy(
+          symKey,
+          keyNonceUint8Array,
+          recipient.publicKey,
+          senderEphemeralKeyPair.privateKey // Sender's EPHEMERAL private key
+        );
+
+        envelopes.push({
+          deviceId: recipient.deviceId,
+          ephPubKey: uint8ArrayToBase64(senderEphemeralKeyPair.publicKey),
+          keyNonce: uint8ArrayToBase64(keyNonceUint8Array),
+          sealedKey: uint8ArrayToBase64(sealedSymmetricKeyForRecipient),
+        });
+      }
+
+      const messageToSend = {
+        id: messageId,
+        group_id: groupId,
+        messageType: messageType,
+        msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
+        ciphertext: uint8ArrayToBase64(ciphertextUint8Array),
+        envelopes: envelopes,
+      };
+
+      return messageToSend as RawMessage;
+    } catch (error) {
+      console.error("Error during message encryption and preparation:", error);
+      return null;
     }
-
-    const messageToSend = {
-      id: messageId,
-      group_id: groupId,
-      messageType: messageType,
-      msgNonce: uint8ArrayToBase64(msgNonceUint8Array),
-      ciphertext: uint8ArrayToBase64(ciphertextUint8Array),
-      envelopes: envelopes,
-    };
-
-    return messageToSend as RawMessage;
-  } catch (error) {
-    console.error("Error during message encryption and preparation:", error);
-    return null;
-  }
+  });
 };
 
 // --- Decryption (For Displaying Messages) ---
@@ -166,37 +221,37 @@ export const decryptStoredMessage = async (
   storedMessage: DbMessage,
   deviceLongTermPrivateKey: Uint8Array
 ): Promise<string | null> => {
-  try {
-    await sodium.ready;
+  return textDecryptionLimiter.execute(async () => {
+    try {
+      const symKey = sodium.crypto_box_open_easy(
+        storedMessage.sealed_symmetric_key,
+        storedMessage.sym_key_encryption_nonce,
+        storedMessage.sender_ephemeral_public_key,
+        deviceLongTermPrivateKey
+      );
 
-    const symKey = sodium.crypto_box_open_easy(
-      storedMessage.sealed_symmetric_key,
-      storedMessage.sym_key_encryption_nonce,
-      storedMessage.sender_ephemeral_public_key,
-      deviceLongTermPrivateKey
-    );
+      if (!symKey) {
+        console.error("Failed to decrypt symmetric key.");
+        return null;
+      }
 
-    if (!symKey) {
-      console.error("Failed to decrypt symmetric key.");
+      const plaintextUint8Array = sodium.crypto_secretbox_open_easy(
+        storedMessage.ciphertext,
+        storedMessage.msg_nonce,
+        symKey
+      );
+
+      if (!plaintextUint8Array) {
+        console.error("Failed to decrypt message content.");
+        return null;
+      }
+
+      return sodium.to_string(plaintextUint8Array);
+    } catch (error) {
+      console.error("Error during message decryption:", error);
       return null;
     }
-
-    const plaintextUint8Array = sodium.crypto_secretbox_open_easy(
-      storedMessage.ciphertext,
-      storedMessage.msg_nonce,
-      symKey
-    );
-
-    if (!plaintextUint8Array) {
-      console.error("Failed to decrypt message content.");
-      return null;
-    }
-
-    return sodium.to_string(plaintextUint8Array);
-  } catch (error) {
-    console.error("Error during message decryption:", error);
-    return null;
-  }
+  });
 };
 
 // --- Image specific functions
@@ -217,22 +272,23 @@ export const encryptImageFile = async (
   imageKey: Uint8Array;
   imageNonce: Uint8Array;
 } | null> => {
-  try {
-    await sodium.ready;
-    const imageKey = sodium.crypto_secretbox_keygen();
-    const imageNonce = sodium.randombytes_buf(
-      sodium.crypto_secretbox_NONCEBYTES
-    );
-    const encryptedBlob = sodium.crypto_secretbox_easy(
-      imageBytes,
-      imageNonce,
-      imageKey
-    );
-    return { encryptedBlob, imageKey, imageNonce };
-  } catch (error) {
-    console.error("Failed to encrypt image file:", error);
-    return null;
-  }
+  return encryptionLimiter.execute(async () => {
+    try {
+      const imageKey = sodium.crypto_secretbox_keygen();
+      const imageNonce = sodium.randombytes_buf(
+        sodium.crypto_secretbox_NONCEBYTES
+      );
+      const encryptedBlob = sodium.crypto_secretbox_easy(
+        imageBytes,
+        imageNonce,
+        imageKey
+      );
+      return { encryptedBlob, imageKey, imageNonce };
+    } catch (error) {
+      console.error("Failed to encrypt image file:", error);
+      return null;
+    }
+  });
 };
 
 export const createImageMessagePayload = (
@@ -263,18 +319,19 @@ export const decryptImageFile = async (
   key: Uint8Array,
   nonce: Uint8Array
 ): Promise<Uint8Array | null> => {
-  try {
-    await sodium.ready;
-    const decryptedBytes = sodium.crypto_secretbox_open_easy(
-      encryptedImageBytes,
-      nonce,
-      key
-    );
-    return decryptedBytes;
-  } catch (error) {
-    console.error("Failed to decrypt image file:", error);
-    return null;
-  }
+  return imageDecryptionLimiter.execute(async () => {
+    try {
+      const decryptedBytes = sodium.crypto_secretbox_open_easy(
+        encryptedImageBytes,
+        nonce,
+        key
+      );
+      return decryptedBytes;
+    } catch (error) {
+      console.error("Failed to decrypt image file:", error);
+      return null;
+    }
+  });
 };
 
 /**

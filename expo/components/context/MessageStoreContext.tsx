@@ -104,11 +104,13 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [state, dispatch] = useReducer(messageReducer, initialState);
   const { onMessage, removeMessageHandler } = useWebSocket();
-  const { store, deviceId: globalDeviceId } = useGlobalStore();
+  const { store, deviceId: globalDeviceId, refreshGroups } = useGlobalStore();
 
   const [optimistic, setOptimistic] = useState<
     Record<string, DisplayableItem[]>
   >({});
+
+  const hasLoadedHistoricalMessagesRef = useRef(false);
 
   const addOptimisticDisplayable = useCallback((item: DisplayableItem) => {
     setOptimistic((o) => {
@@ -178,12 +180,20 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         }
 
-        await store.saveMessages(processedMessages, true);
+        // Only clear messages on the first historical load to prevent flash
+        const shouldClearFirst = !hasLoadedHistoricalMessagesRef.current;
+        await store.saveMessages(processedMessages, shouldClearFirst);
+
+        // Mark that we've loaded historical messages at least once
+        hasLoadedHistoricalMessagesRef.current = true;
+
         dispatch({
           type: "SET_HISTORICAL_MESSAGES",
           payload: processedMessages,
         });
         dispatch({ type: "SET_ERROR", payload: null });
+
+        setTimeout(() => refreshGroups(), 100);
       } catch (error) {
         if (!(error instanceof CanceledError)) {
           console.error(
@@ -197,6 +207,9 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
               type: "SET_ERROR",
               payload: "Failed to sync messages, showing local data.",
             });
+
+            // Refresh groups even when loading from local store
+            refreshGroups();
           } catch (storeError) {
             console.error(
               "loadHistoricalMessages: Failed to load messages from store after sync error:",
@@ -212,7 +225,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
         isSyncingHistoricalMessagesRef.current = false;
       }
     },
-    [dispatch, store, globalDeviceId]
+    [dispatch, store, globalDeviceId, refreshGroups]
   );
 
   useEffect(() => {
@@ -237,6 +250,8 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
         dispatch({ type: "ADD_MESSAGE", payload: processedMessage });
         await store.saveMessages([processedMessage]);
 
+        refreshGroups();
+
         setTimeout(() => {
           removeOptimisticDisplayable(
             processedMessage.group_id,
@@ -252,7 +267,7 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
     onMessage(handleNewRawMessage);
     return () => removeMessageHandler(handleNewRawMessage);
-  }, [onMessage, removeMessageHandler, store, globalDeviceId]);
+  }, [onMessage, removeMessageHandler, store, globalDeviceId, refreshGroups]);
 
   const getMessagesForGroup = useCallback(
     (groupId: string) => {

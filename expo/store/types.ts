@@ -34,6 +34,8 @@ export interface IStore {
 
   loadUsers(): Promise<User[]>;
   clearUsers(): Promise<void>;
+
+  markGroupRead(groupId: string): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -64,6 +66,8 @@ export interface GroupRow {
   location: string | null;
   image_url: string | null;
   blurhash: string | null;
+  last_read_timestamp: string | null;
+  last_message_timestamp: string | null;
 }
 
 export interface UserRow {

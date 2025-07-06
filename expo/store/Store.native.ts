@@ -19,7 +19,7 @@ export class Store implements IStore {
       throw new Error("Database not available for initialization.");
     }
 
-    const TARGET_DATABASE_VERSION = 7;
+    const TARGET_DATABASE_VERSION = 9;
 
     let { user_version: currentDbVersion } = (await this.db.getFirstAsync<{
       user_version: number;
@@ -208,6 +208,46 @@ export class Store implements IStore {
       } catch (error) {
         await this.db.execAsync("ROLLBACK;");
         console.error("Error migrating database to version 7:", error);
+      }
+    }
+    if (currentDbVersion === 7) {
+      console.log("Migrating to version 8 (Group reads tracking)...");
+      await this.db.execAsync("BEGIN TRANSACTION;");
+      try {
+        await this.db.execAsync(`
+          CREATE TABLE group_reads (
+            group_id TEXT NOT NULL,
+            last_read_timestamp TEXT NOT NULL,
+            PRIMARY KEY(group_id),
+            FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
+          );
+        `);
+        await this.db.execAsync("COMMIT;");
+        await this.db.execAsync(`PRAGMA user_version = 8`);
+        currentDbVersion = 8;
+        console.log("Successfully migrated to version 8.");
+      } catch (error) {
+        await this.db.execAsync("ROLLBACK;");
+        console.error("Error migrating database to version 8:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion === 8) {
+      console.log("Migrating to version 9 (Group Message Timestamp Index)...");
+      await this.db.execAsync("BEGIN TRANSACTION;");
+      try {
+        await this.db.execAsync(`
+          CREATE INDEX idx_messages_group_id_timestamp ON messages(group_id, timestamp);
+        `);
+        await this.db.execAsync("COMMIT;");
+        await this.db.execAsync(`PRAGMA user_version = 9`);
+        currentDbVersion = 9;
+        console.log("Successfully migrated to version 9.");
+      } catch (error) {
+        await this.db.execAsync("ROLLBACK;");
+        console.error("Error migrating database to version 9:", error);
+        throw error;
       }
     }
 
@@ -460,7 +500,14 @@ export class Store implements IStore {
   }
   async loadGroups(): Promise<Group[]> {
     const db = await this.getDb();
-    const result = await db.getAllAsync<GroupRow>(`SELECT * FROM groups;`);
+    const result = await db.getAllAsync<GroupRow>(
+      `SELECT groups.*,
+        group_reads.last_read_timestamp, 
+        (SELECT MAX(messages.timestamp) FROM messages WHERE messages.group_id = groups.id) AS last_message_timestamp
+        FROM groups 
+        LEFT JOIN group_reads ON groups.id = group_reads.group_id
+      `
+    );
     return (
       result?.map((row) => {
         let parsedGroupUsers;
@@ -482,6 +529,8 @@ export class Store implements IStore {
           location: row.location,
           image_url: row.image_url,
           blurhash: row.blurhash,
+          last_read_timestamp: row.last_read_timestamp,
+          last_message_timestamp: row.last_message_timestamp,
         };
       }) ?? []
     );
@@ -506,6 +555,19 @@ export class Store implements IStore {
           group_admin_map: group_admin_map,
         };
       }) ?? []
+    );
+  }
+
+  async markGroupRead(groupId: string) {
+    const timestamp = new Date().toISOString();
+    await this.performSerialTransaction((db) =>
+      db.runAsync(
+        `INSERT INTO group_reads(group_id, last_read_timestamp)
+         VALUES (?, ?)
+       ON CONFLICT(group_id) DO UPDATE 
+         SET last_read_timestamp = excluded.last_read_timestamp;`,
+        [groupId, timestamp]
+      )
     );
   }
 
