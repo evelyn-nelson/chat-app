@@ -113,16 +113,20 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const addOptimisticDisplayable = useCallback((item: DisplayableItem) => {
     setOptimistic((o) => {
       const list = o[item.groupId] || [];
-      return { ...o, [item.groupId]: [...list, item] };
+      const newState = { ...o, [item.groupId]: [...list, item] };
+      return newState;
     });
   }, []);
 
   const removeOptimisticDisplayable = useCallback(
     (groupId: string, id: string) => {
-      setOptimistic((o) => ({
-        ...o,
-        [groupId]: (o[groupId] || []).filter((x) => x.id !== id),
-      }));
+      setOptimistic((o) => {
+        const newState = {
+          ...o,
+          [groupId]: (o[groupId] || []).filter((x) => x.id !== id),
+        };
+        return newState;
+      });
     },
     []
   );
@@ -231,11 +235,14 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (processedMessage) {
         dispatch({ type: "ADD_MESSAGE", payload: processedMessage });
-        removeOptimisticDisplayable(
-          processedMessage.group_id,
-          processedMessage.id
-        );
         await store.saveMessages([processedMessage]);
+
+        setTimeout(() => {
+          removeOptimisticDisplayable(
+            processedMessage.group_id,
+            processedMessage.id
+          );
+        }, 0);
       } else {
         console.warn(
           `Failed to process incoming live raw message with ID: ${rawMsg.id}`

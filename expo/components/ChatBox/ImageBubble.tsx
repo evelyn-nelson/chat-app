@@ -297,6 +297,22 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
         </View>
       </View>
     );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison to prevent re-renders when content changes but localUri stays the same
+    return (
+      prevProps.prevUserId === nextProps.prevUserId &&
+      prevProps.user.id === nextProps.user.id &&
+      prevProps.user.username === nextProps.user.username &&
+      prevProps.align === nextProps.align &&
+      prevProps.timestamp === nextProps.timestamp &&
+      prevProps.showTimestamp === nextProps.showTimestamp &&
+      // For content, compare the important fields that affect rendering
+      prevProps.content.localUri === nextProps.content.localUri &&
+      prevProps.content.blurhash === nextProps.content.blurhash &&
+      prevProps.content.width === nextProps.content.width &&
+      prevProps.content.height === nextProps.content.height
+    );
   }
 );
 

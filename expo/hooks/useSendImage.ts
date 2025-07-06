@@ -63,7 +63,7 @@ export const useSendImage = (): UseSendImageReturn => {
         const id = v4();
         const timestamp = new Date().toISOString();
 
-        const localUri = imageAsset.uri!;
+        const localUri = normalized.uri;
         const placeholderContent: ImageMessageContent = {
           objectKey: localUri,
           mimeType: imageAsset.mimeType ?? "image/jpeg",
