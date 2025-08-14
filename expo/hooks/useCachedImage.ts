@@ -181,23 +181,15 @@ const performDownloadClear = async (
   );
   const { downloadUrl } = presignRes.data;
 
-  const tempUri =
-    FileSystem.documentDirectory + `temp_clear_image_${Date.now()}`;
-
-  const downloadRes = await FileSystem.downloadAsync(downloadUrl, tempUri);
-
-  const base64Image = await FileSystem.readAsStringAsync(downloadRes.uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const imageBytes = base64ToUint8Array(base64Image);
-
-  if (!imageBytes) {
-    throw new Error("Image decoding failed.");
+  // Download directly to memory and write once
+  const res = await fetch(downloadUrl);
+  if (!res.ok) {
+    throw new Error(`Download failed: ${res.status}`);
   }
+  const buf = await res.arrayBuffer();
+  const imageBytes = new Uint8Array(buf);
 
   const finalUri = await saveBytesToLocalFile(imageBytes, cacheUri);
-
-  await FileSystem.deleteAsync(tempUri, { idempotent: true });
 
   return finalUri;
 };
@@ -212,14 +204,13 @@ const performDownloadEncrypted = async (
   );
   const { downloadUrl } = presignRes.data;
 
-  const tempUri = FileSystem.documentDirectory + "temp_encrypted_image";
-
-  const downloadRes = await FileSystem.downloadAsync(downloadUrl, tempUri);
-
-  const encryptedBase64 = await FileSystem.readAsStringAsync(downloadRes.uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const encryptedBytes = base64ToUint8Array(encryptedBase64);
+  // Download directly to memory and decrypt
+  const res = await fetch(downloadUrl);
+  if (!res.ok) {
+    throw new Error(`Download failed: ${res.status}`);
+  }
+  const ab = await res.arrayBuffer();
+  const encryptedBytes = new Uint8Array(ab);
 
   const key = base64ToUint8Array(content.decryptionKey);
   const nonce = base64ToUint8Array(content.nonce);
@@ -230,8 +221,6 @@ const performDownloadEncrypted = async (
   }
 
   const finalUri = await saveBytesToLocalFile(decryptedBytes, cacheUri);
-
-  await FileSystem.deleteAsync(tempUri, { idempotent: true });
 
   return finalUri;
 };

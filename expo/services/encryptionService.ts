@@ -60,7 +60,7 @@ class ConcurrencyLimiter {
 
 // Global concurrency limiters for different operation types
 const textDecryptionLimiter = new ConcurrencyLimiter(5); // Text is fast, allow more
-const imageDecryptionLimiter = new ConcurrencyLimiter(2); // Images are slow, allow fewer
+const imageDecryptionLimiter = new ConcurrencyLimiter(3); // Slightly higher concurrency for images
 const encryptionLimiter = new ConcurrencyLimiter(3); // For key generation and encryption
 
 export const uint8ArrayToBase64 = (arr: Uint8Array): string => {
