@@ -3,7 +3,7 @@
 # Docker-first server targets
 
 dev-up:
-	docker compose up
+	docker compose up -d && docker-compose logs -f go-server
 
 dev-down:
 	docker compose down
