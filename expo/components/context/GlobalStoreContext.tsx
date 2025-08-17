@@ -1,4 +1,4 @@
-import { Store } from "@/store/Store.native";
+import { Store } from "@/store/Store";
 import { User } from "@/types/types";
 import React, {
   createContext,
