@@ -25,7 +25,6 @@ const AppLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
   const insets = useSafeAreaInsets();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let isMounted = true;
 
@@ -110,7 +109,6 @@ const AppLayout = () => {
     }
   }, [user, loadRelevantDeviceKeys]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user && deviceId) {
       fetchGroups();
