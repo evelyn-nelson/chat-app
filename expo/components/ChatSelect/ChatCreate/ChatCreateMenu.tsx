@@ -1,13 +1,12 @@
-import { DateOptions, PickerImageResult } from "@/types/types";
+import { DateOptions } from "@/types/types";
 import { useCallback, useState } from "react";
-import { Text, TextInput, View, Image, Pressable, Alert } from "react-native";
+import { Text, TextInput, View, Pressable, Alert } from "react-native";
 import { useWebSocket } from "../../context/WebSocketContext";
 import { router } from "expo-router";
 import { useGlobalStore } from "../../context/GlobalStoreContext";
 import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
 import Button from "@/components/Global/Button/Button";
 import GroupDateOptions from "@/components/Global/GroupDateOptions/GroupDateOptions";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { v4 as uuidv4 } from "uuid";
 import { useUploadImageClear } from "@/hooks/useUploadImageClear";
@@ -38,10 +37,6 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   const [showDateOptions, setShowDateOptions] = useState(false);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
-
-  if (!self) {
-    return <View></View>;
-  }
 
   const fetchAndRefreshGroups = async () => {
     try {
@@ -307,7 +302,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
             placeholderText="Select friends to invite"
             userList={usersToInvite}
             setUserList={setUsersToInvite}
-            excludedUserList={[self]}
+            excludedUserList={self ? [self] : []}
           />
         </View>
       </View>

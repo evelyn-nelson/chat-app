@@ -1,5 +1,5 @@
 import { ActivityIndicator, View, Platform } from "react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Redirect, Tabs } from "expo-router";
 import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 import { User } from "@/types/types";
@@ -12,7 +12,7 @@ import { useMessageStore } from "@/components/context/MessageStoreContext";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
-  const { getGroups, disconnect, getUsers } = useWebSocket();
+  const { getGroups, getUsers } = useWebSocket();
   const {
     store,
     deviceId,
@@ -25,6 +25,7 @@ const AppLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
   const insets = useSafeAreaInsets();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let isMounted = true;
 
@@ -51,12 +52,12 @@ const AppLayout = () => {
 
     return () => {
       isMounted = false;
-      disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isFetchingGroups = useRef(false);
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     if (isFetchingGroups.current || !user) return;
     isFetchingGroups.current = true;
     try {
@@ -71,10 +72,10 @@ const AppLayout = () => {
     } finally {
       isFetchingGroups.current = false;
     }
-  };
+  }, [user, getGroups, store, refreshGroups]);
 
   const isFetchingUsers = useRef(false);
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (isFetchingUsers.current || !user) return;
     isFetchingUsers.current = true;
     try {
@@ -89,10 +90,10 @@ const AppLayout = () => {
     } finally {
       isFetchingUsers.current = false;
     }
-  };
+  }, [user, getUsers, store, refreshUsers]);
 
   const isFetchingDeviceKeys = useRef(false);
-  const fetchDeviceKeys = async () => {
+  const fetchDeviceKeys = useCallback(async () => {
     if (isFetchingDeviceKeys.current || !user) return;
     isFetchingDeviceKeys.current = true;
     try {
@@ -107,8 +108,9 @@ const AppLayout = () => {
     } finally {
       isFetchingDeviceKeys.current = false;
     }
-  };
+  }, [user, loadRelevantDeviceKeys]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (user && deviceId) {
       fetchGroups();
@@ -129,7 +131,14 @@ const AppLayout = () => {
       };
     }
     return undefined;
-  }, [user, deviceId, loadHistoricalMessages]);
+  }, [
+    user,
+    deviceId,
+    fetchGroups,
+    fetchUsers,
+    loadHistoricalMessages,
+    fetchDeviceKeys,
+  ]);
 
   if (isLoading) {
     return (

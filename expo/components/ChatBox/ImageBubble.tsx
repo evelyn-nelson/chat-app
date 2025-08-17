@@ -316,4 +316,6 @@ const ImageBubble: React.FC<ImageBubbleProps> = React.memo(
   }
 );
 
+ImageBubble.displayName = "ImageBubble";
+
 export default ImageBubble;

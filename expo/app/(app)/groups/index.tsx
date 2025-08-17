@@ -1,5 +1,5 @@
 import { ChatSelect } from "@/components/ChatSelect/ChatSelect";
-import { View, Text, StyleSheet } from "react-native";
+import { View } from "react-native";
 
 export default function HomeScreen() {
   return (

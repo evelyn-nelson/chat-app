@@ -25,18 +25,11 @@ import ChatBubble from "./ChatBubble";
 import MessageEntry from "./MessageEntry";
 import { useGlobalStore } from "../context/GlobalStoreContext";
 import { useMessageStore } from "../context/MessageStoreContext";
-import {
-  Group,
-  MessageUser,
-  DbMessage,
-  ImageMessageContent,
-} from "@/types/types";
+import { Group, ImageMessageContent } from "@/types/types";
 import * as deviceService from "@/services/deviceService";
 import * as encryptionService from "@/services/encryptionService";
 import { DisplayableItem } from "./types";
 import ImageBubble from "./ImageBubble";
-import { v4 } from "uuid";
-import { ImageViewer } from "./ImageViewer";
 import { router } from "expo-router";
 
 const SCROLL_THRESHOLD = 200;
@@ -310,7 +303,15 @@ export default function ChatBox({ group }: { group: Group }) {
     };
 
     decryptAndFormatMessages();
-  }, [groupMessages, devicePrivateKey, user?.id, optimisticMessages]);
+  }, [
+    groupMessages,
+    devicePrivateKey,
+    user?.id,
+    optimisticMessages,
+    group.id,
+    displayableMessages.length,
+    decryptedContentCache,
+  ]);
 
   const flatListProps = useMemo(
     () => ({

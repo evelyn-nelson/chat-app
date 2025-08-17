@@ -54,19 +54,26 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           const loggedInUser = response.data;
           setUser(loggedInUser);
           if (loggedInUser && !connected) {
-            await establishConnection();
+            establishConnection().catch(() => {});
           }
           return { user: loggedInUser, deviceId: currentDeviceId };
         }
         if (user && !connected) {
-          await establishConnection();
+          establishConnection().catch(() => {});
         }
         return { user: user, deviceId: globalDeviceId };
       } catch (error) {
         if (!(error instanceof CanceledError)) {
-          console.error("Error in whoami:", error);
+          // Avoid causing auth flicker when a connection is racing/bootstrapping
+          const message = (error as Error).message || "";
+          const isTransient =
+            message.includes("Connection attempt already in progress") ||
+            message.includes("WebSocket closed (Code: 0)");
+          if (!isTransient) {
+            console.error("Error in whoami:", error);
+          }
         }
-        return { user: undefined, deviceId: globalDeviceId };
+        return { user, deviceId: globalDeviceId };
       }
     },
     [globalDeviceId, setDeviceId, user, setUser, connected, establishConnection]

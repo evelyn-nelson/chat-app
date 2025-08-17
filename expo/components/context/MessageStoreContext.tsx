@@ -225,7 +225,13 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
         isSyncingHistoricalMessagesRef.current = false;
       }
     },
-    [dispatch, store, globalDeviceId, refreshGroups]
+    [
+      dispatch,
+      store,
+      globalDeviceId,
+      refreshGroups,
+      removeOptimisticDisplayable,
+    ]
   );
 
   useEffect(() => {
@@ -267,7 +273,14 @@ export const MessageStoreProvider: React.FC<{ children: React.ReactNode }> = ({
 
     onMessage(handleNewRawMessage);
     return () => removeMessageHandler(handleNewRawMessage);
-  }, [onMessage, removeMessageHandler, store, globalDeviceId, refreshGroups]);
+  }, [
+    onMessage,
+    removeMessageHandler,
+    store,
+    globalDeviceId,
+    refreshGroups,
+    removeOptimisticDisplayable,
+  ]);
 
   const getMessagesForGroup = useCallback(
     (groupId: string) => {

@@ -9,7 +9,7 @@ export const ChatSelectBox = (props: {
   isFirst: boolean;
   isLast: boolean;
 }) => {
-  const { group, isFirst, isLast } = props;
+  const { group, isFirst } = props;
   const pathname = usePathname();
   const isActive = pathname === `/groups/${group.id}`;
 

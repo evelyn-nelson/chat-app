@@ -1,19 +1,6 @@
-import {
-  Platform,
-  Text,
-  View,
-  Pressable,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { Text, View, TextInput, Alert } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Group,
-  UpdateGroupParams,
-  PickerImageResult,
-  DateOptions,
-} from "@/types/types";
+import { Group, UpdateGroupParams, DateOptions } from "@/types/types";
 import UserList from "./UserList";
 import Button from "../Global/Button/Button";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";
@@ -27,9 +14,6 @@ import {
   requestMediaLibraryPermissionsAsync,
 } from "expo-image-picker";
 import { useUploadImageClear } from "@/hooks/useUploadImageClear";
-import { useCachedImageClear } from "@/hooks/useCachedImage";
-import { Blurhash } from "react-native-blurhash";
-import { Image } from "expo-image";
 import GroupAvatarEditable from "../GroupAvatarEditable";
 
 const ChatSettingsMenu = (props: {

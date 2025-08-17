@@ -1,6 +1,6 @@
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
 import { router, Stack } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, View, Text, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Group } from "@/types/types";
@@ -21,7 +21,7 @@ export default function GroupLayout() {
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error("Error loading groups: ", error));
-  }, [groupsRefreshKey]);
+  }, [groupsRefreshKey, store]);
 
   const getGroup = (id: string) => {
     for (let i = 0; i < groups.length; i++) {

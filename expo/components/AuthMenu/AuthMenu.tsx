@@ -1,4 +1,4 @@
-import { Text, View, ImageBackground } from "react-native";
+import { Text, View } from "react-native";
 import Button from "../Global/Button/Button";
 import { router } from "expo-router";
 
