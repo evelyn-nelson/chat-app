@@ -116,10 +116,10 @@ const AppLayout = () => {
       loadHistoricalMessages();
       fetchDeviceKeys();
 
-      const groupsIntervalId = setInterval(fetchGroups, 5100);
-      const usersIntervalId = setInterval(fetchUsers, 5200);
-      const messagesIntervalId = setInterval(loadHistoricalMessages, 5300);
-      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 5400);
+      const groupsIntervalId = setInterval(fetchGroups, 5000);
+      const usersIntervalId = setInterval(fetchUsers, 5000);
+      const messagesIntervalId = setInterval(loadHistoricalMessages, 5000);
+      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 5000);
 
       return () => {
         clearInterval(groupsIntervalId);

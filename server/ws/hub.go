@@ -237,9 +237,9 @@ func (h *Hub) synchronizeDbToRedis() error {
 	pipe := h.redisClient.Pipeline()
 	for _, dbGroup := range dbGroups {
 		groupInfoKey := redisGroupInfoPrefix + dbGroup.ID.String()
-		pipe.HSet(h.ctx, groupInfoKey, "id", dbGroup.ID)
+		pipe.HSet(h.ctx, groupInfoKey, "id", dbGroup.ID.String())
 		pipe.HSet(h.ctx, groupInfoKey, "name", dbGroup.Name)
-		log.Printf("Hub %s: Queued sync for groupinfo:%d", h.serverID, dbGroup.ID)
+		log.Printf("Hub %s: Queued sync for groupinfo:%s", h.serverID, dbGroup.ID.String())
 	}
 
 	allUserGroupLinks, err := h.db.GetAllUserGroups(h.ctx)
@@ -310,7 +310,7 @@ func (h *Hub) deliverChatMessage(message *RawMessageE2EE) {
 			select {
 			case client.Message <- message:
 			default:
-				log.Printf("Hub %s: Client %d message channel full for group %d. E2EE Message ID %s dropped.", h.serverID, client.User.ID, message.GroupID, message.ID)
+				log.Printf("Hub %s: Client %s message channel full for group %s. E2EE Message ID %s dropped.", h.serverID, client.User.ID.String(), message.GroupID.String(), message.ID)
 			}
 		}
 	}
@@ -324,7 +324,7 @@ func (h *Hub) handleUserAddedToGroupEvent(userID uuid.UUID, groupID uuid.UUID) {
 	if clientConnectedToThisInstance {
 		client.AddGroup(groupID)
 		h.addClientToLocalGroupStructLocked(client, groupID)
-		log.Printf("Hub %s: Updated local state for user %d added to group %d", h.serverID, userID, groupID)
+		log.Printf("Hub %s: Updated local state for user %s added to group %s", h.serverID, userID.String(), groupID.String())
 	}
 }
 
@@ -336,7 +336,7 @@ func (h *Hub) handleUserRemovedFromGroupEvent(userID uuid.UUID, groupID uuid.UUI
 	if clientConnectedToThisInstance {
 		h.removeClientFromLocalGroupStructLocked(client, groupID)
 		client.RemoveGroup(groupID)
-		log.Printf("Hub %s: Updated local state for user %d removed from group %d", h.serverID, userID, groupID)
+		log.Printf("Hub %s: Updated local state for user %s removed from group %s", h.serverID, userID.String(), groupID.String())
 	}
 }
 
@@ -350,7 +350,7 @@ func (h *Hub) handleGroupCreatedEvent(groupID uuid.UUID, name string, adminID uu
 			Name:    name,
 			Clients: make(map[uuid.UUID]*Client),
 		}
-		log.Printf("Hub %s: Cached new group %d (%s)", h.serverID, groupID, name)
+		log.Printf("Hub %s: Cached new group %s (%s)", h.serverID, groupID.String(), name)
 	} else {
 		h.Groups[groupID].Name = name
 	}
@@ -362,7 +362,7 @@ func (h *Hub) handleGroupCreatedEvent(groupID uuid.UUID, name string, adminID uu
 			g.Clients[adminID] = admin
 			g.mutex.Unlock()
 			admin.AddGroup(groupID)
-			log.Printf("Hub %s: Added admin %d to local cache for new group %d", h.serverID, adminID, groupID)
+			log.Printf("Hub %s: Added admin %s to local cache for new group %s", h.serverID, adminID.String(), groupID.String())
 		}
 	}
 }
@@ -375,11 +375,11 @@ func (h *Hub) handleGroupDeletedEvent(groupID uuid.UUID) {
 		group.mutex.Lock()
 		for clientID, client := range group.Clients {
 			client.RemoveGroup(groupID)
-			log.Printf("Hub %s: Client %d removed from local cache of deleted group %d", h.serverID, clientID, groupID)
+			log.Printf("Hub %s: Client %s removed from local cache of deleted group %s", h.serverID, clientID.String(), groupID.String())
 		}
 		group.mutex.Unlock()
 		delete(h.Groups, groupID)
-		log.Printf("Hub %s: Removed group %d from local cache", h.serverID, groupID)
+		log.Printf("Hub %s: Removed group %s from local cache", h.serverID, groupID.String())
 	}
 }
 
@@ -391,10 +391,10 @@ func (h *Hub) handleGroupUpdatedEvent(groupID uuid.UUID, newName string) {
 		if newName != "" {
 			oldName := group.Name
 			group.Name = newName
-			log.Printf("Hub %s: Updated local cache for group %d name from '%s' to '%s'", h.serverID, groupID, oldName, newName)
+			log.Printf("Hub %s: Updated local cache for group %s name from '%s' to '%s'", h.serverID, groupID.String(), oldName, newName)
 		}
 	} else {
-		log.Printf("Hub %s: Received group_updated event for group %d not in local cache.", h.serverID, groupID)
+		log.Printf("Hub %s: Received group_updated event for group %s not in local cache.", h.serverID, groupID.String())
 	}
 }
 
@@ -421,31 +421,41 @@ func (h *Hub) Run() {
 
 			pipe := h.redisClient.Pipeline()
 			pipe.Set(h.ctx, clientKey, h.serverID, 120*time.Second)
-			pipe.SAdd(h.ctx, serverClientsKey, client.User.ID)
+			pipe.SAdd(h.ctx, serverClientsKey, client.User.ID.String())
 			_, err := pipe.Exec(h.ctx)
 			if err != nil {
-				log.Printf("Hub %s: Error registering client %d in Redis: %v", h.serverID, client.User.ID, err)
+				log.Printf("Hub %s: Error registering client %s in Redis: %v", h.serverID, client.User.ID.String(), err)
 			} else {
-				log.Printf("Hub %s: Registered client %d to this server in Redis", h.serverID, client.User.ID)
+				log.Printf("Hub %s: Registered client %s to this server in Redis", h.serverID, client.User.ID.String())
 			}
 
 			userGroupsKey := redisUserGroupsPrefix + client.User.ID.String() + ":groups"
 			groupIDsStr, err := h.redisClient.SMembers(h.ctx, userGroupsKey).Result()
 			if err != nil {
-				log.Printf("Hub %s: Error fetching groups for user %d from Redis: %v", h.serverID, client.User.ID, err)
+				log.Printf("Hub %s: Error fetching groups for user %s from Redis: %v", h.serverID, client.User.ID.String(), err)
 			} else {
 				h.mutex.Lock()
 				for _, groupIDStr := range groupIDsStr {
 					groupID, convErr := uuid.Parse(groupIDStr)
 					if convErr != nil {
-						log.Printf("Hub %s: Error converting groupID %s to uuid: %v", h.serverID, groupIDStr, convErr)
-						continue
+						// Fallback for legacy entries stored as raw 16-byte UUIDs
+						if len(groupIDStr) == 16 {
+							if gid, err2 := uuid.FromBytes([]byte(groupIDStr)); err2 == nil {
+								groupID = gid
+							} else {
+								log.Printf("Hub %s: Failed to decode binary groupID; len=16, err=%v", h.serverID, err2)
+								continue
+							}
+						} else {
+							log.Printf("Hub %s: Error converting groupID %q to uuid: %v", h.serverID, groupIDStr, convErr)
+							continue
+						}
 					}
 					client.AddGroup(groupID)
 					h.addClientToLocalGroupStructLocked(client, groupID)
 				}
 				h.mutex.Unlock()
-				log.Printf("Hub %s: Client %d joined %d groups locally based on Redis state.", h.serverID, client.User.ID, len(groupIDsStr))
+				log.Printf("Hub %s: Client %s joined %d groups locally based on Redis state.", h.serverID, client.User.ID.String(), len(groupIDsStr))
 			}
 
 		case client := <-h.Unregister:
@@ -458,12 +468,12 @@ func (h *Hub) Run() {
 
 				pipe := h.redisClient.Pipeline()
 				pipe.Del(h.ctx, clientKey)
-				pipe.SRem(h.ctx, serverClientsKey, client.User.ID)
+				pipe.SRem(h.ctx, serverClientsKey, client.User.ID.String(), client.User.ID)
 				_, err := pipe.Exec(h.ctx)
 				if err != nil {
-					log.Printf("Hub %s: Error unregistering client %d in Redis: %v", h.serverID, client.User.ID, err)
+					log.Printf("Hub %s: Error unregistering client %s in Redis: %v", h.serverID, client.User.ID.String(), err)
 				} else {
-					log.Printf("Hub %s: Unregistered client %d from this server in Redis", h.serverID, client.User.ID)
+					log.Printf("Hub %s: Unregistered client %s from this server in Redis", h.serverID, client.User.ID.String())
 				}
 
 				client.mutex.RLock()
@@ -472,7 +482,7 @@ func (h *Hub) Run() {
 				}
 				client.mutex.RUnlock()
 				close(client.Message)
-				log.Printf("Hub %s: Client %d unregistered locally.", h.serverID, client.User.ID)
+				log.Printf("Hub %s: Client %s unregistered locally.", h.serverID, client.User.ID.String())
 			}
 			h.mutex.Unlock()
 
@@ -528,7 +538,7 @@ func (h *Hub) Run() {
 			if err := h.redisClient.Publish(h.ctx, channel, serializedMsg).Err(); err != nil {
 				log.Printf("Hub %s: Error publishing E2EE message to Redis PubSub channel %s: %v", h.serverID, channel, err)
 			} else {
-				log.Printf("Hub %s: Published E2EE message for group %d to Redis PubSub channel %s", h.serverID, message.GroupID, channel)
+				log.Printf("Hub %s: Published E2EE message for group %s to Redis PubSub channel %s", h.serverID, message.GroupID.String(), channel)
 			}
 
 		case removeMsg := <-h.RemoveUserFromGroupChan:
@@ -536,14 +546,14 @@ func (h *Hub) Run() {
 			userGroupsKey := redisUserGroupsPrefix + removeMsg.UserID.String() + ":groups"
 
 			pipe := h.redisClient.Pipeline()
-			pipe.SRem(h.ctx, groupMembersKey, removeMsg.UserID)
-			pipe.SRem(h.ctx, userGroupsKey, removeMsg.GroupID)
+			pipe.SRem(h.ctx, groupMembersKey, removeMsg.UserID.String())
+			pipe.SRem(h.ctx, userGroupsKey, removeMsg.GroupID.String())
 			_, err := pipe.Exec(h.ctx)
 
 			if err != nil {
-				log.Printf("Hub %s: Error removing user %d from group %d in Redis: %v", h.serverID, removeMsg.UserID, removeMsg.GroupID, err)
+				log.Printf("Hub %s: Error removing user %s from group %s in Redis: %v", h.serverID, removeMsg.UserID.String(), removeMsg.GroupID.String(), err)
 			} else {
-				log.Printf("Hub %s: Removed user %d from group %d in Redis", h.serverID, removeMsg.UserID, removeMsg.GroupID)
+				log.Printf("Hub %s: Removed user %s from group %s in Redis", h.serverID, removeMsg.UserID.String(), removeMsg.GroupID.String())
 				eventPayload := UserGroupEventPayload{UserID: removeMsg.UserID, GroupID: removeMsg.GroupID}
 				pubSubEvt := PubSubMessage{Type: "user_removed_from_group", Payload: eventPayload, OriginServerID: h.serverID}
 				serializedEvt, err := json.Marshal(pubSubEvt)
@@ -559,14 +569,14 @@ func (h *Hub) Run() {
 			userGroupsKey := redisUserGroupsPrefix + addMsg.UserID.String() + ":groups"
 
 			pipe := h.redisClient.Pipeline()
-			pipe.SAdd(h.ctx, groupMembersKey, addMsg.UserID)
-			pipe.SAdd(h.ctx, userGroupsKey, addMsg.GroupID)
+			pipe.SAdd(h.ctx, groupMembersKey, addMsg.UserID.String())
+			pipe.SAdd(h.ctx, userGroupsKey, addMsg.GroupID.String())
 			_, err := pipe.Exec(h.ctx)
 
 			if err != nil {
-				log.Printf("Hub %s: Error adding user %d to group %d in Redis: %v", h.serverID, addMsg.UserID, addMsg.GroupID, err)
+				log.Printf("Hub %s: Error adding user %s to group %s in Redis: %v", h.serverID, addMsg.UserID.String(), addMsg.GroupID.String(), err)
 			} else {
-				log.Printf("Hub %s: Added user %d to group %d in Redis", h.serverID, addMsg.UserID, addMsg.GroupID)
+				log.Printf("Hub %s: Added user %s to group %s in Redis", h.serverID, addMsg.UserID.String(), addMsg.GroupID.String())
 				eventPayload := UserGroupEventPayload{UserID: addMsg.UserID, GroupID: addMsg.GroupID}
 				pubSubEvt := PubSubMessage{Type: "user_added_to_group", Payload: eventPayload, OriginServerID: h.serverID}
 				serializedEvt, err := json.Marshal(pubSubEvt)
@@ -583,15 +593,15 @@ func (h *Hub) Run() {
 			adminUserGroupsKey := redisUserGroupsPrefix + initMsg.AdminID.String() + ":groups"
 
 			pipe := h.redisClient.Pipeline()
-			pipe.HSet(h.ctx, groupInfoKey, "name", initMsg.Name, "id", initMsg.GroupID)
-			pipe.SAdd(h.ctx, groupMembersKey, initMsg.AdminID)
-			pipe.SAdd(h.ctx, adminUserGroupsKey, initMsg.GroupID)
+			pipe.HSet(h.ctx, groupInfoKey, "name", initMsg.Name, "id", initMsg.GroupID.String())
+			pipe.SAdd(h.ctx, groupMembersKey, initMsg.AdminID.String())
+			pipe.SAdd(h.ctx, adminUserGroupsKey, initMsg.GroupID.String())
 			_, err := pipe.Exec(h.ctx)
 
 			if err != nil {
-				log.Printf("Hub %s: Error initializing group %d in Redis: %v", h.serverID, initMsg.GroupID, err)
+				log.Printf("Hub %s: Error initializing group %s in Redis: %v", h.serverID, initMsg.GroupID.String(), err)
 			} else {
-				log.Printf("Hub %s: Initialized group %d in Redis", h.serverID, initMsg.GroupID)
+				log.Printf("Hub %s: Initialized group %s in Redis", h.serverID, initMsg.GroupID.String())
 				eventPayload := GroupEventPayload{GroupID: initMsg.GroupID, Name: initMsg.Name, AdminID: initMsg.AdminID}
 				pubSubEvt := PubSubMessage{Type: "group_created", Payload: eventPayload, OriginServerID: h.serverID}
 				serializedEvt, err := json.Marshal(pubSubEvt)
@@ -608,22 +618,22 @@ func (h *Hub) Run() {
 
 			members, err := h.redisClient.SMembers(h.ctx, groupMembersKey).Result()
 			if err != nil && err != redis.Nil {
-				log.Printf("Hub %s: Error getting members for group %d deletion: %v", h.serverID, delMsg.GroupID, err)
+				log.Printf("Hub %s: Error getting members for group %s deletion: %v", h.serverID, delMsg.GroupID.String(), err)
 			}
 
 			pipe := h.redisClient.Pipeline()
 			for _, memberIDStr := range members {
 				userGroupsKey := redisUserGroupsPrefix + memberIDStr + ":groups"
-				pipe.SRem(h.ctx, userGroupsKey, delMsg.GroupID)
+				pipe.SRem(h.ctx, userGroupsKey, delMsg.GroupID.String())
 			}
 			pipe.Del(h.ctx, groupMembersKey)
 			pipe.Del(h.ctx, groupInfoKey)
 			_, execErr := pipe.Exec(h.ctx)
 
 			if execErr != nil {
-				log.Printf("Hub %s: Error deleting group %d from Redis: %v", h.serverID, delMsg.GroupID, execErr)
+				log.Printf("Hub %s: Error deleting group %s from Redis: %v", h.serverID, delMsg.GroupID.String(), execErr)
 			} else {
-				log.Printf("Hub %s: Deleted group %d from Redis", h.serverID, delMsg.GroupID)
+				log.Printf("Hub %s: Deleted group %s from Redis", h.serverID, delMsg.GroupID.String())
 				eventPayload := GroupEventPayload{GroupID: delMsg.GroupID}
 				pubSubEvt := PubSubMessage{Type: "group_deleted", Payload: eventPayload, OriginServerID: h.serverID}
 				serializedEvt, err := json.Marshal(pubSubEvt)
@@ -634,15 +644,15 @@ func (h *Hub) Run() {
 				}
 			}
 		case updateMsg := <-h.UpdateGroupInfoChan:
-			log.Printf("Hub %s: Received request to process group info update for group %d", h.serverID, updateMsg.GroupID)
+			log.Printf("Hub %s: Received request to process group info update for group %s", h.serverID, updateMsg.GroupID.String())
 
 			if updateMsg.Name != "" {
 				groupInfoKey := redisGroupInfoPrefix + updateMsg.GroupID.String()
 				err := h.redisClient.HSet(h.ctx, groupInfoKey, "name", updateMsg.Name).Err()
 				if err != nil {
-					log.Printf("Hub %s: Error updating group name in Redis for group %d: %v", h.serverID, updateMsg.GroupID, err)
+					log.Printf("Hub %s: Error updating group name in Redis for group %s: %v", h.serverID, updateMsg.GroupID.String(), err)
 				} else {
-					log.Printf("Hub %s: Updated group name in Redis for group %d to '%s'", h.serverID, updateMsg.GroupID, updateMsg.Name)
+					log.Printf("Hub %s: Updated group name in Redis for group %s to '%s'", h.serverID, updateMsg.GroupID.String(), updateMsg.Name)
 				}
 			}
 
@@ -653,12 +663,12 @@ func (h *Hub) Run() {
 			}
 			serializedEvt, err := json.Marshal(pubSubEvt)
 			if err != nil {
-				log.Printf("Hub %s: Error marshalling group_updated event for group %d: %v", h.serverID, updateMsg.GroupID, err)
+				log.Printf("Hub %s: Error marshalling group_updated event for group %s: %v", h.serverID, updateMsg.GroupID.String(), err)
 			} else {
 				if err := h.redisClient.Publish(h.ctx, pubSubGroupEventsChannel, serializedEvt).Err(); err != nil {
-					log.Printf("Hub %s: Error publishing group_updated event for group %d: %v", h.serverID, updateMsg.GroupID, err)
+					log.Printf("Hub %s: Error publishing group_updated event for group %s: %v", h.serverID, updateMsg.GroupID.String(), err)
 				} else {
-					log.Printf("Hub %s: Published group_updated event for group %d", h.serverID, updateMsg.GroupID)
+					log.Printf("Hub %s: Published group_updated event for group %s", h.serverID, updateMsg.GroupID.String())
 				}
 			}
 		}
@@ -675,7 +685,7 @@ func (h *Hub) addClientToLocalGroupStructLocked(client *Client, groupID uuid.UUI
 		if err == nil {
 			name = redisName
 		} else if err != redis.Nil {
-			log.Printf("Hub %s: Error fetching group name for %d from Redis: %v", h.serverID, groupID, err)
+			log.Printf("Hub %s: Error fetching group name for %s from Redis: %v", h.serverID, groupID.String(), err)
 		}
 
 		group = &Group{
@@ -684,13 +694,13 @@ func (h *Hub) addClientToLocalGroupStructLocked(client *Client, groupID uuid.UUI
 			Clients: make(map[uuid.UUID]*Client),
 		}
 		h.Groups[groupID] = group
-		log.Printf("Hub %s: Cached group %d (%s) locally.", h.serverID, groupID, name)
+		log.Printf("Hub %s: Cached group %s (%s) locally.", h.serverID, groupID.String(), name)
 	}
 
 	group.mutex.Lock()
 	group.Clients[client.User.ID] = client
 	group.mutex.Unlock()
-	log.Printf("Hub %s: Added client %d to local cache for group %d", h.serverID, client.User.ID, groupID)
+	log.Printf("Hub %s: Added client %s to local cache for group %s", h.serverID, client.User.ID.String(), groupID.String())
 }
 
 // removeClientFromLocalGroupStructLocked assumes h.mutex is already WLocked or RLocked appropriately by the caller.
@@ -702,13 +712,13 @@ func (h *Hub) removeClientFromLocalGroupStructLocked(client *Client, groupID uui
 
 	group.mutex.Lock()
 	delete(group.Clients, client.User.ID)
-	log.Printf("Hub %s: Removed client %d from local cache for group %d", h.serverID, client.User.ID, groupID)
+	log.Printf("Hub %s: Removed client %s from local cache for group %s", h.serverID, client.User.ID.String(), groupID.String())
 	isEmpty := len(group.Clients) == 0
 	group.mutex.Unlock()
 
 	if isEmpty {
 		delete(h.Groups, groupID)
-		log.Printf("Hub %s: Removed group %d from local cache as no local clients are members.", h.serverID, groupID)
+		log.Printf("Hub %s: Removed group %s from local cache as no local clients are members.", h.serverID, groupID.String())
 	}
 }
 

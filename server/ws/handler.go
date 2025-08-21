@@ -116,15 +116,15 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 					userID = extractedUserID
 					user = &fetchedUser
 					isAuthenticated = true
-					log.Printf("User %d (%s) authenticated successfully via WebSocket.", userID, user.Username)
+					log.Printf("User %s (%s) authenticated successfully via WebSocket.", userID.String(), user.Username)
 					response := ServerResponseMessage{Type: "auth_success", Message: "Authentication successful"}
 					if err := conn.WriteJSON(response); err != nil {
-						log.Printf("Error sending auth_success to user %d: %v", userID, err)
+						log.Printf("Error sending auth_success to user %s: %v", userID.String(), err)
 						// Don't immediately close; client might still proceed if they received it.
 						// But this is a bad sign.
 					}
 				} else {
-					log.Printf("Auth failed: could not fetch user data for ID %d: %v", extractedUserID, dbErr)
+					log.Printf("Auth failed: could not fetch user data for ID %s: %v", extractedUserID.String(), dbErr)
 					response := ServerResponseMessage{Type: "auth_failure", Error: "Authentication failed: User data unavailable."}
 					conn.WriteJSON(response)
 					conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Authentication failed"))
@@ -157,20 +157,20 @@ func (h *Handler) EstablishConnection(c *gin.Context) {
 	}
 
 	client := NewClient(conn, user)
-	log.Printf("Client %d (%s) connected. Remote: %s", client.User.ID, client.User.Username, conn.RemoteAddr())
+	log.Printf("Client %s (%s) connected. Remote: %s", client.User.ID.String(), client.User.Username, conn.RemoteAddr())
 
 	h.hub.Register <- client
 
 	defer func() {
-		log.Printf("Initiating cleanup for client %d (%s).", client.User.ID, client.User.Username)
+		log.Printf("Initiating cleanup for client %s (%s).", client.User.ID.String(), client.User.Username)
 		h.hub.Unregister <- client
-		log.Printf("Cleanup process initiated via defer for client %d (%s).", client.User.ID, client.User.Username)
+		log.Printf("Cleanup process initiated via defer for client %s (%s).", client.User.ID.String(), client.User.Username)
 	}()
 
 	go client.WriteMessage()
 	client.ReadMessage(h.hub, h.db)
 
-	log.Printf("EstablishConnection goroutine for client %d (%s) exiting.", client.User.ID, client.User.Username)
+	log.Printf("EstablishConnection goroutine for client %s (%s) exiting.", client.User.ID.String(), client.User.Username)
 }
 
 func (h *Handler) InviteUsersToGroup(c *gin.Context) {
@@ -237,10 +237,10 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" { // Unique violation
-				log.Printf("User %d already in group %d, skipping invite.", user.ID, req.GroupID)
+				log.Printf("User %s already in group %s, skipping invite.", user.ID.String(), req.GroupID.String())
 				continue
 			} else {
-				log.Printf("Error inserting user_group for user %d, group %d: %v", user.ID, req.GroupID, err)
+				log.Printf("Error inserting user_group for user %s, group %s: %v", user.ID.String(), req.GroupID.String(), err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add one or more users to the group"})
 				return
 			}
@@ -258,7 +258,7 @@ func (h *Handler) InviteUsersToGroup(c *gin.Context) {
 	for _, userID := range invitedUserIDs {
 		select {
 		case h.hub.AddUserToGroupChan <- &AddClientToGroupMsg{UserID: userID, GroupID: req.GroupID}:
-			log.Printf("Sent request to hub to process user %d addition to group %d", userID, req.GroupID)
+			log.Printf("Sent request to hub to process user %s addition to group %s", userID.String(), req.GroupID.String())
 		case <-ctx.Done():
 			log.Printf("Context cancelled while trying to send AddUserToGroupChan for user %d, group %d", userID, req.GroupID)
 			return
