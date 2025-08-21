@@ -120,18 +120,20 @@ export default function ChatBox({ group }: { group: Group }) {
   const [displayableMessages, setDisplayableMessages] = useState<
     DisplayableItem[]
   >([]);
-  const [decryptedContentCache, setDecryptedContentCache] = useState<
+  const displayableLengthRef = useRef(0);
+  const decryptedContentCacheRef = useRef<
     Map<string, string | ImageMessageContent | null>
   >(new Map());
 
   useEffect(() => {
     const decryptAndFormatMessages = async () => {
       if (!devicePrivateKey) {
-        if (displayableMessages.length > 0) {
+        if (displayableLengthRef.current > 0) {
           setDisplayableMessages([]);
+          displayableLengthRef.current = 0;
         }
         if (prevDevicePrivateKeyRef.current !== null) {
-          setDecryptedContentCache(new Map());
+          decryptedContentCacheRef.current = new Map();
         }
         prevDevicePrivateKeyRef.current = null;
         return;
@@ -144,9 +146,14 @@ export default function ChatBox({ group }: { group: Group }) {
         devicePrivateKey
       );
 
+      if (keyHasChanged) {
+        decryptedContentCacheRef.current = new Map();
+      }
+
       if (groupMessages.length === 0) {
-        if (displayableMessages.length > 0) {
+        if (displayableLengthRef.current > 0) {
           setDisplayableMessages([]);
+          displayableLengthRef.current = 0;
         }
         return;
       }
@@ -167,8 +174,13 @@ export default function ChatBox({ group }: { group: Group }) {
         const currentMsg = sortedMessages[i];
         let decryptedContent: string | ImageMessageContent | null = null;
 
-        if (!keyHasChanged && decryptedContentCache.has(currentMsg.id)) {
-          decryptedContent = decryptedContentCache.get(currentMsg.id)!;
+        if (
+          !keyHasChanged &&
+          decryptedContentCacheRef.current.has(currentMsg.id)
+        ) {
+          decryptedContent = decryptedContentCacheRef.current.get(
+            currentMsg.id
+          )!;
         } else {
           needsUIUpdate = true;
           const plaintext = await encryptionService.decryptStoredMessage(
@@ -285,15 +297,16 @@ export default function ChatBox({ group }: { group: Group }) {
 
       if (
         needsUIUpdate ||
-        displayableMessages.length !== allDisplayableItems.length ||
+        displayableLengthRef.current !== allDisplayableItems.length ||
         filteredOptimistic.length > 0
       ) {
         setDisplayableMessages(allDisplayableItems.reverse());
+        displayableLengthRef.current = allDisplayableItems.length;
 
         if (newCacheEntries.size > 0) {
-          setDecryptedContentCache(
-            (prevCache) => new Map([...prevCache, ...newCacheEntries])
-          );
+          newCacheEntries.forEach((value, key) => {
+            decryptedContentCacheRef.current.set(key, value);
+          });
         }
       }
 
@@ -303,15 +316,7 @@ export default function ChatBox({ group }: { group: Group }) {
     };
 
     decryptAndFormatMessages();
-  }, [
-    groupMessages,
-    devicePrivateKey,
-    user?.id,
-    optimisticMessages,
-    group.id,
-    displayableMessages.length,
-    decryptedContentCache,
-  ]);
+  }, [groupMessages, devicePrivateKey, user?.id, optimisticMessages, group.id]);
 
   const flatListProps = useMemo(
     () => ({

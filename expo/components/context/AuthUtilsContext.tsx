@@ -37,6 +37,16 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   } = useGlobalStore();
   const { children } = props;
 
+  const isTransientConnectionError = (error: unknown): boolean => {
+    const message = (error as Error)?.message || String(error || "");
+    return (
+      message.includes("Connection attempt already in progress") ||
+      message.includes("WebSocket closed (Code: 0)") ||
+      message.includes("Network request failed") ||
+      message.toLowerCase().includes("timeout")
+    );
+  };
+
   const whoami = useCallback(
     async (forceRefresh?: boolean): Promise<WhoAmIResult> => {
       try {
@@ -54,12 +64,20 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           const loggedInUser = response.data;
           setUser(loggedInUser);
           if (loggedInUser && !connected) {
-            establishConnection().catch(() => {});
+            establishConnection().catch((error) => {
+              if (!isTransientConnectionError(error)) {
+                console.error("establishConnection failed:", error);
+              }
+            });
           }
           return { user: loggedInUser, deviceId: currentDeviceId };
         }
         if (user && !connected) {
-          establishConnection().catch(() => {});
+          establishConnection().catch((error) => {
+            if (!isTransientConnectionError(error)) {
+              console.error("establishConnection failed:", error);
+            }
+          });
         }
         return { user: user, deviceId: globalDeviceId };
       } catch (error) {

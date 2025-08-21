@@ -1,6 +1,6 @@
 import { Text, View, TextInput, Alert } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import { Group, UpdateGroupParams, DateOptions } from "@/types/types";
+import type { Group, UpdateGroupParams, DateOptions } from "@/types/types";
 import UserList from "./UserList";
 import Button from "../Global/Button/Button";
 import UserInviteMultiselect from "../Global/Multiselect/UserInviteMultiselect";

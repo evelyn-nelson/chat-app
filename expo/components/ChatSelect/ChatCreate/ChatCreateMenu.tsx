@@ -7,10 +7,12 @@ import { useGlobalStore } from "../../context/GlobalStoreContext";
 import UserInviteMultiselect from "../../Global/Multiselect/UserInviteMultiselect";
 import Button from "@/components/Global/Button/Button";
 import GroupDateOptions from "@/components/Global/GroupDateOptions/GroupDateOptions";
-import * as ImagePicker from "expo-image-picker";
 import { v4 as uuidv4 } from "uuid";
 import { useUploadImageClear } from "@/hooks/useUploadImageClear";
-import { launchImageLibraryAsync } from "expo-image-picker";
+import {
+  requestMediaLibraryPermissionsAsync,
+  launchImageLibraryAsync,
+} from "expo-image-picker";
 import GroupAvatarEditable from "@/components/GroupAvatarEditable";
 
 export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
@@ -121,8 +123,7 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
       return;
     }
 
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult = await requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
       Alert.alert(
         "Permission Required",
@@ -160,8 +161,8 @@ export const ChatCreateMenu = ({ onSubmit }: { onSubmit: () => void }) => {
   }, [uploadImage, tempGroupId, isUploading]);
 
   const handleRemoveImage = useCallback(() => {
-    setCurrentImageUrlForPreview("");
-    setCurrentBlurhash("");
+    setCurrentImageUrlForPreview(null);
+    setCurrentBlurhash(null);
   }, []);
 
   return (

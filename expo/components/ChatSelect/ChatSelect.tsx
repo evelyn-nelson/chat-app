@@ -41,7 +41,8 @@ export const ChatSelect = () => {
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error(error));
-  }, [groupsRefreshKey, store]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupsRefreshKey]);
 
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => {

@@ -57,7 +57,7 @@ const GroupDateOptions = ({
 
   const onSelectExpiration = () => {
     const options = [...data.map((option) => option.label), "Cancel"];
-    const cancelButtonIndex = 9;
+    const cancelButtonIndex = options.length - 1;
 
     showActionSheetWithOptions(
       {

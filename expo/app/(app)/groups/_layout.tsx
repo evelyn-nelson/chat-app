@@ -21,7 +21,8 @@ export default function GroupLayout() {
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error("Error loading groups: ", error));
-  }, [groupsRefreshKey, store]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupsRefreshKey]);
 
   const getGroup = (id: string) => {
     for (let i = 0; i < groups.length; i++) {

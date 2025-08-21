@@ -5,7 +5,7 @@ import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 import { User } from "@/types/types";
 import { useWebSocket } from "@/components/context/WebSocketContext";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
-import { CanceledError } from "axios";
+import { CanceledError, isCancel } from "axios";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMessageStore } from "@/components/context/MessageStoreContext";
@@ -64,7 +64,7 @@ const AppLayout = () => {
       await store.saveGroups(data);
       refreshGroups();
     } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (isCancel(error) || error instanceof CanceledError) {
         console.error("Failed to fetch/store groups:", error);
         await store.loadGroups();
       }
@@ -82,7 +82,7 @@ const AppLayout = () => {
       await store.saveUsers(data);
       refreshUsers();
     } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (isCancel(error) || error instanceof CanceledError) {
         console.error("Failed to fetch/store users:", error);
         await store.loadUsers();
       }
@@ -98,7 +98,7 @@ const AppLayout = () => {
     try {
       await loadRelevantDeviceKeys();
     } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (isCancel(error) || error instanceof CanceledError) {
         console.error(
           "AppLayout: Error explicitly calling fetchDeviceKeys:",
           error
@@ -116,10 +116,10 @@ const AppLayout = () => {
       loadHistoricalMessages();
       fetchDeviceKeys();
 
-      const groupsIntervalId = setInterval(fetchGroups, 5000);
-      const usersIntervalId = setInterval(fetchUsers, 5000);
-      const messagesIntervalId = setInterval(loadHistoricalMessages, 5000);
-      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 5000);
+      const groupsIntervalId = setInterval(fetchGroups, 5100);
+      const usersIntervalId = setInterval(fetchUsers, 5200);
+      const messagesIntervalId = setInterval(loadHistoricalMessages, 5300);
+      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 5400);
 
       return () => {
         clearInterval(groupsIntervalId);
