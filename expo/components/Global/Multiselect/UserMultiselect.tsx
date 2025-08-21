@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import { User } from "@/types/types";
 
@@ -61,17 +61,6 @@ const UserMultiSelect = (props: {
 
   const onSearchTextChange = (text: string) => {
     setCurrentText(text);
-    if (text) {
-      const localFuse = new Fuse(availableOptions, {
-        keys: ["email", "username"],
-        threshold: 0.3,
-        includeScore: true,
-      });
-      const searchResults = localFuse.search(text).map((r) => r.item);
-      setFilteredOptions(searchResults);
-    } else {
-      setFilteredOptions(availableOptions);
-    }
   };
 
   return (

@@ -234,7 +234,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           if (socketRef.current !== socket) return;
           try {
             socket.send(JSON.stringify({ type: "auth", token: token }));
-          } catch (error) {
+          } catch {
             safeReject(new Error("Failed to send authentication message."));
             socket.close(CLOSE_CODE_AUTH_FAILED, "Failed to send auth");
           }
@@ -385,7 +385,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     if (socketRef.current) {
       socketRef.current.close(1000, "User initiated disconnect");
     }
-  }, [setConnected]);
+  }, []);
 
   const inviteUsersToGroup = useCallback(
     async (emails: string[], group_id: string): Promise<any> => {
@@ -451,7 +451,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
           console.error("Error sending message:", error);
         }
       } else {
-        console.error("WebSocket is not connected or not authenticated. Message not sent.");
+        console.error(
+          "WebSocket is not connected or not authenticated. Message not sent."
+        );
       }
     },
     [connected]

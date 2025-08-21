@@ -1,18 +1,18 @@
 import { ActivityIndicator, View, Platform } from "react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Redirect, Tabs } from "expo-router";
 import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 import { User } from "@/types/types";
 import { useWebSocket } from "@/components/context/WebSocketContext";
 import { useGlobalStore } from "@/components/context/GlobalStoreContext";
-import { CanceledError } from "axios";
+import { CanceledError, isCancel } from "axios";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMessageStore } from "@/components/context/MessageStoreContext";
 
 const AppLayout = () => {
   const { whoami } = useAuthUtils();
-  const { getGroups, disconnect, getUsers } = useWebSocket();
+  const { getGroups, getUsers } = useWebSocket();
   const {
     store,
     deviceId,
@@ -51,12 +51,12 @@ const AppLayout = () => {
 
     return () => {
       isMounted = false;
-      disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isFetchingGroups = useRef(false);
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     if (isFetchingGroups.current || !user) return;
     isFetchingGroups.current = true;
     try {
@@ -64,17 +64,17 @@ const AppLayout = () => {
       await store.saveGroups(data);
       refreshGroups();
     } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (isCancel(error) || error instanceof CanceledError) {
         console.error("Failed to fetch/store groups:", error);
         await store.loadGroups();
       }
     } finally {
       isFetchingGroups.current = false;
     }
-  };
+  }, [user, getGroups, store, refreshGroups]);
 
   const isFetchingUsers = useRef(false);
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (isFetchingUsers.current || !user) return;
     isFetchingUsers.current = true;
     try {
@@ -82,23 +82,23 @@ const AppLayout = () => {
       await store.saveUsers(data);
       refreshUsers();
     } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (isCancel(error) || error instanceof CanceledError) {
         console.error("Failed to fetch/store users:", error);
         await store.loadUsers();
       }
     } finally {
       isFetchingUsers.current = false;
     }
-  };
+  }, [user, getUsers, store, refreshUsers]);
 
   const isFetchingDeviceKeys = useRef(false);
-  const fetchDeviceKeys = async () => {
+  const fetchDeviceKeys = useCallback(async () => {
     if (isFetchingDeviceKeys.current || !user) return;
     isFetchingDeviceKeys.current = true;
     try {
       await loadRelevantDeviceKeys();
     } catch (error) {
-      if (!(error instanceof CanceledError)) {
+      if (isCancel(error) || error instanceof CanceledError) {
         console.error(
           "AppLayout: Error explicitly calling fetchDeviceKeys:",
           error
@@ -107,7 +107,7 @@ const AppLayout = () => {
     } finally {
       isFetchingDeviceKeys.current = false;
     }
-  };
+  }, [user, loadRelevantDeviceKeys]);
 
   useEffect(() => {
     if (user && deviceId) {
@@ -116,10 +116,10 @@ const AppLayout = () => {
       loadHistoricalMessages();
       fetchDeviceKeys();
 
-      const groupsIntervalId = setInterval(fetchGroups, 5000);
-      const usersIntervalId = setInterval(fetchUsers, 5000);
-      const messagesIntervalId = setInterval(loadHistoricalMessages, 5000);
-      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 5000);
+      const groupsIntervalId = setInterval(fetchGroups, 5100);
+      const usersIntervalId = setInterval(fetchUsers, 5200);
+      const messagesIntervalId = setInterval(loadHistoricalMessages, 5300);
+      const deviceKeysIntervalId = setInterval(fetchDeviceKeys, 5400);
 
       return () => {
         clearInterval(groupsIntervalId);
@@ -129,7 +129,14 @@ const AppLayout = () => {
       };
     }
     return undefined;
-  }, [user, deviceId, loadHistoricalMessages]);
+  }, [
+    user,
+    deviceId,
+    fetchGroups,
+    fetchUsers,
+    loadHistoricalMessages,
+    fetchDeviceKeys,
+  ]);
 
   if (isLoading) {
     return (

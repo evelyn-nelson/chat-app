@@ -1,19 +1,16 @@
-import { Platform, Text, View, Dimensions } from "react-native";
+import { Text, View } from "react-native";
 import React, { useState, useEffect } from "react";
 import { DateOptions } from "@/types/types";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useActionSheet } from "@expo/react-native-action-sheet";
-import { Dropdown } from "react-native-element-dropdown";
 import Button from "../Button/Button";
 
 type GroupDateOptionsProps = {
   dateOptions: DateOptions;
   setDateOptions: React.Dispatch<React.SetStateAction<DateOptions>>;
 };
-
-type DatePickerMode = "date" | "time" | "datetime" | "countdown";
 
 type ExpirationOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 14 | "month";
 
@@ -60,7 +57,7 @@ const GroupDateOptions = ({
 
   const onSelectExpiration = () => {
     const options = [...data.map((option) => option.label), "Cancel"];
-    const cancelButtonIndex = 9;
+    const cancelButtonIndex = options.length - 1;
 
     showActionSheetWithOptions(
       {
@@ -77,7 +74,7 @@ const GroupDateOptions = ({
 
   const onChange = (_: DateTimePickerEvent, selectedDate: Date | undefined) => {
     const currentDate = selectedDate;
-    if (currentDate && expirationInterval != "month") {
+    if (currentDate && expirationInterval !== "month") {
       const expirationDate = new Date(currentDate);
       expirationDate.setDate(
         expirationDate.getDate() + Number(expirationInterval)
@@ -98,7 +95,7 @@ const GroupDateOptions = ({
 
   useEffect(() => {
     setDateOptions((prevState) => {
-      if (prevState.startTime && expirationInterval != "month") {
+      if (prevState.startTime && expirationInterval !== "month") {
         const expirationDate = new Date(prevState.startTime);
         expirationDate.setDate(
           expirationDate.getDate() + Number(expirationInterval)
@@ -117,17 +114,7 @@ const GroupDateOptions = ({
       }
       return prevState;
     });
-  }, [expirationInterval]);
-
-  const convertToDateTimeLocalString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-
-    return `${year}-${month}-${day}T${hours}:${minutes}:00`;
-  };
+  }, [expirationInterval, setDateOptions]);
 
   const toggleDatePicker = () => {
     setShow(!show);

@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Modal,
   View,
   SafeAreaView,
   TouchableOpacity,

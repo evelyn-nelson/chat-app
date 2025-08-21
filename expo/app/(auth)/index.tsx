@@ -1,20 +1,13 @@
-import { StyleSheet, Text, View } from "react-native";
+import { View } from "react-native";
 import React from "react";
 import AuthMenu from "@/components/AuthMenu/AuthMenu";
-import { router } from "expo-router";
-import { useAuthUtils } from "@/components/context/AuthUtilsContext";
 
-const signin = () => {
-  const { whoami } = useAuthUtils();
+const Signin = () => {
   return (
     <View className="bg-blue-500">
-      <AuthMenu
-        onSubmit={async () => {
-          router.replace("/");
-        }}
-      />
+      <AuthMenu />
     </View>
   );
 };
 
-export default signin;
+export default Signin;

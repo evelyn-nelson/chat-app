@@ -37,6 +37,16 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
   } = useGlobalStore();
   const { children } = props;
 
+  const isTransientConnectionError = (error: unknown): boolean => {
+    const message = (error as Error)?.message || String(error || "");
+    return (
+      message.includes("Connection attempt already in progress") ||
+      message.includes("WebSocket closed (Code: 0)") ||
+      message.includes("Network request failed") ||
+      message.toLowerCase().includes("timeout")
+    );
+  };
+
   const whoami = useCallback(
     async (forceRefresh?: boolean): Promise<WhoAmIResult> => {
       try {
@@ -54,19 +64,34 @@ export const AuthUtilsProvider = (props: { children: React.ReactNode }) => {
           const loggedInUser = response.data;
           setUser(loggedInUser);
           if (loggedInUser && !connected) {
-            await establishConnection();
+            establishConnection().catch((error) => {
+              if (!isTransientConnectionError(error)) {
+                console.error("establishConnection failed:", error);
+              }
+            });
           }
           return { user: loggedInUser, deviceId: currentDeviceId };
         }
         if (user && !connected) {
-          await establishConnection();
+          establishConnection().catch((error) => {
+            if (!isTransientConnectionError(error)) {
+              console.error("establishConnection failed:", error);
+            }
+          });
         }
         return { user: user, deviceId: globalDeviceId };
       } catch (error) {
         if (!(error instanceof CanceledError)) {
-          console.error("Error in whoami:", error);
+          // Avoid causing auth flicker when a connection is racing/bootstrapping
+          const message = (error as Error).message || "";
+          const isTransient =
+            message.includes("Connection attempt already in progress") ||
+            message.includes("WebSocket closed (Code: 0)");
+          if (!isTransient) {
+            console.error("Error in whoami:", error);
+          }
         }
-        return { user: undefined, deviceId: globalDeviceId };
+        return { user, deviceId: globalDeviceId };
       }
     },
     [globalDeviceId, setDeviceId, user, setUser, connected, establishConnection]

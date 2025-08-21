@@ -12,7 +12,7 @@ import { useGlobalStore } from "../context/GlobalStoreContext";
 import { Group } from "@/types/types";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWebSocket } from "../context/WebSocketContext";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import Button from "../Global/Button/Button";
 
 export const ChatSelect = () => {
@@ -26,7 +26,7 @@ export const ChatSelect = () => {
     setRefreshing(true);
     try {
       const data = await getGroups();
-      store.saveGroups(data);
+      await store.saveGroups(data);
       refreshGroups();
     } catch (error) {
       console.error(error);
@@ -34,13 +34,14 @@ export const ChatSelect = () => {
     setTimeout(() => {
       setRefreshing(false);
     }, 300);
-  }, []);
+  }, [getGroups, store, refreshGroups]);
 
   useEffect(() => {
     store
       .loadGroups()
       .then((savedGroups) => setGroups(savedGroups))
       .catch((error) => console.error(error));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupsRefreshKey]);
 
   const sortedGroups = useMemo(() => {

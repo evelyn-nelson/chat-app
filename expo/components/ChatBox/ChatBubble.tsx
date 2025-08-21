@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -193,5 +193,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
     );
   }
 );
+
+ChatBubble.displayName = "ChatBubble";
 
 export default ChatBubble;
